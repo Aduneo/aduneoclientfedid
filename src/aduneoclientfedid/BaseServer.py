@@ -150,7 +150,7 @@ class BaseServer(BaseHTTPRequestHandler):
       header += '<script src="/javascript/common.js"></script>'
       header += '<body><div style="color: #FFA500; font-family: Tahoma; font-size: 40px; background-color: #004c97; height: 74px;"><a href="https://www.aduneo.com"><img style="width: 294px; height: 64px; vertical-align: middle; margin-left: 8px; margin-top: 5px;" src="/images/aduneo.png"></a><span style="margin-left: 30px; vertical-align: middle;">ClientFedID - Identity Federation Test Client</span>'
       header += '<a href="/"><img style="height: 36px; float: right; margin-top: 20px; margin-right: 20px" src="/images/home.png"></a>'
-      header += '<span><a class="button" onclick="openConsole();" style="float: right;margin-top: 15;margin-right: 10;">Console</a></span></div>'
+      header += '<span><a class="button" onclick="openConsole(true);" style="float: right;margin-top: 15;margin-right: 10;">Logs</a></span></div>'
       header += '<div style="margin-top: 20px; margin-left: 50px; font-family: Verdana;">'
       page = bytes(header, "UTF-8")
       self.wfile.write(page)

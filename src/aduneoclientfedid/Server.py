@@ -274,9 +274,10 @@ class Server(BaseServer):
           padder.style.display = "none";
         }
       }
-      function openConsole() {
-        window.open("/webconsole", "console", "directories=no,titlebar=no,toolbar=no,location=no,status=no,menubar=no,scrollbars=no,resizable=no,height=500, width=500");
-      }
+      
+      //function openConsole() {
+      //  window.open("/webconsole", "console", "directories=no,titlebar=no,toolbar=no,location=no,status=no,menubar=no,scrollbars=no,resizable=no,height=500, width=500");
+      //}
       </script>
 
       <ul>

@@ -1,5 +1,10 @@
-function openConsole() {
-  if (autoOpenWebconsole) {
+/**
+ * @license
+ * Copyright 2023 Aduneo
+ * SPDX-License-Identifier: Apache-2.0
+ */
+function openConsole(force=false) {
+  if (autoOpenWebconsole || force) {
     webConsole = window.open("/webconsole", "console", "popup,height=500,width=800");
   }
 }
