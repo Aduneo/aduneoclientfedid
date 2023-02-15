@@ -1,0 +1,445 @@
+<link rel="stylesheet" href="/css/dragWindow.css">
+<script src="/javascript/dragWindow.js"></script>
+<script src="/javascript/clipboard.js"></script>
+
+<form name="request" action="sendrequest" method="post" onsubmit="fillClipboard(this);">
+  <input name="rp_id" value={{ html.escape(rp_id) }} type="hidden" />
+	<h1>OAuth 2 client: {{html.escape(name)}}</h1>
+  <h2>Token request by the client</h2>
+	<table class="fixed">
+		<tbody>
+
+			<tr>
+				<td>
+					<span class="celltxt">OAuth 2 Flow</span>
+					<span class="cellimg"><img onclick="help(this, 'flow')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<select class="intable" name="flow">
+            {% for value in ['Authorization Code', 'Authorization Code with PKCE', 'Resource Owner Password Credentials'] %}
+						<option value="{{value}}">{{html.escape(value)}}</option>
+            {% endfor %}
+					</select>
+				</td>
+				<td>
+        </td>
+			</tr>
+			<tr class="manual" id="tr_pkce_code_challenge_method">
+				<td>
+					<span class="celltxt">PKCE code challenge method</span>
+					<span class="cellimg"><img onclick="help(this, 'pkce_code_challenge_method')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<select class="intable" name="pkce_code_challenge_method">
+            {% for value in ['plain', 'S256'] %}
+						<option value="{{value}}">{{html.escape(value)}}</option>
+            {% endfor %}
+					</select>
+				</td>
+				<td>
+        </td>
+			</tr>
+			<tr class="manual" id="tr_pkce_code_verifier">
+				<td>
+					<span class="celltxt">PKCE code verifier</span>
+					<span class="cellimg"><img onclick="help(this, 'pkce_code_verifier')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="pkce_code_verifier" value="{{pkce_code_verifier}}" data-clipboardcategory="#name">
+				</td>
+        <td>
+					<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>
+        </td>
+			</tr>
+			<tr class="manual" id="tr_pkce_code_challenge">
+				<td>
+					<span class="celltxt">PKCE code challenge</span>
+					<span class="cellimg"><img onclick="help(this, 'pkce_code_challenge')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="pkce_code_challenge" value="{{pkce_code_challenge}}" data-clipboardcategory="#name">
+				</td>
+        <td>
+					<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>
+        </td>
+			</tr>
+
+			<tr class="manual" id="tr_token_endpoint">
+				<td>
+					<span class="celltxt">Authorization Endpoint</span>
+					<span class="cellimg"><img onclick="help(this, 'authorization_endpoint')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="authorization_endpoint" value="{{authorization_endpoint}}" data-clipboardcategory="#name">
+				</td>
+        <td>
+					<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>
+        </td>
+			</tr>
+			<tr class="manual">
+				<td>
+					<span class="celltxt">Token Endpoint</span>
+					<span class="cellimg"><img onclick="help(this, 'token_endpoint')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="token_endpoint" value="{{token_endpoint}}" data-clipboardcategory="#name">
+				</td>
+        <td>
+					<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>
+        </td>
+			</tr>
+      
+      <tr id="signature_key_configuration">
+        <td>
+					<span class="celltxt">Signature key configuration</span>
+					<span class="cellimg"><img onclick="help(this, 'signature_key_configuration')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<select class="intable" name="signature_key_configuration" onchange="changeSignatureKeyConfiguration()">
+            {% for value in ['JWKS URI', 'Local configuration'] %}
+              {% if value.casefold() == signature_key_configuration.casefold() %}
+                <option value="{{value}}" selected>{{ html.escape(value) }}</option>
+              {% else %}
+                <option value="{{value}}">{{ html.escape(value) }}</option>
+              {% endif %}
+            {% endfor %}
+					</select>
+				</td>
+				<td>
+        </td>
+			</tr>
+      <tr id="jwks_uri" style="display: none;">
+        <td>
+					<span class="celltxt">JWKS URI</span>
+					<span class="cellimg"><img onclick="help(this, 'jwks_uri')" src="/images/help.png"></span>
+				</td>
+        <td>
+          <input name="jwks_uri" value="{{jwks_uri}}" class="intable" type="text" data-clipboardcategory="#name">
+        </td>
+        <td>
+					<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>
+        </td>
+      </tr>
+      <tr id="signature_key" style="display: none;">
+        <td>
+					<span class="celltxt">Signature key</span>
+					<span class="cellimg"><img onclick="help(this, 'signature_key')" src="/images/help.png"></span>
+				</td>
+        <td>
+          <input name="signature_key" value="{{signature_key}}" class="intable" type="text" data-clipboardcategory="#name">
+        </td>
+        <td>
+					<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>
+        </td>
+      </tr>
+
+			<tr>
+				<td>
+					<span class="celltxt">Client ID</span>
+					<span class="cellimg"><img onclick="help(this, 'client_id')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="client_id" value="{{client_id}}" data-clipboardcategory="#name">
+				</td>
+        <td>
+					<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>
+        </td>
+			</tr>
+			<tr>
+				<td>
+					<span class="celltxt">Client Secret</span>
+					<span class="cellimg"><img onclick="help(this, 'client_secret')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="password" name="client_secret!" {% if remember_secrets %} value="" data-clipboardcategory="#name" {% endif %}>
+				</td>
+        <td>
+					{% if remember_secrets %}<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>{% endif %}
+        </td>
+			</tr>
+      <tr>
+        <td>
+					<span class="celltxt">Token endpoint auth method</span>
+					<span class="cellimg"><img onclick="help(this, 'token_endpoint_auth_method')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<select class="intable" name="token_endpoint_auth_method">
+            {% for value in ['Basic', 'POST'] %}
+              {% if value.casefold() == token_endpoint_auth_method.casefold() %}
+                <option value="{{value}}" selected>{{ html.escape(value) }}</option>
+              {% else %}
+                <option value="{{value}}">{{ html.escape(value) }}</option>
+              {% endif %}
+            {% endfor %}
+					</select>
+				</td>
+				<td>
+        </td>
+			</tr>
+			<tr>
+				<td>
+					<span class="celltxt">Redirect URI</span>
+					<span class="cellimg"><img onclick="help(this, 'redirect_uri')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="redirect_uri" value="{{redirect_uri}}" data-clipboardcategory="#name">
+				</td>
+        <td>
+					<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>
+        </td>
+			</tr>
+			<tr>
+				<td>
+					<span class="celltxt">Scope</span>
+					<span class="cellimg"><img onclick="help(this, 'scope')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="scope" value="{{scope}}" data-clipboardcategory="#name">
+				</td>
+        <td>
+					<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>
+        </td>
+			</tr>
+			<tr> <!-- cf RFC 8707 - multivalued field -->
+				<td>
+					<span class="celltxt">Resource</span>
+					<span class="cellimg"><img onclick="help(this, 'resource')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="resource" value="{{resource}}" data-clipboardcategory="#name">
+				</td>
+        <td>
+					<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>
+        </td>
+			</tr>
+			<tr>
+				<td>
+					<span class="celltxt">response type</span>
+					<span class="cellimg"><img onclick="help(this, 'response_type')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<select class="intable" name="response_type">
+						<option value="code" selected>code</option>
+					</select>
+				</td>
+				<td>
+        </td>
+			</tr>
+			<tr>
+				<td>
+					<span class="celltxt">response mode</span>
+					<span class="cellimg"><img onclick="help(this, 'response_mode')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<select class="intable" name="response_mode">
+						<option value="" selected></option>
+						<option value="query">query</option>
+					</select>
+				</td>
+				<td>
+        </td>
+			</tr>
+			<tr>
+				<td>
+					<span class="celltxt">Validation method</span>
+					<span class="cellimg"><img onclick="help(this, 'validation_method')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<select class="intable" name="validation_method">
+						<option value="none" selected>none</option>
+						<option value="introspection" selected>introspection</option>
+						<option value="signature">signature</option>
+					</select>
+				</td>
+				<td>
+        </td>
+			</tr>
+			<tr>
+				<td>
+					<span class="celltxt">state</span>
+					<span class="cellimg"><img onclick="help(this, 'state')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="state" value="{{state}}">
+				</td>
+				<td>
+        </td>
+			</tr>
+			<tr>
+				<td>
+					<span class="celltxt">nonce</span>
+					<span class="cellimg"><img onclick="help(this, 'nonce')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="nonce" value="{{nonce}}">
+				</td>
+				<td>
+        </td>
+			</tr>
+		</tbody>
+	</table>
+
+  <h2>Token validation by the API (resource server)</h2>
+	<table class="fixed">
+		<tbody>
+			<tr class="manual">
+				<td>
+					<span class="celltxt">Introspection Endpoint</span>
+					<span class="cellimg"><img onclick="help(this, 'introspection_endpoint')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="introspection_endpoint" value="{{introspection_endpoint}}" data-clipboardcategory="#name">
+				</td>
+        <td>
+					<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>
+        </td>
+			</tr>
+			<tr>
+				<td>
+					<span class="celltxt">RS Client ID</span>
+					<span class="cellimg"><img onclick="help(this, 'rs_client_id')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="rs_client_id" value="{{rs_client_id}}" data-clipboardcategory="client_id">
+				</td>
+        <td>
+					<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>
+        </td>
+			</tr>
+			<tr>
+				<td>
+					<span class="celltxt">RS Client Secret</span>
+					<span class="cellimg"><img onclick="help(this, 'rs_client_secret')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="password" name="rs_client_secret!" {% if remember_secrets %} value="" data-clipboardcategory="client_secret!" {% endif %}>
+				</td>
+        <td>
+					{% if remember_secrets %}<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>{% endif %}
+        </td>
+			</tr>
+		</tbody>
+	</table>
+
+  <h2>Options</h2>
+	<table class="fixed">
+		<tbody>
+			<tr class="manual">
+				<td>
+					<span class="celltxt">Certificate verification</span>
+					<span class="cellimg"><img onclick="help(this, 'certificate_verification')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input type="checkbox" name="certificate_verification"{{verify_certificates}}>
+				</td>
+        <td>
+        </td>
+			</tr>
+		</tbody>
+	</table>
+
+  <div style="padding-top: 20px; padding-bottom: 12px;"><div style="padding-bottom: 6px;"><strong>Authentication request</strong> <img title="Copy request" class="smallButton" src="/images/copy.png" onClick="copyRequest()"/></div>
+  <span id="auth_request" style="font-size: 14px;"></span></div>
+  <input name="authentication_request" type="hidden">
+
+	<button type="submit" class="button" onclick="openConsole()">Send request to AS</button>
+  
+</form>
+
+<div id="helpWindow" class="dragWindow" onmousedown="startDrag(this, event)">
+	<div class="dragHeader"><span id="helpHeader"></span><span style="float: right; cursor: pointer;" onclick="closeDrag(this)">&#x2716;</span></div>
+	    <div id="helpContent" class="dragContent"></div>
+</div>
+
+<div id="clipboardWindowBackground" class="modal-background" onclick="clipboardClickBackground(event)">
+</div>
+<div id="clipboardWindow" class="dragWindow" style="z-index: 2;" onmousedown="startDrag(this, event)">
+  <div class="dragHeader"><span id="clipboardHeader">ClientFedID clipboard<span style="margin-left:60px;"><span><span onclick="refreshClipboard('all')" class="middleButton">All</span><span style="margin-left:12px;"><span><span id="clipboardSpecific" onclick="refreshClipboard()" class="middleButton"></span></span><span style="float: right; cursor: pointer;" onclick="closeClipboard()">&#x2716;</span></div>
+  <div id="clipboardContent" class="dragContent">
+    <div id="clipboardChoiceTemplate" class="choiceButton" onclick="selectClipboardText(this)" style="display: none;"><span class="choiceText"></span><span style="float: right; cursor: pointer;"><img onclick="removeClipboardText(event, this)" src="/images/clear.png" width="12px"></span></div>
+  </div>
+</div>
+
+<script src="/javascript/help.js"></script>
+
+<script>
+function updateAuthRequest() {
+  let request = document.request.authorization_endpoint.value
+    + '?scope='+encodeURIComponent(document.request.scope.value);
+  ['response_type', 'client_id', 'redirect_uri', 'state', 'resource'].forEach(function(item, index) {
+    request += '&'+item+'='+encodeURIComponent(document.request[item].value)
+  });
+  ['nonce'].forEach(function(item, index) {
+    if (document.request[item].value != '') { request += '&'+item+'='+encodeURIComponent(document.request[item].value); }
+  });
+  if (document.request.flow.value == 'Authorization Code with PKCE') {
+    request += '&code_challenge_method='+encodeURIComponent(document.request.pkce_code_challenge_method.value)
+    if (document.request.pkce_code_challenge_method.value == 'S256') {
+      request += '&code_challenge='+encodeURIComponent(document.request.pkce_code_challenge.value)
+    } else {
+      request += '&code_challenge='+encodeURIComponent(document.request.pkce_code_verifier.value)
+    }
+  }
+  
+  document.getElementById('auth_request').innerHTML = request;
+  document.request.authentication_request.value = request;
+}
+let input = document.request.getElementsByTagName('input');
+Array.prototype.slice.call(input).forEach(function(item, index) {
+  if (item.type == 'text') { item.addEventListener("input", updateAuthRequest); }
+});
+let select = document.request.getElementsByTagName('select');
+Array.prototype.slice.call(select).forEach(function(item, index) {
+  if (item.name != 'signature_key_configuration') {
+    item.addEventListener("change", updateAuthRequest);
+  }
+});
+updateAuthRequest();
+
+function flowChanged() {
+  let challengeMethodTR = document.getElementById('tr_pkce_code_challenge_method');
+  let codeVerifierTR = document.getElementById('tr_pkce_code_verifier');
+  let codeChallengeTR = document.getElementById('tr_pkce_code_challenge');
+  if (document.request.flow.value == 'Authorization Code with PKCE') {
+    challengeMethodTR.style.display = 'table-row';
+    codeVerifierTR.style.display = 'table-row';
+    if (document.request.pkce_code_challenge_method.value == 'S256') {
+      codeChallengeTR.style.display = 'table-row';
+    } else {
+      codeChallengeTR.style.display = 'none';
+    }
+  } else {
+    challengeMethodTR.style.display = 'none';
+    codeVerifierTR.style.display = 'none';
+    codeChallengeTR.style.display = 'none';
+  }
+}
+flowChanged()
+document.request.flow.addEventListener("change", flowChanged);
+document.request.pkce_code_challenge_method.addEventListener("change", flowChanged);
+
+function copyRequest() {
+  copyTextToClipboard(document.request.authentication_request.value);
+}
+function copyTextToClipboard(text) {
+  var tempArea = document.createElement('textarea')
+  tempArea.value = text
+  document.body.appendChild(tempArea)
+  tempArea.select()
+  tempArea.setSelectionRange(0, 99999)
+  document.execCommand("copy")
+  document.body.removeChild(tempArea)
+}
+
+function changeSignatureKeyConfiguration() {
+  if (document.request.signature_key_configuration.value == 'JWKS URI') {
+    document.getElementById('jwks_uri').style.display = 'table-row';
+    document.getElementById('signature_key').style.display = 'none';
+  } else {
+    document.getElementById('jwks_uri').style.display = 'none';
+    document.getElementById('signature_key').style.display = 'table-row';
+  }
+}
+changeSignatureKeyConfiguration()
+
+</script>

@@ -1,0 +1,28 @@
+.dragWindow {
+  visibility: hidden;
+  display: flex;
+  flex-flow: column;
+  background-color: white;
+  border: 2px solid black; 
+  width: 600px; 
+  height: 400px; 
+  position: absolute; 
+  top: 100px; 
+  left: 100px;
+  cursor: pointer;
+}
+
+.dragHeader {
+  flex: 0 1 auto;
+  background-color: lightgrey;
+  padding: 5px 5px 5px 5px;
+  border-bottom: 1px solid black;
+}
+
+.dragContent {
+  flex: 1 1 auto;
+  padding: 5px;
+  font-size: 12px;
+  height: auto;
+  overflow: auto;
+}

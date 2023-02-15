@@ -1,0 +1,239 @@
+<form name="client" action="" method="post">
+	<input name="rp_id" value="{{rp_id}}" type="hidden" />
+	<table class="fixed">
+		<tbody>
+			<tr>
+				<td>
+					<span class="celltxt">Name</span>
+					<span class="cellimg"><img onclick="help(this, 'name')" src="/images/help.png"></span>
+					<span class="cellimg"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="name" value="{{name}}">
+				</td>
+			</tr>
+		</tbody>
+	</table>
+  <h3>Parameters for Authorization Server configuration</h3>
+	<table class="fixed">
+		<tbody>
+			<tr>
+				<td>
+					<span class="celltxt">Redirect URI</span>
+					<span class="cellimg"><img onclick="help(this, 'redirect_uri')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="redirect_uri" value="{{redirect_uri}}">
+				</td>
+			</tr>
+		</tbody>
+	</table>
+  <h3>Parameters retrieved from the Authorization Server configuration</h3>
+	<table class="fixed">
+		<tbody>
+			<tr>
+				<td>
+					<span class="celltxt">Endpoint configuration</span>
+					<span class="cellimg"><img onclick="help(this, 'endpoint_configuration')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<select class="intable" name="endpoint_configuration" onChange="changeEndpointConfiguration()">
+            {% for value in ['Discovery URI', 'Local configuration'] %}
+              {% if value.casefold() == endpoint_configuration.casefold() %}
+                <option value="{{value}}" selected>{{ html.escape(value) }}</option>
+              {% else %}
+                <option value="{{value}}">{{ html.escape(value) }}</option>
+              {% endif %}
+            {% endfor %}
+					</select>
+				</td>
+			</tr>
+			<tr class="local_configuration">
+				<td>
+					<span class="celltxt">Authorization endpoint</span>
+					<span class="cellimg"><img onclick="help(this, 'authorization_endpoint')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="authorization_endpoint" value="{{authorization_endpoint}}">
+				</td>
+			</tr>
+			<tr class="local_configuration">
+				<td>
+					<span class="celltxt">Token endpoint</span>
+					<span class="cellimg"><img onclick="help(this, 'token_endpoint')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="token_endpoint" value="{{token_endpoint}}">
+				</td>
+			</tr>
+			<tr class="local_configuration">
+				<td>
+					<span class="celltxt">Introspection endpoint</span>
+					<span class="cellimg"><img onclick="help(this, 'introspection_endpoint')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="introspection_endpoint" value="{{introspection_endpoint}}">
+				</td>
+			</tr>
+			<tr class="discovery_uri">
+				<td>
+					<span class="celltxt">Discovery URI</span>
+					<span class="cellimg"><img onclick="help(this, 'discovery_uri')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="discovery_uri" value="{{discovery_uri}}">
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<span class="celltxt">Client ID</span>
+					<span class="cellimg"><img onclick="help(this, 'client_id')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="client_id" value="{{client_id}}">
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<span class="celltxt">Client secret</span>
+					<span class="cellimg"><img onclick="help(this, 'client_secret')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="password" name="client_secret!">
+				</td>
+			</tr>
+		</tbody>
+	</table>
+  <h3>Request default parameters</h3>
+	<table class="fixed">
+		<tbody>
+			<tr>
+				<td>
+					<span class="celltxt">Scope</span>
+					<span class="cellimg"><img onclick="help(this, 'scope')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="scope" value="{{scope}}">
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<span class="celltxt">Response type</span>
+					<span class="cellimg"><img onclick="help(this, 'response_type')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<select class="intable" name="response_type">
+						<option value="code" selected="">code</option>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<span class="celltxt">Token endpoint auth method</span>
+					<span class="cellimg"><img onclick="help(this, 'token_endpoint_auth_method')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<select class="intable" name="token_endpoint_auth_method">
+            {% for value in ['Basic', 'POST'] %}
+              {% if value.casefold() == token_endpoint_auth_method.casefold() %}
+                <option value="{{value}}" selected>{{ html.escape(value) }}</option>
+              {% else %}
+                <option value="{{value}}">{{ html.escape(value) }}</option>
+              {% endif %}
+            {% endfor %}
+					</select>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+  <h3>Introspection</h3>
+	<table class="fixed">
+		<tbody>
+			<tr>
+				<td>
+					<span class="celltxt">Introspect access token</span>
+					<span class="cellimg"><img onclick="help(this, 'introspect_at')" src="/images/help.png"></span>
+					<span class="cellimg"></span>
+				</td>
+				<td>
+					<input type="checkbox" name="introspect_at" {% if introspect_at %} checked {% endif %} onChange="changeIntrospectAT()">
+				</td>
+			</tr>
+			<tr class="introspect_at">
+				<td>
+					<span class="celltxt">Resource server client ID</span>
+					<span class="cellimg"><img onclick="help(this, 'rs_client_id')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="text" name="rs_client_id" value="{{rs_client_id}}">
+				</td>
+			</tr>
+			<tr class="introspect_at">
+				<td>
+					<span class="celltxt">Resource server client secret</span>
+					<span class="cellimg"><img onclick="help(this, 'rs_client_secret')" src="/images/help.png"></span>
+				</td>
+				<td>
+					<input class="intable" type="password" name="rs_client_secret!">
+				</td>
+			</tr>
+		</tbody>
+	</table>
+  <h3>Options</h3>
+	<table class="fixed">
+		<tbody>
+			<tr>
+				<td>
+					<span class="celltxt">Verify certificates</span>
+					<span class="cellimg"><img onclick="help(this, 'verify_certificates')" src="/images/help.png"></span>
+					<span class="cellimg"></span>
+				</td>
+				<td>
+					<input type="checkbox" name="verify_certificates" {% if verify_certificates %} checked {% endif %}">
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<button type="submit" class="button">Save</button>
+</form>
+
+ <link rel="stylesheet" href="/css/dragWindow.css">
+<div id="helpWindow" class="dragWindow" onmousedown="startDrag(this, event)">
+	<div class="dragHeader"><span id="helpHeader"></span><span style="float: right; cursor: pointer;" onclick="closeDrag(this)">&#x2716;</span></div>
+	    <div id="helpContent" class="dragContent"></div>
+</div>
+
+<script src="/javascript/help.js"></script>
+<script type="text/javascript">
+  window.addEventListener('load', (event) => {
+    if (document.client.redirect_uri.value == '') {
+      document.client.redirect_uri.value = window.location.origin + '/client/oauth/login/callback';
+    }
+  });
+
+	function changeEndpointConfiguration() {
+    
+    endpoint_configuration = document.client.endpoint_configuration.value;
+
+    for (item of document.getElementsByClassName("local_configuration")) {
+      item.hidden = (endpoint_configuration.toLowerCase() == 'discovery uri');
+    }
+    for (item of document.getElementsByClassName("discovery_uri")) {
+      item.hidden = (endpoint_configuration.toLowerCase() == 'local configuration');
+    }
+	}
+
+	changeEndpointConfiguration()
+
+
+	function changeIntrospectAT() {
+    
+    introspect_at = document.client.introspect_at.checked;
+
+    for (item of document.getElementsByClassName("introspect_at")) {
+      item.hidden = !introspect_at;
+    }
+	}
+
+	changeIntrospectAT()
+</script>

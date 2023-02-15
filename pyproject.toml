@@ -1,0 +1,40 @@
+# pyproject.toml
+
+[build-system]
+requires = [
+    "setuptools",
+    "wheel",
+    "requests",
+    "pyopenssl",
+    "jwcrypto"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aduneoclientfedid"
+version = "1.0.4"
+description = "Identity Federation Test Client"
+readme = "README.md"
+authors = [{ name = "Aduneo", email = "contact@aduneo.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "Topic :: System :: Systems Administration :: Authentication/Directory",
+]
+keywords = ["identity", "federation", "openid connect", "oauth 2", "saml"]
+dependencies = [
+    "requests",
+    "jwcrypto",
+    "pyopenssl",
+]
+requires-python = ">=3.6"
+
+[project.optional-dependencies]
+saml = ["xmlsec"]
+
+[project.urls]
+homepage = "https://www.aduneo.com"
+repository = "https://github.com/aduneo/clientfedid"
+
+[project.scripts]
+clientfedid = "aduneoclientfedid.__main__:main"
+aduneoclientfedid = "aduneoclientfedid.__main__:main"

@@ -1,0 +1,198 @@
+.button {
+  background-color: #FFA500;
+  border: none;
+  color: white;
+  padding: 15px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+
+.middlebutton {
+  background-color: #FFA500;
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 12px;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+
+div.idpList {
+  display: flex; 
+  justify-content: space-between; 
+  width: 800px; 
+  border: 1px solid gray;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  padding-left: 12px;
+  padding-right: 12px;
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
+
+img.smallButton {
+  cursor: pointer;
+}
+
+table.fixed { 
+  table-layout:fixed; 
+  width: 1074px; 
+  border: 1px solid grey; 
+  border-collapse: collapse;
+  font-size: 12px;
+}
+table.fixed td {
+  overflow: hidden; 
+  padding: 10px; 
+  vertical-align: top; 
+  border: 1px solid lightgrey;
+  word-wrap:break-word;
+}
+table.fixed td:nth-child(2) {
+  border-right-width: 0px;
+}
+table.fixed td:nth-child(3) {
+  border-left-width: 0px;
+}
+table.fixed td:nth-of-type(1) {width:200px;}
+table.fixed td:nth-of-type(2) {width:800px;}
+
+input.intable {
+  font-family: Verdana;
+  font-size: 12px;
+  width: 100%;
+}
+
+textarea.intable {
+  font-family: Verdana;
+  font-size: 12px;
+  width: 100%;
+}
+
+select.intable {
+  font-family: Verdana;
+  font-size: 12px;
+}
+
+span.celltxt {
+  float: left;
+}
+
+span.cellimg {
+  float: right;
+}
+
+span.cellimg img {
+  width: 20px;
+  cursor: pointer;
+}
+
+/* zome de saisie avec liste déroulante : https://stackoverflow.com/questions/2141357/editable-select-element */
+.select-editable {
+  position:relative;
+  background-color:white;
+  border:solid grey 1px;
+  width:120px;
+  height:18px;
+}
+.select-editable select {
+  position:absolute;
+  top:0px;
+  left:0px;
+  font-size:14px;
+  border:none;
+  width:120px;
+  margin:0;
+}
+.select-editable input {
+  position:absolute;
+  top:0px;
+  left:0px;
+  width:100px;
+  padding:1px;
+  font-size:12px;
+  border:none;
+}
+.select-editable select:focus, .select-editable input:focus {
+  outline:none;
+}
+
+
+.etape_un {
+  border: solid 3px #004c97;
+}
+
+.etape_deux {
+  border: solid 3px #004c97;
+}
+
+.etape_trois {
+  border: solid 3px #004c97;
+}
+
+.buttonEtape {
+  float: right;
+  margin-right: 5px;
+}
+
+ul {
+  list-style-type: none;
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+
+li {
+  list-style-type: none;
+}
+
+
+ul li {display: inline-block;}
+/*
+ul li:hover ul {display: block;}
+ul li ul {
+  position: absolute;
+  width: 200px;
+  display: none;
+}
+
+ul li ul li {  
+  display: block; 
+}
+
+ul li ul li a {display:block !important;} 
+
+ul li {display: inline-block;}
+ul li:hover ul, .in {display: block;}
+ul li ul {
+  position: absolute;
+  width: 200px;
+  display: none;
+}
+*/
+
+div.modal-background {
+  visibility: hidden; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+}
+
+
+div.choiceButton {
+  border: 1px solid;
+  border-radius: 5px;
+  margin: 5px 4px 5px 4px;
+  padding: 2px;
+}

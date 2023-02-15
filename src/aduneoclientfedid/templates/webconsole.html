@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<!--
+  div de logs : https://stackoverflow.com/questions/32994214/scrollable-div-that-takes-up-remaining-height-of-page
+-->
+<html style="height: 100%;">
+
+<style>
+* {margin: 0;}
+div {
+  font-family: Verdana;
+  font-size: 12px;
+}
+</style>
+<link rel="stylesheet" href="/css/aduneo.css">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Webconsole</title>
+	<script src="/javascript/common.js"></script>
+  <script>log_last_line={{log_last_line}};</script>
+</head>
+<body style="height: 100%; display: flex; flex-flow: column;" onLoad="update_logs()">
+
+	<div style="background-color: #aba9a9; padding-bottom: 10px;">
+    	<a>word highlight</a>
+		<input type="text" id="highlight" name="highlight" onkeyup="highlight_word(this.value);" style="width:70%"> <img title="Clear logs" class="smallButton" src="/images/clear.png" onClick="clear_webconsole()" />
+	</div>
+	<div style=" overflow-y: auto; flex: 1; display:flex; flex-direction:column-reverse;">
+		<pre id="logs">{{logs}}</pre>
+	</div>
+
+
+	<script type="text/javascript">
+		var intervalID = window.setInterval(update_logs, 1*1000);
+	</script>
+</body>
+</html>

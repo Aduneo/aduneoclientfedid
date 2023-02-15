@@ -1,0 +1,6 @@
+graft src/aduneoclientfedid/data
+graft src/aduneoclientfedid/static/css
+graft src/aduneoclientfedid/static/images
+graft src/aduneoclientfedid/static/javascript
+graft src/aduneoclientfedid/static/html
+graft src/aduneoclientfedid/templates

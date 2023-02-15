@@ -1,0 +1,389 @@
+  <form name="rp" action="/oidc/client/modifyclient" method="post">
+    <input name="rp_id" value="okta" type="hidden" />
+    <h1>Etape 1</h1>
+    <p>
+      Dans un premier temps il vous faut créer un client OIDC sur votre fournisseur d'accès. Le serveur va alors, certainement, vous demander de choisir un nom pour votre application. Il faut faire attention car certains fournisseurs d'accès vont utiliser ce nom pour le champ Audience de vos jetons d'accès. Ce n'est pas obligatoire, mais vous pouvez utiliser ce meme nom pour le client OIDC.
+    </p>
+    <table id="unTab" class="fixed">
+      <tr>
+        <td>
+          <span class="celltxt">Name</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'name')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <input name="name" value="{{rp_id}}" class="intable" type="text">
+        </td>
+      </tr>
+    </table>
+    <p>
+      L'application créé sur le fournisseur d'accès aura également besoin d'une URL de retour pour indiquer l'URL qui accueillera l'utilisateur à son retour d'authentification par le fournisseur d'accès. La valeur proposée par défaut est déduite par le client fonction du contexte, nous vous recommandons d'utiliser cette valeur.
+    </p>
+    <table class="fixed">
+      <tr>
+        <td>
+          <span class="celltxt">Redirect URI</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'redirect_uri')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <span id="redirect_ui">
+            {{redirect_uri}}
+          </span>
+          <span> </span>
+          <span><img title="Copy value" class="smallButton" src="/images/copy.png" onclick="copyValue('redirect_ui')"></span>
+        </td>
+      </tr>
+    </table>
+    <p>
+    Un client OpenID Connect a besoin de connaître les points d'entrées du serveur afin d'y rediriger l'utilisateur pour authentification, puis d'y récupérer les jetons, les informations sur l'utilisateur, etc. Il s'agit d'URL publiées par l'IdP OIDC, souvent spécifiques au client.
+    </p>
+    <p>
+      Par exemple l'URL accueillant les utilisateurs pour authentification ressemble souvent à https://login.idp.com/&lt;un identifiant du client&gt;/oauth2/v2.0/authorize
+    </p>
+    <p>
+      Afin de faciliter la configuration des clients, les IdP publient souvent une URL avec l'ensemble des endpoint. La configuration se résume alors à la saisie d'une unique URL au lieu de la liste des URL des différents endpoint
+    </p>
+      Le client de fédération accepte les deux manières de déclaration :
+    </p>
+      <ul>
+        <li>en choisissant Discovery URI, vous n'avez qu'à donner cette URL unique, qui ressemble souvent à https://www.idp.com/.well-known/openid-configuration
+        </li>
+        <li>
+          avec Local Configuration, il vous faudra donner individuellement les URL de chaque endpoint, telles qu'elles sont indiquées par l'IdP.
+        </li>
+      </ul>
+      <span>
+        Votre IdP possède t'il un "Discovery URI"?
+          <button type="button" id="discovery_uri_oui" class="button" style="padding: 5px 10px;" onclick="document.getElementsByName('endpoint_configuration')[0].value = document.getElementsByName('endpoint_configuration')[0].getElementsByTagName('option')[0].value; changeEndpointConfiguration();">Oui</button>
+          <button type="button" id="discovery_uri_non" class="button" style="padding: 5px 10px;" onclick="document.getElementsByName('endpoint_configuration')[0].value = document.getElementsByName('endpoint_configuration')[0].getElementsByTagName('option')[1].value; changeEndpointConfiguration();">Non</button>
+      </span>
+    <table class="fixed">
+      <tr hidden>
+        <td>
+          <span class="celltxt">Endpoint configuration</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'endpoint_configuration')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <select name="endpoint_configuration" class="intable" onchange="changeEndpointConfiguration()">
+            {{list_option_endpoint_config}}
+        </td>
+        <tr id="issuer" style="display: none;">
+            <td>
+              <span class="celltxt">Issuer</span>
+              <span class="cellimg">
+                <img onclick="help(this, 'issuer')" src="/images/help.png">
+              </span>
+            </td>
+            <td>
+              <input name="issuer" value="" class="intable" type="text">
+            </td>
+          </tr>
+        <tr id="authorization_endpoint" style="display: none;">
+            <td>
+              <span class="celltxt">Authorization endpoint</span>
+              <span class="cellimg">
+                <img onclick="help(this, 'authorization_endpoint')" src="/images/help.png">
+              </span>
+            </td>
+            <td>
+              <input name="authorization_endpoint" value="" class="intable" type="text">
+            </td>
+          </tr>
+        <tr id="token_endpoint" style="display: none;">
+            <td>
+              <span class="celltxt">Token endpoint</span>
+              <span class="cellimg">
+                <img onclick="help(this, 'token_endpoint')" src="/images/help.png">
+              </span>
+            </td>
+            <td>
+              <input name="token_endpoint" value="" class="intable" type="text">
+            </td>
+          </tr>
+        <tr id="userinfo_endpoint" style="display: none;">
+            <td>
+              <span class="celltxt">Userinfo endpoint</span>
+              <span class="cellimg">
+                <img onclick="help(this, 'userinfo_endpoint')" src="/images/help.png">
+              </span>
+            </td>
+            <td>
+              <input name="userinfo_endpoint" value="" class="intable" type="text">
+            </td>
+          </tr>
+          <tr id="end_session_endpoint" style="display: none;">
+            <td>
+              <span class="celltxt">Logout endpoint</span>
+              <span class="cellimg">
+                <img onclick="help(this, 'end_session_endpoint')" src="/images/help.png">
+              </span>
+            </td>
+            <td>
+              <input name="end_session_endpoint" value="" class="intable" type="text">
+            </td>
+          </tr>
+        </table>
+          <span id="JWKS_yes_no" style="display: none;">
+            Votre IdP utilise t'il l'algorithme JWKS?
+          <button type="button" id="discovery_uri_oui" class="button" style="padding: 5px 10px;" onclick="document.getElementsByName('signature_key_configuration')[0].value = document.getElementsByName('signature_key_configuration')[0].getElementsByTagName('option')[0].value; changeEndpointConfiguration();">Oui</button>
+          <button type="button" id="discovery_uri_non" class="button" style="padding: 5px 10px;" onclick="document.getElementsByName('signature_key_configuration')[0].value = document.getElementsByName('signature_key_configuration')[0].getElementsByTagName('option')[1].value; changeEndpointConfiguration();">Non</button>
+          </span>
+          <table class="fixed">
+          <tr id="signature_key_configuration" style="display: none;">
+            <td>
+              <span class="celltxt">Signature key configuration</span>
+              <span class="cellimg">
+                <img onclick="help(this, 'signature_key_configuration')" src="/images/help.png">
+              </span>
+            </td>
+            <td>
+              <select name="signature_key_configuration" class="intable" onchange="changeEndpointConfiguration()">
+                <option value="JWKS URI" selected>JWKS URI </value>
+                <option value="Local configuration">Local configuration </value>
+            </td>
+          </tr>
+        <tr id="jwks_uri" style="display: none;">
+            <td>
+              <span class="celltxt">JWKS URI</span>
+              <span class="cellimg">
+                <img onclick="help(this, 'jwks_uri')" src="/images/help.png">
+              </span>
+            </td>
+            <td>
+              <input name="jwks_uri" value="" class="intable" type="text">
+            </td>
+          </tr>
+          <tr id="signature_key" style="display: none;">
+            <td>
+              <span class="celltxt">Signature Key</span>
+              <span class="cellimg">
+                <img onclick="help(this, 'signature_key')" src="/images/help.png">
+              </span>
+            </td>
+            <td>
+              <input name="signature_key" value="" class="intable" type="text">
+            </td>
+          </tr>
+      <tr id="discovery_uri" style="display: table-row;">
+        <td>
+          <span class="celltxt">Discovery URI</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'discovery_uri')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <input name="discovery_uri" value="{{rp_discovery_uri}}" class="intable" type="text">
+        </td>
+      </tr>
+    </table>
+    <h1>Etape 2</h1>
+    <p>
+      Une fois le client de base créé, le fournissseur d'accès va vous générer un Client ID et un Client secret.
+    </p>
+    <p>
+      L'IdP attribue un identifiant unique à chaque application qu'il doit authentifier. Cet identifiant est appelé Client ID. C'est ce qui lui permet de savoir quelle politique de sécurité appliquer.
+    </p>
+    <table id="deuxTab" class="fixed">
+      <tr id="issuer" style="display: none;">
+        <td>
+          <span class="celltxt">Issuer</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'issuer')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <input name="issuer" value="" class="intable" type="text">
+        </td>
+      </tr>
+      <tr id="authorization_endpoint" style="display: none;">
+        <td>
+          <span class="celltxt">Authorization endpoint</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'authorization_endpoint')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <input name="authorization_endpoint" value="" class="intable" type="text">
+        </td>
+      </tr>
+      <tr id="token_endpoint" style="display: none;">
+        <td>
+          <span class="celltxt">Token endpoint</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'token_endpoint')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <input name="token_endpoint" value="" class="intable" type="text">
+        </td>
+      </tr>
+      <tr id="end_session_endpoint" style="display: none;">
+        <td>
+          <span class="celltxt">Logout endpoint</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'end_session_endpoint')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <input name="end_session_endpoint" value="" class="intable" type="text">
+        </td>
+      </tr>
+      <tr id="userinfo_endpoint" style="display: none;">
+        <td>
+          <span class="celltxt">Userinfo endpoint</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'userinfo_endpoint')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <input name="userinfo_endpoint" value="" class="intable" type="text">
+        </td>
+      </tr>
+      <tr id="signature_key_configuration" style="display: none;" >
+        <td>
+          <span class="celltxt">Signature key configuration</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'signature_key_configuration')" src="/images/help.png">
+          </span>
+        </td>       
+        <td>
+          <select name="signature_key_configuration" class="intable" onchange="changeEndpointConfiguration()">
+            <option value="JWKS URI" selected>JWKS URI </value>
+            <option value="Local configuration">Local configuration </value>
+        </td>
+      </tr>
+      <tr id="jwks_uri" style="display: none;">
+        <td>
+          <span class="celltxt">JWKS URI</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'jwks_uri')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <input name="jwks_uri" value="" class="intable" type="text">
+        </td>
+      </tr>
+      <tr id="signature_key" style="display: none;">
+        <td>
+          <span class="celltxt">Signature Key</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'signature_key')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <input name="signature_key" value="" class="intable" type="text">
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="celltxt">Client ID</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'client_id')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <input name="client_id" value="{{client_id}}" class="intable" type="text">
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="celltxt">Client secret</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'client_secret')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <input name="client_secret!" value="{{client_secret}}" class="intable" type="password">
+        </td>
+      </tr>
+    </table>
+    </p>
+    <h1>Etape 3</h1>
+    <table id="troisTab" class="fixed">
+      <p>
+        Cette troisième étape est indépendante du fournisseur d'accès, il s'agit de définir des paramètres par défaut qui seront automatiquement pré-remplis lorsque vous créerez une requête avec l'onglet "Login" en page d'acceuil.
+      </p>
+      <p>
+        Choisissez un scope corespondant à la surface d'utilisation du jeton demandé. L'utilisation du scope "openid" est obligatoire pour toute requête OpenID Connect. Si vous souhaitez récupérer les infos de l'utilisateur via le client, nous vous conseillons de mettre les valeurs "email" et "profile" dans le scope.
+      </p>
+      <tr>
+        <td>
+          <span class="celltxt">Scope</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'scope')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <input name="scope" value="{{scope}}" class="intable" type="text">
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="celltxt">Response type</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'response_type')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <select name="response_type" class="intable">
+            {{list_reponse_type}}
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="celltxt">Fetch userinfo</span>
+          <span class="cellimg">
+            <img onclick="help(this, 'fetch_userinfo')" src="/images/help.png">
+          </span>
+        </td>
+        <td>
+          <input name="fetch_userinfo" type="checkbox" {{checked}}>
+        </td>
+      </tr>
+    </table>
+    </p>
+    </p>
+    <button type="submit" class="button">Save</button>
+    <a href="/oidc/client/modifyclient?id={{rp_id}}"><button type="button" class="button">Retour</button></a>
+  </form>
+  <link rel="stylesheet" href="/css/dragWindow.css">
+  <script src="/javascript/help.js"></script>
+  <script type="text/javascript">
+    function changeEndpointConfiguration() {
+        if (document.rp.endpoint_configuration.value == 'Discovery URI') {
+          document.getElementById('discovery_uri').style.display = 'table-row';
+          ['issuer', 'authorization_endpoint', 'end_session_endpoint', 'token_endpoint', 'userinfo_endpoint', 'jwks_uri', 'signature_key', 'JWKS_yes_no'].forEach(function(item, index) {
+            document.getElementById(item).style.display = 'none';
+          });
+        } else {
+          document.getElementById('discovery_uri').style.display = 'none';
+          ['issuer', 'authorization_endpoint', 'token_endpoint', 'end_session_endpoint', 'userinfo_endpoint', 'JWKS_yes_no'].forEach(function(item, index) {
+            document.getElementById(item).style.display = 'table-row';
+          });
+          if (document.getElementsByName('signature_key_configuration')[0].value == 'JWKS URI') {
+            document.getElementById('jwks_uri').style.display = 'table-row';
+            document.getElementById('signature_key').style.display = 'none';
+          } else {
+            document.getElementById('jwks_uri').style.display = 'none';
+            document.getElementById('signature_key').style.display = 'table-row';
+          }
+        }
+      }
+
+      function changeStateGuide() {
+
+      }
+  </script>
+  <div id="helpWindow" class="dragWindow" onmousedown="startDrag(this, event)">
+    <div class="dragHeader">
+      <span id="helpHeader"></span>
+      <span style="float: right; cursor: pointer;" onclick="closeDrag(this)">&#x2716;</span>
+    </div>
+    <div id="helpContent" class="dragContent"></div>
+  </div>
