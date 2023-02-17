@@ -1,3 +1,8 @@
+/**
+ * @license
+ * Copyright 2023 Aduneo
+ * SPDX-License-Identifier: Apache-2.0
+ */
 function uploadPem(event) {
   
   input = event.target

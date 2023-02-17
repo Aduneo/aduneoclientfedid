@@ -194,7 +194,7 @@ class SAMLClientLogin(FlowHandler):
         request += "  ProviderName=\\\"{provider_name}\\\" \\r\\n"
         request += "  IssueInstant=\\\"{timestamp}\\\" \\r\\n"
         request += "  Destination=\\\"{destination}\\\" \\r\\n"
-        request += "  ProtocolBinding=\\\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\\\" \\r\\n"
+        request += "  ProtocolBinding=\\\"{protocol_binding}\\\" \\r\\n"
         request += "  AssertionConsumerServiceURL=\\\"{acs_url}\\\"> \\r\\n"
         request += "\\r\\n"
         request += "  <saml:Issuer>{sp_id}</saml:Issuer> \\r\\n"
@@ -204,6 +204,7 @@ class SAMLClientLogin(FlowHandler):
         request = request.replace('{provider_name}', '"""+client['name']+"""')
         request = request.replace('{timestamp}', (new Date()).toISOString())
         request = request.replace('{destination}', document.request.idp_sso_url.value)
+        request = request.replace('{protocol_binding}', document.request.authentication_binding.value)
         request = request.replace('{acs_url}', document.request.sp_acs_url.value)
         request = request.replace('{sp_id}', document.request.sp_entity_id.value)
         request = request.replace('{nameid_policy}', document.request.nameid_policy.value)
