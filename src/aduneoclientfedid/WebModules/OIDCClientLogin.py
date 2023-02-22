@@ -82,6 +82,7 @@ class OIDCClientLogin(FlowHandler):
       26/02/2021 - 05/03/2021 (mpham) : version initiale
       09/12/2022 (mpham) : ajout de token_endpoint_auth_method
       23/12/2022 (mpham) : passage en mode SPA et menu de pied de page commun
+      22/02/2023 (mpham) : on retire les références à fetch_userinfo car l'appel à userinfo est maintenant manuel
     """
 
     self.log_info('--- Start OIDC flow ---')
@@ -222,11 +223,6 @@ class OIDCClientLogin(FlowHandler):
     self.add_content('<tr><td>'+self.row_label('Login hint', 'login_hint')+'</td><td><input name="login_hint" value="'+html.escape(rp.get('login_hint', ''))+'" class="intable" type="text"></td></tr>')
     self.add_content('<tr><td>'+self.row_label('ACR values', 'acr_values')+'</td><td><input name="acr_values" value="'+html.escape(rp.get('acr_values', ''))+'" class="intable" type="text"></td></tr>')
     
-    checked = ''
-    if Configuration.is_on(rp.get('fetch_userinfo', 'off')):
-      checked = ' checked'
-    self.add_content('<tr><td>'+self.row_label('Fetch UserInfo', 'fetch_userinfo')+'</td><td><input name="fetch_userinfo" type="checkbox"'+checked+'></td></tr>')
-    
     self.add_content('</table>')
 
     self.add_content("<h2>Non OIDC Options</h2>")
@@ -321,6 +317,7 @@ class OIDCClientLogin(FlowHandler):
       26/02/2021 - 28/02/2021 (mpham) : version initiale
       09/12/2022 (mpham) : ajout de token_endpoint_auth_method
       23/12/2022 (mpham) : passage en mode SPA et menu de pied de page commun
+      22/02/2023 (mpham) : on retire les références à fetch_userinfo car l'appel à userinfo est maintenant manuel
     """
     
     self.log_info('Redirection to IdP requested')
@@ -342,7 +339,7 @@ class OIDCClientLogin(FlowHandler):
       if self.post_form[item] != '':
         request[item] = self.post_form[item]
 
-    for item in ['fetch_userinfo', 'verify_certificates']:
+    for item in ['verify_certificates']:
       if item in self.post_form:
         request[item] = 'on'
       else:
@@ -747,16 +744,12 @@ class OIDCClientLogin(FlowHandler):
       request = context['request']
         
       self.display_form_http_request(
-        method = 'POST', 
+        method = 'GET', 
         url = userinfo_endpoint, 
         table = {
           'title': 'Userinfo',
           'fields': []
           },
-        data_generator = """
-          let data = {};
-          return data;
-        """, 
         http_parameters = {
           'url_label': 'Userinfo endpoint',
           'url_clipboard_category': 'userinfo_endpoint',
@@ -829,73 +822,6 @@ class OIDCClientLogin(FlowHandler):
     self._add_footer_menu(context) 
       
     self.send_page_raw()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  @register_url(method='GET')
-  def callback_old(self):
-
-    """
-    Retour d'authentification :
-    - récupère les jeton auprès de l'IdP
-    - valide les jetons
-    - récupère (si demandé) les informations auprès de userinfo
-    
-    mpham 26/02/2021 - 28/02/2021
-    """
-    
-    self.send_page_top(200)
-    self.add_content("""<script src="/javascript/resultTable.js"></script>""")
-
-    self.log_info('Authentication callback')
-    self.add_content('<h2>Authentication callback</h2>')
-    
-    auth_result = False
-    try:
-      self._check_authentication()
-      self.add_content('<h3>Authentication succcessful</h3>')
-      auth_result = True
-    except AduneoError as error:
-      self.add_content('<h3>Authentication failed : '+html.escape(str(error))+'</h3>')
-    except Exception as error:
-      self.log_error(('  ' * 1)+traceback.format_exc())
-      self.add_content('<h3>Authentication failed : '+html.escape(str(error))+'</h3>')
-    
-    state = self.get_query_string_param('state')
-    request = self.get_session_value(state)
-    fetch_userinfo = request.get('fetch_userinfo', 'off')
-    
-    if auth_result and Configuration.is_on(fetch_userinfo):
-      try:
-        self._get_userinfo()
-        self.add_content('<h3>Userinfo succcessful</h3>')
-      except AduneoError as error:
-        self.add_content('<h3>Userinfo failed : '+html.escape(str(error))+'</h3>')
-      except Exception as error:
-        self.log_error(('  ' * 1)+traceback.format_exc())
-
-        self.add_content('<h3>Userinfo failed : '+html.escape(str(error))+'</h3>')
-
-    self.add_content('<form action="/client/oidc/login/preparerequest" method="get">')
-    self.add_content("""<input type="hidden" name="state" value="""+'"'+html.escape(state)+'" />')
-    self.add_content("""<button type="submit" class="button">Retry</button>""")
-    self.add_content("""</form>""")
-    
-    self.send_page_bottom()
 
 
   def _check_authentication(self):

@@ -37,6 +37,8 @@ class OIDCClientAdmin(BaseHandler):
     
     mpham 12/02/2021 - 27/02/2021 - 28/12/2021 - 13/04/2021
     mpham 09/12/2022 - ajout de token_endpoint_auth_method
+    mpham 22/02/2023 - désactivation des IdP de préférence en attendant une industrialisation et traduction en anglais des titres
+    mpham 22/02/2023 - suppression des références à fetch_userinfo puisque l'appel à userinfo est désormais manuel
     """
     
     rp = {}
@@ -48,6 +50,7 @@ class OIDCClientAdmin(BaseHandler):
     
     self.add_content('<form name="rp" action="" method="post">')
     self.add_content('<input name="rp_id" value="'+html.escape(rp_id)+'" type="hidden" />')
+    """
     self.add_content('<h1>Préférences')
     #Bouton deroulant
     self.add_content('''
@@ -59,6 +62,9 @@ class OIDCClientAdmin(BaseHandler):
       </select>
       ''')
     self.add_content('</h1>')
+    """
+
+    self.add_content('<h2>General configuration</h2>')
 
     self.add_content('<table id="unTab" class="fixed">')
     self.add_content('<tr><td><span class="celltxt">Name</span><span class="cellimg"><img onclick="help(this, \'name\')" src="/images/help.png"></span></td><td><input name="name" value="'+html.escape(rp.get('name', ''))+'" class="intable" type="text"></td></tr>')
@@ -79,7 +85,7 @@ class OIDCClientAdmin(BaseHandler):
       Ces champs sont arbitraires, mettez le nom que vous souhaitez ainsi que la méthode qui vous semble la plus pratique pour récupérez les informations du fournisseur d\'identité.
       <p id="includeUn"></p> 
       <button class="button" type="button" style="padding: 5px 10px !important;" onclick="showHelp(\'deux\');">Continuer</button></div>""")
-    self.add_content('<h2>Information de l\'IdP</h2>')
+    self.add_content('<h2>Parameters obtained from the OP</h2>')
     self.add_content('<table id="deuxTab" class="fixed">')
 
     # configuration des endpoint par discovery uri
@@ -135,7 +141,7 @@ class OIDCClientAdmin(BaseHandler):
     self.add_content("""<div id="deux" class="fixed etapes"  hidden> Il s\'agit ici des champs spécifiques à votre IdP. <br>- choisissez en premier l\'url qui va permettre au client de récupérer les metadonnées de votre IdP souvent cette url est celle définie dans la RFC 5785 qui est de la forme /.well-known/openid-configuration <br>- Vous trouverez les deux derniers champs dans la page de configuration de votre application sur votre IdP. <p id="includeDeux"></p><button class="button" type="button" style="padding: 5px 10px !important;" onclick="showHelp(\'trois\');">Continuer</button>
       </p></div>""")
 
-    self.add_content('<h2>Paramètres par défaut de la requête</h2>')
+    self.add_content('<h2>Default OIDC request parameters</h2>')
     self.add_content('<table id="troisTab" class="fixed">')
 
     self.add_content('<tr><td>'+self.row_label('Scope', 'scope')+'</td><td><input name="scope" value="'+html.escape(rp.get('scope', 'openid profile'))+'" class="intable" type="text"></td></tr>')
@@ -155,10 +161,6 @@ class OIDCClientAdmin(BaseHandler):
       self.add_content('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
     self.add_content('</td></tr>')
     
-    checked = ''
-    if Configuration.is_on(rp.get('fetch_userinfo', 'off')):
-      checked = ' checked'
-    self.add_content('<tr><td>'+self.row_label('Fetch userinfo', 'fetch_userinfo')+'</td><td><input name="fetch_userinfo" type="checkbox"'+checked+'></td></tr>')
     self.add_content('</table>')
     #Troisième étape de l'assistance
     self.add_content("""<div id="trois" class="etapes fixed"  hidden> Ces champs sont les paramètres par défaut pour les champs obligatoires que vous voulez appliquer à vos requêtes. <p id="includeTrois"></p><button class="button" type="button" style="padding: 5px 10px !important;" onclick="showHelp(\'quatre\');">Continuer</button>
@@ -250,6 +252,7 @@ class OIDCClientAdmin(BaseHandler):
     mpham 28/02/2021
     mpham 24/12/2021 - ajout de redirect_uri
     mpham 09/12/2022 - ajout de token_endpoint_auth_method
+    mpham 22/02/2023 - suppression des références à fetch_userinfo puisque l'appel à userinfo est désormais manuel
     """
     
     rp_id = self.post_form['rp_id']
@@ -274,7 +277,7 @@ class OIDCClientAdmin(BaseHandler):
       if self.post_form[secret] != '':
         rp[secret] = self.post_form[secret]
         
-    for item in ['fetch_userinfo', 'verify_certificates']:
+    for item in ['verify_certificates']:
       if item in self.post_form:
         rp[item] = 'on'
       else:
