@@ -1,3 +1,8 @@
+/**
+ * @license
+ * Copyright 2023 Aduneo
+ * SPDX-License-Identifier: Apache-2.0
+ */
 function getHtml(method, thisurl, data, menu_id=null) {
 
   if (menu_id) {
@@ -119,9 +124,10 @@ function sendRequest(domId) {
   });
   
   senderUrl = document.getElementById(domId+"_sender_url").value;
+  method = document.getElementById(domId+"_method").value;
   context = document.getElementById(domId+"_context").value;
 
-  data = {"context": context, "callParameters": JSON.stringify(callParameters)};
+  data = {"method": method, "context": context, "callParameters": JSON.stringify(callParameters)};
   getHtml("POST", senderUrl, data);
   
   fillClipboard(document.getElementById('form-'+domId))

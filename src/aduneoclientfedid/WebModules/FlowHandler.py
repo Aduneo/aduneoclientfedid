@@ -141,7 +141,7 @@ class FlowHandler(BaseHandler):
     self.add_content('</div>')
     
 
-  def display_form_http_request(self, method:str, url:str, table:dict = None, data_generator:str = None, http_parameters:dict = None, sender_url:str = None, context:str = None, dom_id:str=None, verify_certificates:bool=True):
+  def display_form_http_request(self, method:str, url:str, table:dict = None, data_generator:str = 'return null;', http_parameters:dict = None, sender_url:str = None, context:str = None, dom_id:str=None, verify_certificates:bool=True):
     """ Affiche un formulaire avec une requête HTTP à envoyer
           pour un appel d'API réalisé par le front ClientFedID
 
@@ -169,6 +169,8 @@ class FlowHandler(BaseHandler):
     Par exemple :
       data = {'scope': get_form_value_with_dom('scope')};
       return data;
+      
+    Ces informations sont mises dans le corps en POST, et en query string en GET.
 
     L'utilisateur a le loisir de modifier l'URL, les données (en POST) et la méthode d'authentification (mais les modifications sont écrasées s'il modifie des <input>
     
@@ -188,14 +190,14 @@ class FlowHandler(BaseHandler):
       verify_certificates: indique la position initiale de la checkbox correspondante
       
       Elements HTML accessibles en Javascript (donner un dom_id) :
-       - <dom_id>_i_url : champ caché conservant l'URL initiale, pour réinitialisation par le bouton "Reinit request"
-       - <dom_id>_i_data : champ caché conservant les données initiales (au format JSON), pour réinitialisation par le bouton "Reinit request"
        - <dom_id>_d_url : champ visible et modifiable par l'utilisateur, contenant l'URL qui sera utilisée pour la constitution de la requête
+          avec une valeur par défaut defaultValue
        - <dom_id>_d_data : champ visible et modifiable par l'utilisateur, contenant les données (au format JSON) qui seront utilisées pour la constitution de la requête
     
     Versions:
       14/12/2022 (mpham) : version initiale
       28/12/2022 (mpham) : presse-papier
+      22/02/2023 (mpham) : prise en compte de la méthode (avant on n'était compatible qu'avec POST)
     """
     
     html_code = ''
@@ -247,6 +249,7 @@ class FlowHandler(BaseHandler):
       if item not in http_parameters:
         http_parameters[item] = default_http_parameters[item]
 
+    html_code += '<input id="'+html.escape(dom_id)+'_method" type="hidden" value="'+html.escape(method)+'" />'
     if sender_url:
       html_code += '<input id="'+html.escape(dom_id)+'_sender_url" type="hidden" value="'+html.escape(sender_url)+'" />'
       html_code += '<input id="'+html.escape(dom_id)+'_context" type="hidden" value="'+html.escape(context)+'" />'
@@ -309,20 +312,50 @@ class FlowHandler(BaseHandler):
     html_code += '<h3>Sending request...</h3>'
     html_code += '</div>'
 
-    javascript += """
-      function f_"""+dom_id+"""_fetch_data(domId) {"""+data_generator+"""}
+    if method == 'GET':
+      javascript += """
+        function f_"""+dom_id+"""_fetch_data(domId) {"""+data_generator+"""}
 
-      function f_"""+dom_id+"""_update() {
-        let data = f_"""+dom_id+"""_fetch_data('"""+dom_id+"""');
-        if (document.getElementById('"""+dom_id+"""_d_auth_method').value == 'POST') {
-          data['client_id'] = document.getElementById('"""+dom_id+"""_d_auth_login').value
-          data['client_secret'] = '********'
+        function f_"""+dom_id+"""_update() {
+          let data = f_"""+dom_id+"""_fetch_data('"""+dom_id+"""');
+          
+          queryString = ""
+          if (data) {
+            for (const [key, value] of Object.entries(data)) {
+              if (queryString != "") { queryString += "&" }
+              queryString += encodeURI(key) + "=" + encodeURI(value);
+            }
+          }
+          if (queryString != "") {
+            url = document.getElementById('"""+dom_id+"""_d_url').defaultValue;
+            if (url.includes('?')) {
+              url += '&' + queryString;
+            } else {
+              url += '?' + queryString;
+            }
+            document.getElementById('"""+dom_id+"""_d_url').value = url;
+          }
         }
-        
-        document.getElementById('"""+dom_id+"""_d_data').value = JSON.stringify(data, null, 2);
-      }
-      f_"""+dom_id+"""_update();
-    """
+        f_"""+dom_id+"""_update();
+      """
+    elif method == 'POST':
+      javascript += """
+        function f_"""+dom_id+"""_fetch_data(domId) {"""+data_generator+"""}
+
+        function f_"""+dom_id+"""_update() {
+          let data = f_"""+dom_id+"""_fetch_data('"""+dom_id+"""');
+          if (document.getElementById('"""+dom_id+"""_d_auth_method').value == 'POST') {
+            data['client_id'] = document.getElementById('"""+dom_id+"""_d_auth_login').value
+            data['client_secret'] = '********'
+          }
+          
+          document.getElementById('"""+dom_id+"""_d_data').value = JSON.stringify(data, null, 2);
+        }
+        f_"""+dom_id+"""_update();
+      """
+    else:
+      raise AduneoError(self.log_error("HTTP method "+method+" not supported"))
+      
     javascript += "document.getElementById('"+dom_id+"_d_auth_login').addEventListener('keyup', f_"+dom_id+"_update);"
     for field in table['fields']:
       if field['type'] == 'edit_text':
@@ -344,6 +377,7 @@ class FlowHandler(BaseHandler):
     
       Versions:
         14/12/2022 (mpham) : version initiale
+        22/02/2023 (mpham) : prise en compte de la méthode HTTP (avant on n'était compatible qu'avec POST)
     """
     
     state = self.post_form.get('context')
@@ -355,6 +389,13 @@ class FlowHandler(BaseHandler):
     if (request is None):
       raise AduneoError(self.log_error('state not found in session'))
 
+    # méthode HTTP de la requête à envoyer
+    method = self.post_form.get('method')
+    if method is None:
+      raise AduneoError(self.log_error("HTTP method not found in request"))
+    self.log_info("  HTTP method "+method)
+
+    # callParameters contient les valeurs du formulaire (url, data, auth_method, auth_login, auth_secret, verify_cert). C'est un JSON constité par la méthode Javascript sendRequest
     call_parameters_string = self.post_form.get('callParameters')
     if call_parameters_string is None:
       raise AduneoError(self.log_error("service parameters not found in request"))
@@ -369,9 +410,9 @@ class FlowHandler(BaseHandler):
       raise AduneoError(self.log_error("service URL not found in request"))
     
     service_request_string = call_parameters.get('data')
-    if service_request_string is None:
-      raise AduneoError(self.log_error("service data not found in request"))
-    service_request = json.loads(service_request_string)
+    service_request = None
+    if service_request_string is not None:
+      service_request = json.loads(service_request_string)
       
     auth_method = call_parameters.get('auth_method')
     if auth_method is None:
@@ -403,7 +444,12 @@ class FlowHandler(BaseHandler):
     try:
       self.log_info(('  ' * 1)+"Connecting to "+service_endpoint)
       self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_cert else "disabled"))
-      response = requests.post(service_endpoint, data=service_request, headers=request_headers, auth=request_auth, verify=verify_cert)
+      if method == 'GET':
+        response = requests.get(service_endpoint, headers=request_headers, auth=request_auth, verify=verify_cert)
+      elif method == 'POST':
+        response = requests.post(service_endpoint, data=service_request, headers=request_headers, auth=request_auth, verify=verify_cert)
+      else:
+        raise AduneoError(self.log_error("HTTP method "+method+" not supported"))
     except Exception as error:
       self.add_content('<td>Error : '+str(error)+'</td></tr>')
       raise AduneoError(self.log_error(('  ' * 1)+'http service error: '+str(error)))
