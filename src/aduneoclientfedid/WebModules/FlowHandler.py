@@ -176,6 +176,7 @@ class FlowHandler(BaseHandler):
     
     Args:
       method (str): GET ou POST
+        on peut laisser le choix de la méthode par l'utilisateur, en donnant plusieurs méthodes séparées par des virgules. La première sera la méthode par défaut
       url (str): URL à appeler, avec la query string
       table: éléments à afficher, en lecture seule ou modification
       data_generator (dict): code Javascript générant les données à envoyer en POST en fonction des <input> commençant par <dom_id>_
@@ -198,6 +199,7 @@ class FlowHandler(BaseHandler):
       14/12/2022 (mpham) : version initiale
       28/12/2022 (mpham) : presse-papier
       22/02/2023 (mpham) : prise en compte de la méthode (avant on n'était compatible qu'avec POST)
+      23/02/2023 (mpham) : possibilité pour l'utilisateur de choisir la méthode, en en donnant plusieurs dans l'argument method
     """
     
     html_code = ''
@@ -249,7 +251,6 @@ class FlowHandler(BaseHandler):
       if item not in http_parameters:
         http_parameters[item] = default_http_parameters[item]
 
-    html_code += '<input id="'+html.escape(dom_id)+'_method" type="hidden" value="'+html.escape(method)+'" />'
     if sender_url:
       html_code += '<input id="'+html.escape(dom_id)+'_sender_url" type="hidden" value="'+html.escape(sender_url)+'" />'
       html_code += '<input id="'+html.escape(dom_id)+'_context" type="hidden" value="'+html.escape(context)+'" />'
@@ -268,8 +269,21 @@ class FlowHandler(BaseHandler):
     html_code += '</td>'
     html_code += '</td></tr>'
     
-    if method == 'POST':
-      html_code += '<tr><td>'+self.row_label('Request data', 'request_data')+'</td><td><textarea id="'+html.escape(dom_id)+'_d_data" rows="4" class="intable"></textarea></td><td></td></tr>'
+    methods = [m.strip().upper() for m in method.split(',')]
+    for m in methods:
+      if m not in ['GET','POST']:
+        raise AduneoError(self.log_error("HTTP method "+m+" not supported"))
+    if len(methods) == 1:
+      # une seule méthode, on passe en champ masqué
+      html_code += '<input id="'+html.escape(dom_id)+'_method" type="hidden" value="'+html.escape(method)+'" />'
+    else:
+      # l'utilisateur peut choisir la méthode
+      html_code += '<tr><td>HTTP method</td><td><select id="'+html.escape(dom_id)+'_method" class="intable" onchange="f_'+dom_id+'_update()">'
+      for m in methods:
+        html_code += '<option value="'+html.escape(m)+'">'+html.escape(m)+'</option>'
+      html_code += '</td></tr>'
+    
+    html_code += '<tr id="'+html.escape(dom_id)+'_tr_request_data"><td>'+self.row_label('Request data', 'request_data')+'</td><td><textarea id="'+html.escape(dom_id)+'_d_data" rows="4" class="intable"></textarea></td><td></td></tr>'
 
     # HTTP authentification is only displayed when calling an API
     if sender_url:
@@ -311,50 +325,56 @@ class FlowHandler(BaseHandler):
     html_code += '<div id="'+html.escape(dom_id)+'_send_notification" style="display: none;">'
     html_code += '<h3>Sending request...</h3>'
     html_code += '</div>'
+    
+    javascript += """
+      function f_"""+dom_id+"""_fetch_data(domId) {"""+data_generator+"""}
 
-    if method == 'GET':
-      javascript += """
-        function f_"""+dom_id+"""_fetch_data(domId) {"""+data_generator+"""}
+      function f_"""+dom_id+"""_update() {
+        let method = document.getElementById('"""+dom_id+"""_method').value
+        
+        if (method == 'GET') {
+          document.getElementById('"""+dom_id+"""_tr_request_data').style.display = 'none';
+          f_"""+dom_id+"""_update_get()
+        } else if (method == 'POST') {
+          document.getElementById('"""+dom_id+"""_tr_request_data').style.display = 'table-row';
+          f_"""+dom_id+"""_update_post()
+        }
+      }
 
-        function f_"""+dom_id+"""_update() {
-          let data = f_"""+dom_id+"""_fetch_data('"""+dom_id+"""');
-          
-          queryString = ""
-          if (data) {
-            for (const [key, value] of Object.entries(data)) {
-              if (queryString != "") { queryString += "&" }
-              queryString += encodeURI(key) + "=" + encodeURI(value);
-            }
-          }
-          if (queryString != "") {
-            url = document.getElementById('"""+dom_id+"""_d_url').defaultValue;
-            if (url.includes('?')) {
-              url += '&' + queryString;
-            } else {
-              url += '?' + queryString;
-            }
-            document.getElementById('"""+dom_id+"""_d_url').value = url;
+      function f_"""+dom_id+"""_update_get() {
+        let data = f_"""+dom_id+"""_fetch_data('"""+dom_id+"""');
+        
+        queryString = ""
+        if (data) {
+          for (const [key, value] of Object.entries(data)) {
+            if (queryString != "") { queryString += "&" }
+            queryString += encodeURI(key) + "=" + encodeURI(value);
           }
         }
-        f_"""+dom_id+"""_update();
-      """
-    elif method == 'POST':
-      javascript += """
-        function f_"""+dom_id+"""_fetch_data(domId) {"""+data_generator+"""}
-
-        function f_"""+dom_id+"""_update() {
-          let data = f_"""+dom_id+"""_fetch_data('"""+dom_id+"""');
-          if (document.getElementById('"""+dom_id+"""_d_auth_method').value == 'POST') {
-            data['client_id'] = document.getElementById('"""+dom_id+"""_d_auth_login').value
-            data['client_secret'] = '********'
+        if (queryString != "") {
+          let url = document.getElementById('"""+dom_id+"""_d_url').defaultValue;
+          if (url.includes('?')) {
+            url += '&' + queryString;
+          } else {
+            url += '?' + queryString;
           }
-          
-          document.getElementById('"""+dom_id+"""_d_data').value = JSON.stringify(data, null, 2);
+          document.getElementById('"""+dom_id+"""_d_url').value = url;
         }
-        f_"""+dom_id+"""_update();
-      """
-    else:
-      raise AduneoError(self.log_error("HTTP method "+method+" not supported"))
+      }
+
+      function f_"""+dom_id+"""_update_post() {
+        let data = f_"""+dom_id+"""_fetch_data('"""+dom_id+"""');
+        if (data === null) { data = {} }
+        if (document.getElementById('"""+dom_id+"""_d_auth_method').value == 'POST') {
+          data['client_id'] = document.getElementById('"""+dom_id+"""_d_auth_login').value
+          data['client_secret'] = '********'
+        }
+        
+        document.getElementById('"""+dom_id+"""_d_data').value = JSON.stringify(data, null, 2);
+      }
+
+      f_"""+dom_id+"""_update();
+    """
       
     javascript += "document.getElementById('"+dom_id+"_d_auth_login').addEventListener('keyup', f_"+dom_id+"_update);"
     for field in table['fields']:
@@ -411,7 +431,7 @@ class FlowHandler(BaseHandler):
     
     service_request_string = call_parameters.get('data')
     service_request = None
-    if service_request_string is not None:
+    if service_request_string is not None and service_request_string != '':
       service_request = json.loads(service_request_string)
       
     auth_method = call_parameters.get('auth_method')

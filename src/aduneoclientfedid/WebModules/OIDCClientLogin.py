@@ -714,6 +714,8 @@ class OIDCClientLogin(FlowHandler):
     
       Versions:
         23/12/2022 (mpham) : version initiale
+        22/02/2023 (mpham) : on passe en GET au lieu de POST (recommandation des spécifications)
+        23/02/2023 (mpham) : possibilité de choisir GET ou POST
     """
     
     self.start_result_table()
@@ -744,7 +746,7 @@ class OIDCClientLogin(FlowHandler):
       request = context['request']
         
       self.display_form_http_request(
-        method = 'GET', 
+        method = 'GET,POST', 
         url = userinfo_endpoint, 
         table = {
           'title': 'Userinfo',
