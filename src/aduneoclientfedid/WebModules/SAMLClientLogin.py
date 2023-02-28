@@ -293,6 +293,8 @@ class SAMLClientLogin(FlowHandler):
   
   def send_request_redirect(self, context, conf_client):
     
+    self.log_info('  sending request in HTTP Redirect')
+    
     request = context['request']
     relay_state = request['relay_state']
     
@@ -373,7 +375,6 @@ class SAMLClientLogin(FlowHandler):
 
       url = self.post_form['idp_sso_url'] + '?' + message + '&signature=' + urllib.parse.quote_plus(base64_signature)
       self.log_info('URL: '+url)
-      
       self.log_info('Sending redirection')
       self.send_redirection(url)
       
@@ -381,12 +382,16 @@ class SAMLClientLogin(FlowHandler):
       # requête non signée
     
       url = request['idp_sso_url'] + '?SAMLRequest=' + urlencoded_req + '&RelayState=' + urllib.parse.quote_plus(relay_state)
+      self.log_info('URL: '+url)
+      self.log_info('Sending redirection')
       
       self.send_redirection(url)
 
 
   def send_request_post(self, context, conf_client):
 
+    self.log_info('  sending request in HTTP POST')
+    
     request = context['request']
     relay_state = request['relay_state']
 
