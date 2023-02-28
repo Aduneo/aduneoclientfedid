@@ -465,19 +465,24 @@ class SAMLClientLogin(FlowHandler):
       byte_xml_req = etree.tostring(template)
       
     base64_req = base64.b64encode(byte_xml_req).decode()
-    self.log_info("Base64 encoded authrntication request:")
+    self.log_info("Base64 encoded authentication request:")
     self.log_info(base64_req)
 
     self.send_page_top(200, template=False)
     
-    self.add_content('<html><body onload="document.saml.submit()">')
-    self.add_content('<html><body>')
-    self.add_content('<form name="saml" action="'+self.post_form['idp_sso_url']+'" method="post">')
-    self.add_content('<input type="hidden" name="SAMLRequest" value="'+html.escape(base64_req)+'" />')
-    self.add_content('<input type="hidden" name="RelayState" value="'+html.escape(relay_state)+'" />')
-    #self.add_content('<input type="submit"/>')
-    self.add_content('</form></body></html>')
+    saml_form = """
+      <html><body onload="document.saml.submit()">
+      <form name="saml" action="{idp_sso_url}" method="post">
+      <input type="hidden" name="SAMLRequest" value="{saml_request}" />
+      <input type="hidden" name="RelayState" value="{relay_state}" />
+      </form></body></html>
+    """.format(idp_sso_url=self.post_form['idp_sso_url'], saml_request=html.escape(base64_req), relay_state=html.escape(relay_state))
     
+    self.log_info("SAML POST form:")
+    self.log_info(saml_form)
+
+    self.add_content(saml_form)
+
     
   @register_url(url='acs', method='POST')
   def authcallback(self):
@@ -504,6 +509,7 @@ class SAMLClientLogin(FlowHandler):
       (il faut cependant faire attention à ne pas créer une nouvelle session, voir Server.do_POST)
     
     mpham 03/03/2021-05/03/2021
+    mpham (28/02/2023) le bouton de copie n'est pas affiché pour les résultats de type 'passed'
     """
     
     # Problème cookie SameSite=Lax
@@ -629,7 +635,7 @@ class SAMLClientLogin(FlowHandler):
         ctx = xmlsec.SignatureContext(manager)
         ctx.verify(signature_node)
         self.log_info('Response signature verification: OK')
-        self.add_result_row('Response signature verification', 'Passed')
+        self.add_result_row('Response signature verification', 'Passed', copy_button=False)
       
       except Exception as error:
         self.log_error("Response signature verification failed: "+str(error))
@@ -751,7 +757,7 @@ class SAMLClientLogin(FlowHandler):
         ctx = xmlsec.SignatureContext(manager)
         ctx.verify(signature_node)
         self.log_info('Assertion signature verification: OK')
-        self.add_result_row('Assertion signature verification', 'Passed')
+        self.add_result_row('Assertion signature verification', 'Passed', copy_button=False)
       
       except Exception as error:
         self.log_error("Assertion signature verification failed: "+str(error))

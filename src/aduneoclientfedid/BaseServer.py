@@ -619,7 +619,7 @@ class BaseHandler:
     return '<span class="celltxt">{label}</span><span class="cellimg"><img onclick="help(this, \'{help_id}\')" src="/images/help.png"></span>'.format(label=html.escape(label), help_id=help_id)
     
 
-  def add_result_row(self, title : str, value : str, help_id : str = None) -> str:
+  def add_result_row(self, title:str, value:str, help_id:str=None, copy_button=True) -> str:
     
     """
     Ajoute une ligne à un tableau de retour d'authentification
@@ -628,7 +628,7 @@ class BaseHandler:
     
     mpham 25/02/2021
           29/09/2022 col identifier is now a uuid be bu truely unique
-    
+          28/02/2023 ajout de l'argument copy_button contrôlant l'affichage du bouton  de copie
     """
 
     col_id = 'col' + str(uuid.uuid4())
@@ -636,23 +636,31 @@ class BaseHandler:
       row_label = html.escape(title)
     else:
       row_label = '<span class="celltxt">{label}</span><span class="cellimg"><img onclick="help(this, \'{help_id}\')" src="/images/help.png"></span>'.format(label=html.escape(title), help_id=help_id)
-    self.add_content('<tr><td>'+row_label+'</td>')
+    self.add_content('<tr><td>'+row_label)
+    self.add_content('<span id="'+col_id+'_raw" style="display: none;">'+value+'</span>')
+    self.add_content('</td>')
     
     if len(value) <= 80:
       # la valeur tient sur une ligne
       html_value = html.escape(value).replace('\n', '<br>').replace(' ', '&nbsp;')
       self.add_content('<td><span id="'+col_id+'"><span id="'+col_id+'c">'+html_value+'</span>')
-      self.add_content('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span></td></tr>')
+      self.add_content('</td><td style="width: 34px;">')
+      if copy_button:
+        self.add_content('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
+      self.add_content('</td>')
     else:
       # la valeur doit être tronquée
       truncated_value = value[0:80]
       html_value = html.escape(value).replace('\n', '<br>').replace(' ', '&nbsp;')
-      self.add_content('<td><span id="'+col_id+'s">'+html.escape(truncated_value)+'...')
-      self.add_content('&nbsp;<img title="Expand" class="smallButton" src="/images/plus.png" onClick="showLong(\''+col_id+'\')"/>')
-      self.add_content('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
+      self.add_content('<td><span id="'+col_id+'s">'+html.escape(truncated_value)+'...</span>')
       self.add_content('<span id="'+col_id+'l" style="display: none;"><span id="'+col_id+'c">'+html_value+'</span>')
-      self.add_content('&nbsp;<img title="Collapse" class="smallButton" src="/images/moins.png" onClick="showShort(\''+col_id+'\')"/>')
-      self.add_content('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span></td></tr>')
+      self.add_content('</td><td style="width: 34px;">')
+      self.add_content('<span><img title="Expand" id="'+col_id+'_expand" class="smallButton" src="/images/plus.png" onClick="showLong(\''+col_id+'\')"/></span>')
+      self.add_content('<img title="Collapse" id="'+col_id+'_collapse" class="smallButton" style="display: none;" src="/images/moins.png" onClick="showShort(\''+col_id+'\')"/>')
+      if copy_button:
+        self.add_content('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
+      self.add_content('</td>')
+    self.add_content('</tr>')
     
 
   def end_result_table(self):

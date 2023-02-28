@@ -475,10 +475,10 @@ class OIDCClientLogin(FlowHandler):
         # Remarque : ici on est en authentification client_secret_post alors que la méthode par défaut, c'est client_secret_basic (https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication)
         r = requests.post(token_endpoint, data=data, auth=auth, verify=verify_certificates)
       except Exception as error:
-        self.add_content('<td>Error : '+str(error)+'</td></tr>')
+        self.add_content('<td>Error : '+str(error)+'</td><td></td></tr>')
         raise AduneoError(self.log_error(('  ' * 1)+'token retrieval error: '+str(error)))
       if r.status_code == 200:
-        self.add_content('<td>OK</td></tr>')
+        self.add_content('<td>OK</td><td></td></tr>')
       else:
         self.add_content('<td>Error, status code '+str(r.status_code)+'</td></tr>')
         raise AduneoError(self.log_error('token retrieval error: status code '+str(r.status_code)+", "+r.text))
@@ -606,10 +606,10 @@ class OIDCClientLogin(FlowHandler):
             self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
             r = requests.get(meta_data['jwks_uri'], verify=verify_certificates)
           except Exception as error:
-            self.add_content('<td>Error : '+str(error)+'</td></tr>')
+            self.add_content('<td>Error : '+str(error)+'</td><td></td></tr>')
             raise AduneoError(self.log_error(('  ' * 2)+'IdP keys retrieval error: '+str(error)))
           if r.status_code == 200:
-            self.add_content('<td>OK</td></tr>')
+            self.add_content('<td>OK</td><td></td></tr>')
           else:
             self.add_content('<td>Error, status code '+str(r.status_code)+'</td></tr>')
             raise AduneoError(self.log_error('IdP keys retrieval error: status code '+str(r.status_code)))
@@ -620,7 +620,7 @@ class OIDCClientLogin(FlowHandler):
           self.add_result_row('Keyset', json.dumps(keyset, indent=2), 'keyset')
           
           # On en extrait la JWK qui correspond au token
-          self.add_result_row('Retrieved keys', '', 'retrieved_keys')
+          self.add_result_row('Retrieved keys', '', 'retrieved_keys', copy_button=False)
           token_jwk = None
           for jwk in keyset['keys']:
               self.add_result_row(jwk['kid'], json.dumps(jwk, indent=2))
@@ -637,7 +637,7 @@ class OIDCClientLogin(FlowHandler):
       try:
         jwcrypto.jwt.JWT(key=token_key, jwt=id_token)
         self.log_info('Signature verification OK')
-        self.add_content('<tr><td>Signature verification</td><td>OK</td></tr>')
+        self.add_result_row('Signature verification', 'OK', copy_button=False)
       except Exception as error:
 
         default_case = True
@@ -659,13 +659,13 @@ class OIDCClientLogin(FlowHandler):
             try:
               jwcrypto.jwt.JWT(key=token_key, jwt=id_token)
               self.log_info('Signature verification OK')
-              self.add_content('<tr><td>Signature verification</td><td>OK</td></tr>')
+              self.add_result_row('Signature verification', 'OK', copy_button=False)
             except Exception as error:
               default_case = True
           
         if default_case:
           # Cas normal de la signature non vérifiée
-          self.add_content('<tr><td>Signature verification</td><td>Failed</td></tr>')
+          self.add_result_row('Signature verification', 'Failed', copy_button=False)
           raise AduneoError(self.log_error('Signature verification failed'))
 
       op_access_token = response.get('access_token')
@@ -914,7 +914,7 @@ class OIDCClientLogin(FlowHandler):
         self.add_content('<td>Error : '+str(error)+'</td></tr>')
         raise AduneoError(self.log_error(('  ' * 1)+'token retrieval error: '+str(error)))
       if r.status_code == 200:
-        self.add_content('<td>OK</td></tr>')
+        self.add_content('<td>OK</td><td></td></tr>')
       else:
         self.add_content('<td>Error, status code '+str(r.status_code)+'</td></tr>')
         raise AduneoError(self.log_error('token retrieval error: status code '+str(r.status_code)+", "+r.text))
@@ -1042,12 +1042,12 @@ class OIDCClientLogin(FlowHandler):
             self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
             r = requests.get(meta_data['jwks_uri'], verify=verify_certificates)
           except Exception as error:
-            self.add_content('<td>Error : '+str(error)+'</td></tr>')
+            self.add_content('<td>Error : '+str(error)+'</td><td></td></tr>')
             raise AduneoError(self.log_error(('  ' * 2)+'IdP keys retrieval error: '+str(error)))
           if r.status_code == 200:
-            self.add_content('<td>OK</td></tr>')
+            self.add_content('<td>OK</td><td></td></tr>')
           else:
-            self.add_content('<td>Error, status code '+str(r.status_code)+'</td></tr>')
+            self.add_content('<td>Error, status code '+str(r.status_code)+'</td><td></td></tr>')
             raise AduneoError(self.log_error('IdP keys retrieval error: status code '+str(r.status_code)))
 
           keyset = r.json()
@@ -1056,7 +1056,7 @@ class OIDCClientLogin(FlowHandler):
           self.add_result_row('Keyset', json.dumps(keyset, indent=2), 'keyset')
           
           # On en extrait la JWK qui correspond au token
-          self.add_result_row('Retrieved keys', '', 'retrieved_keys')
+          self.add_result_row('Retrieved keys', '', 'retrieved_keys', copy_button=False)
           token_jwk = None
           for jwk in keyset['keys']:
               self.add_result_row(jwk['kid'], json.dumps(jwk, indent=2))
@@ -1073,7 +1073,7 @@ class OIDCClientLogin(FlowHandler):
       try:
         jwcrypto.jwt.JWT(key=token_key, jwt=id_token)
         self.log_info('Signature verification OK')
-        self.add_content('<tr><td>Signature verification</td><td>OK</td></tr>')
+        self.add_result_row('Signature verification', 'OK', copy_button=False)
       except Exception as error:
 
         default_case = True
@@ -1095,13 +1095,13 @@ class OIDCClientLogin(FlowHandler):
             try:
               jwcrypto.jwt.JWT(key=token_key, jwt=id_token)
               self.log_info('Signature verification OK')
-              self.add_content('<tr><td>Signature verification</td><td>OK</td></tr>')
+              self.add_result_row('Signature verification', 'OK', copy_button=False)
             except Exception as error:
               default_case = True
           
         if default_case:
           # Cas normal de la signature non vérifiée
-          self.add_content('<tr><td>Signature verification</td><td>Failed</td></tr>')
+          self.add_result_row('Signature verification', 'Failed', copy_button=False)
           raise AduneoError(self.log_error('Signature verification failed'))
       
       # On conserve l'access token pour userinfo

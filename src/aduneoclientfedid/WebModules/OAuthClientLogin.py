@@ -384,10 +384,10 @@ class OAuthClientLogin(FlowHandler):
         self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
         r = requests.post(token_endpoint, api_call_data, auth=auth, verify=verify_certificates)
       except Exception as error:
-        self.add_content('<td>Error : '+str(error)+'</td></tr>')
+        self.add_content('<td>Error : '+str(error)+'</td><td></td></tr>')
         raise AduneoError(self.log_error(('  ' * 1)+'token retrieval error: '+str(error)))
       if r.status_code == 200:
-        self.add_content('<td>OK</td></tr>')
+        self.add_content('<td>OK</td><td></td></tr>')
       else:
         self.add_content('<td>Error, status code '+str(r.status_code)+': '+html.escape(r.text)+'</td></tr>')
         raise AduneoError(self.log_error('token retrieval error: status code '+str(r.status_code)+", "+r.text))
