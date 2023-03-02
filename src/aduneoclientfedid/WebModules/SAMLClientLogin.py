@@ -542,6 +542,8 @@ class SAMLClientLogin(FlowHandler):
     
       self.log_info('Checking authentication')
       
+      warnings = []
+      
       # récupération de relay_state pour obtention des paramètres dans la session
       idp_relay_state = self.post_form.get('RelayState', None)
       if idp_relay_state is None:
@@ -752,16 +754,25 @@ class SAMLClientLogin(FlowHandler):
         # Ca permet à XMLSec de faire le lien entre la signature et le contenu. Dans la signature, il y a une référence par URI="# à la reponse au travers d'un identifiant unique. Il faut indiquer que la recherche du contenu se fait apr le tag ID
         signature_node = xmlsec.tree.find_node(assertion_el, xmlsec.constants.NodeSignature)
         
-        manager = xmlsec.KeysManager()
-        manager.load_cert_from_memory(cert, xmlsec.constants.KeyDataFormatPem, xmlsec.KeyDataType.TRUSTED)
-        ctx = xmlsec.SignatureContext(manager)
-        ctx.verify(signature_node)
-        self.log_info('Assertion signature verification: OK')
-        self.add_result_row('Assertion signature verification', 'Passed', copy_button=False)
+        if signature_node:
+        
+          manager = xmlsec.KeysManager()
+          manager.load_cert_from_memory(cert, xmlsec.constants.KeyDataFormatPem, xmlsec.KeyDataType.TRUSTED)
+          ctx = xmlsec.SignatureContext(manager)
+          ctx.verify(signature_node)
+          self.log_info('Assertion signature verification: OK')
+          self.add_result_row('Assertion signature verification', 'Passed', copy_button=False)
+          
+        else:
+
+          self.log_info('Signature not found in assertion')
+          self.add_result_row('Assertion signature verification', 'Warning: signature not found in assertion', copy_button=False)
+          warnings.append('Signature not found in assertion')
       
       except Exception as error:
         self.log_error("Assertion signature verification failed: "+str(error))
         self.add_result_row('Assertion signature failed', str(error))
+        print(traceback.format_exc())
         raise AduneoError('Assertion signature verification failed: '+str(error))
 
       
@@ -857,6 +868,13 @@ class SAMLClientLogin(FlowHandler):
       
       self.end_result_table()
       self.add_content('<h3>Authentication succcessful</h3>')
+      if len(warnings)>0:
+        self.add_content('With warnings:')
+        self.add_content('<ul>')
+        for warning in warnings:
+          self.add_content('<li>'+html.escape(warning)+'</li>')
+        self.add_content('</ul>')
+        
 
       # On met l'assertion dans la session pour pouvoir l'échanger contre un jeton OAuth
       if 'tokens' not in context:
