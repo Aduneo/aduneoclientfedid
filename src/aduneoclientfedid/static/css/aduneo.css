@@ -142,19 +142,19 @@ span.cellimg img {
   margin-right: 5px;
 }
 
-ul {
+ul.mainMenu {
   list-style-type: none;
   display: inline;
   margin: 0;
   padding: 0;
 }
 
-li {
+li.mainMenu {
   list-style-type: none;
 }
 
 
-ul li {display: inline-block;}
+ul.mainMenu li {display: inline-block;}
 /*
 ul li:hover ul {display: block;}
 ul li ul {

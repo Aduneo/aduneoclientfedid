@@ -280,7 +280,7 @@ class Server(BaseServer):
       //}
       </script>
 
-      <ul>
+      <ul class="mainMenu">
         <!-- <li onmouseover="displayPadding(1)" onmouseout="displayPadding(0)"> -->
         <li>
           <span><a href="/client/oidc/admin/modifyclient" class="button">Add OIDC Client</a></span>
