@@ -1,0 +1,5 @@
+{
+  "oidc_missing_issuer": {
+    "content_en": "<p>ID Token validation requires several steps.</p><p>One of them is verifying that the token has been created by the expected OpenID Provider.</p><p>This is done by confronting the <i>iss</i> value found in the token with the <i>issuer</i> value provided in the configuration.</p><p>In the case the endpoint configuration is done through the <i>Discovery URI</i> (also known as <i>well known</i> URL), the value is provided by the OpenID Provider and should be correct. If you are in this situation, the OP Provider is likely to be misconfigured.</p><p>If you manually entered each endpoint, it seems that you forgot to provide a value for the <i>issuer</i> parameter. You should find the information either in the documentation or more likely somewhere in the administration console of the OP.</p><p>The OpenID Connect specifications define the issuer identifier as follow: <i>An Issuer Identifier is a case sensitive URL using the https scheme that contains scheme, host, and optionally, port number and path components and no query or fragment components.</i></p>"
+  }
+}

@@ -671,7 +671,12 @@ class BaseHandler:
 
     
 class AduneoError(Exception):
-  pass
+  """ Exception fonctionnelle
+  """
+  
+  def __init__(self, message:str, explanation_code:str=None):
+    self.explanation_code = explanation_code
+    super().__init__(message)
 
 
 class WebRouter:

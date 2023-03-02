@@ -17,6 +17,7 @@ limitations under the License.
 from ..BaseServer import AduneoError
 from ..BaseServer import register_web_module, register_url
 from ..Configuration import Configuration
+from ..Explanation import Explanation
 from ..Help import Help
 from .Clipboard import Clipboard
 from .FlowHandler import FlowHandler
@@ -175,7 +176,7 @@ class OIDCClientLogin(FlowHandler):
     self.add_content('<tr id="signature_key" style="display: '+key_visible_style+';"><td>'+self.row_label('Signature key', 'signature_key')+'</td><td><input name="signature_key" value="'+html.escape(meta_data.get('signature_key', ''))+'" class="intable" type="text"></td></tr>')
     
     self.add_content('<tr><td>'+self.row_label('UserInfo endpoint', 'userinfo_endpoint')+'</td><td><input name="userinfo_endpoint" value="'+html.escape(meta_data.get('userinfo_endpoint', ''))+'"class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>'+self.row_label('Issuer', 'issuer')+'</td><td><input name="issuer" value="'+html.escape(meta_data['issuer'])+'" class="intable" type="text"></td></tr>')
+    self.add_content('<tr><td>'+self.row_label('Issuer', 'issuer')+'</td><td><input name="issuer" value="'+html.escape(meta_data.get('issuer', ''))+'" class="intable" type="text"></td></tr>')
     self.add_content('<tr><td>'+self.row_label('Scope', 'scope')+'</td><td><input name="scope" value="'+html.escape(rp['scope'])+'" class="intable" type="text"></td></tr>')
     
     self.add_content('<tr><td>'+self.row_label('Reponse type', 'response_type')+'</td><td><select name="response_type" class="intable">')
@@ -540,6 +541,8 @@ class OIDCClientLogin(FlowHandler):
       
       # On vérifie l'origine du jeton 
       token_issuer = json_token['iss']
+      if 'issuer' not in meta_data:
+        raise AduneoError("Issuer missing in authentication configuration", explanation_code='oidc_missing_issuer')
       if token_issuer == meta_data['issuer']:
         self.log_info("Token issuer verification OK: "+token_issuer)
         self.add_result_row('Issuer verification', 'OK: '+token_issuer, 'issuer_verification')
@@ -691,6 +694,8 @@ class OIDCClientLogin(FlowHandler):
       if self.is_result_in_table():
         self.end_result_table()
       self.add_content('<h4>Authentication failed: '+html.escape(str(error))+'</h4>')
+      if error.explanation_code:
+        self.add_content(Explanation.get(error.explanation_code))
     except Exception as error:
       if self.is_result_in_table():
         self.end_result_table()
@@ -826,7 +831,7 @@ class OIDCClientLogin(FlowHandler):
     self.send_page_raw()
 
 
-  def _check_authentication(self):
+  def _check_authentication_deprecated(self):
     
     """
     Vérifie la bonne authentification :
