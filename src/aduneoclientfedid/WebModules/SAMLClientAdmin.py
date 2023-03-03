@@ -306,17 +306,24 @@ class SAMLClientAdmin(BaseHandler):
     
     S'il existe, ajoute un suffixe numérique
     
-    mpham 06/03/2021
+    Versions:
+    06/03/2021 (mpham) : version initiale
+    03/03/2023 (mpham) : cas où le nom n'est pas renseigné
     """
+
+    name = self.post_form['name']
+    if name == '':
+      name = 'SAML SP'
     
     sp_id = self.post_form['sp_id']
     if sp_id == '':
-      sp_id = self.generate_spid(self.post_form['name'], self.conf['saml_clients'].keys())
+      sp_id = self.generate_spid(name, self.conf['saml_clients'].keys())
       self.conf['saml_clients'][sp_id] = {}
     
     sp = self.conf['saml_clients'][sp_id]
     
-    for item in ['name', 'idp_entity_id', 'idp_sso_url', 'idp_slo_url', 'idp_certificate', 'sp_entity_id', 'sp_acs_url', 'sp_slo_url', 
+    sp['name'] = name
+    for item in ['idp_entity_id', 'idp_sso_url', 'idp_slo_url', 'idp_certificate', 'sp_entity_id', 'sp_acs_url', 'sp_slo_url', 
     'sp_key_configuration', 'sp_private_key', 'sp_certificate', 'nameid_policy', 'authentication_binding', 'logout_binding']:
       if self.post_form[item] == '':
         sp.pop(item, None)

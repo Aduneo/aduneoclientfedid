@@ -59,19 +59,21 @@ function parseIdPMetadata(xml) {
   entityIDAttr = root.attributes.getNamedItem('entityID')
   document.sp.idp_entity_id.value = entityIDAttr.value
   
+  // IDPSSODescriptor
+  IDPSSODescriptorEl = dom.getElementsByTagNameNS(xmlns, 'IDPSSODescriptor')[0]
+  
   // SSO URL
-  fetchServiceUrl(dom.getElementsByTagNameNS(xmlns, 'SingleSignOnService'), document.sp.idp_sso_url, document.sp.authentication_binding)
+  fetchServiceUrl(IDPSSODescriptorEl.getElementsByTagNameNS(xmlns, 'SingleSignOnService'), document.sp.idp_sso_url, document.sp.authentication_binding)
   
   // Logout URL
-  fetchServiceUrl(dom.getElementsByTagNameNS(xmlns, 'SingleLogoutService'), document.sp.idp_slo_url, document.sp.logout_binding)
+  fetchServiceUrl(IDPSSODescriptorEl.getElementsByTagNameNS(xmlns, 'SingleLogoutService'), document.sp.idp_slo_url, document.sp.logout_binding)
   
   // Certificate
-  IDPSSODescriptorEl = dom.getElementsByTagNameNS(xmlns, 'IDPSSODescriptor')[0]
   certificateEl = IDPSSODescriptorEl.querySelector('X509Certificate')
-  console.log(certificateEl)
-  console.log(certificateEl.childNodes[0].nodeValue)
+  //console.log(certificateEl)
+  //console.log(certificateEl.childNodes[0].nodeValue)
   certificate = certificateEl.childNodes[0].nodeValue
-  document.sp.idp_certificate.value = certificate.replaceAll("\n", '').replaceAll("\r", '')
+  document.sp.idp_certificate.value = certificate.trim().replaceAll("\n", '').replaceAll("\r", '')
 
 }
 
