@@ -146,6 +146,7 @@ class CryptoTools:
       
     Versions:
       23/12/2022 (mpham) : version initiale
+      03/03/2023 (mpham) : on retire le SAN, comme pour generate_temp_certificate
     """
     
     key_pair = crypto.PKey()
@@ -158,7 +159,9 @@ class CryptoTools:
     cert.get_subject().CN = hostname
     cert.get_subject().emailAddress = 'contact@aduneo.com'
     cert.set_serial_number(0)
-    cert.add_extensions([crypto.X509Extension(b"subjectAltName", False, ('DNS:'+hostname).encode())])
+    cert.set_serial_number(random.randrange(1208925819614629174706176))
+    # Si on met un SAN, Google n'est pas content : localhost doesn't adhere to security standards. Si on l'omet, le certificat est invalide et Chrome (108 en tout cas) permet qu'on continue...
+    #cert.add_extensions([crypto.X509Extension(b"subjectAltName", False, ('DNS:'+hostname).encode())])
     cert.gmtime_adj_notBefore(0)
     cert.gmtime_adj_notAfter(10*365*24*60*60)
     cert.set_issuer(cert.get_subject())

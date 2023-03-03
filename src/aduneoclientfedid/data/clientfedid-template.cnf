@@ -5,7 +5,10 @@
   "server": {
     "host": "localhost",
     "port": "443",
-    "ssl": "on"
+    "ssl": "on",
+    "ssl_key_file": "_localhost.key",
+    "ssl_cert_file": "_localhost.crt",
+    "ssl_generate_keys": "on"
   },
   "preferences": {
     "logging": {
