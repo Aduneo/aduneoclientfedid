@@ -422,14 +422,24 @@ class SAMLClientAdmin(BaseHandler):
         ),
         md.NameIDFormat(self.post_form['nameid_policy']),
         md.AssertionConsumerService(
-          Binding = self.post_form['authentication_binding'],
+          Binding = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST",
           Location = self.post_form['sp_acs_url'],
           index="1"
         ),
+        md.AssertionConsumerService(
+          Binding = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
+          Location = self.post_form['sp_acs_url'],
+          index="2"
+        ),
         md.SingleLogoutService ( 
-          Binding = self.post_form['logout_binding'],
+          Binding = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST",
           Location = self.post_form['sp_slo_url'], 
           index="1"
+        ),
+        md.SingleLogoutService ( 
+          Binding = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
+          Location = self.post_form['sp_slo_url'], 
+          index="2"
         ),
         AuthnRequestsSigned = self.post_form['sign_auth_request'],
         WantAssertionsSigned = "false",
