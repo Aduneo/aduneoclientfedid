@@ -112,7 +112,7 @@ class CryptoTools:
     cert.get_subject().O = 'Aduneo'
     cert.get_subject().CN = cn
     cert.get_subject().emailAddress = 'contact@aduneo.com'
-    cert.set_serial_number(0)
+    cert.set_serial_number(random.randrange(1208925819614629174706176))
     # Si on met un SAN, Google n'est pas content : localhost doesn't adhere to security standards. Si on l'omet, le certificat est invalide et Chrome (108 en tout cas) permet qu'on continue...
     #cert.add_extensions([crypto.X509Extension(b"subjectAltName", False, ('DNS:'+cn).encode())])
     cert.gmtime_adj_notBefore(0)
