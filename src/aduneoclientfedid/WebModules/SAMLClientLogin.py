@@ -299,7 +299,7 @@ class SAMLClientLogin(FlowHandler):
     relay_state = request['relay_state']
     
     req_template = """
-    <samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="{id}" Version="2.0" ProviderName="{provider_name}" IssueInstant="{timestamp}" Destination="{destination}" ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" AssertionConsumerServiceURL="{acs_url}">
+    <samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="{id}" Version="2.0" ProviderName="{provider_name}" IssueInstant="{timestamp}" Destination="{destination}" ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" AssertionConsumerServiceURL="{acs_url}">
       <saml:Issuer>{sp_id}</saml:Issuer>
       <samlp:NameIDPolicy Format="{nameid_policy}" AllowCreate="true"/>
     </samlp:AuthnRequest>
