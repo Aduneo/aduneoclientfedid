@@ -144,6 +144,8 @@ class FlowHandler(BaseHandler):
   def display_form_http_request(self, method:str, url:str, table:dict = None, data_generator:str = 'return null;', http_parameters:dict = None, sender_url:str = None, context:str = None, dom_id:str=None, verify_certificates:bool=True):
     """ Affiche un formulaire avec une requête HTTP à envoyer
           pour un appel d'API réalisé par le front ClientFedID
+          
+    Doit être appelé dans une fonction elle-même déclenchée par un Javascript getHtmlJson (affichage en mode SPA)
 
     Les données de la requêtes sont pilotées :
       - soit par un formulaire affiché d'après les éléments donnés dans l'argument table
