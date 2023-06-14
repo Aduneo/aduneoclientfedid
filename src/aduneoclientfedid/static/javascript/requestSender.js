@@ -3,33 +3,54 @@
  * Copyright 2023 Aduneo
  * SPDX-License-Identifier: Apache-2.0
  */
+function getHtmlContinue(method, thisurl, data, menu_id=null) {
+  _getHtml(method, thisurl, data, menu_id, true)
+}
+
+
 function getHtml(method, thisurl, data, menu_id=null) {
+  _getHtml(method, thisurl, data, menu_id, false)
+}
+
+
+function _getHtml(method, thisurl, data, menu_id=null, continueRequest=false) {
 
   if (menu_id) {
-    document.getElementById(menu_id).style.display = 'none'
+    document.getElementById(menu_id).style.display = 'none';
   }
 
-  textPH = document.getElementById('text_ph');
-  textPH.id = '';
-  document.getElementById('end_ph').insertAdjacentHTML('beforebegin', '<div id="text_ph"></div>');
+  let loop = true;
 
-  let xhttp = new XMLHttpRequest();
-  xhttp.onload = function() {
-    if (this.readyState == 4 && this.status == 200) {
-      document.getElementById('text_ph').innerHTML = xhttp.responseText;
-      document.getElementById('end_ph').scrollIntoView()
+  while (loop) {
+    
+    loop = continueRequest;
+
+    textPH = document.getElementById('text_ph');
+    textPH.id = '';
+    document.getElementById('end_ph').insertAdjacentHTML('beforebegin', '<div id="text_ph"></div>');
+
+    let xhttp = new XMLHttpRequest();
+    xhttp.onload = function() {
+      if (this.readyState == 4 && this.status == 200) {
+        if (xhttp.responseText == 'FIN') {
+          loop = false;
+        } else {
+          document.getElementById('text_ph').innerHTML = xhttp.responseText;
+          document.getElementById('end_ph').scrollIntoView();
+        }
+      }
+    };
+    xhttp.open(method, thisurl);
+    if (method === 'GET') {
+      xhttp.send();
+    } else {
+      let formData = new FormData();
+      for (const [key, value] of Object.entries(data)) {
+        formData.append(key, value);
+      }
+      xhttp.setRequestHeader('Content-Type','application/x-www-form-urlencoded')
+      xhttp.send(new URLSearchParams(formData));
     }
-  };
-  xhttp.open(method, thisurl);
-  if (method === 'GET') {
-    xhttp.send();
-  } else {
-    let formData = new FormData();
-    for (const [key, value] of Object.entries(data)) {
-      formData.append(key, value);
-    }
-    xhttp.setRequestHeader('Content-Type','application/x-www-form-urlencoded')
-    xhttp.send(new URLSearchParams(formData));
   }
 }
 
