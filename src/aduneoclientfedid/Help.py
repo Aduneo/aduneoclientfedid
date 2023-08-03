@@ -47,7 +47,36 @@ class Help(BaseHandler):
         </div>
       </div>
       """
+      
+      
+  def add_window_definitition_to_continous_page(page:BaseHandler):
+  
+    """
+      Ajoute les éléments HTML de la page d'aide à une page de type continue
 
+      Rappel, pour créer une page continue, on ajoute un décorateur
+      
+        @register_page_url(url='<url>', continuous=True)
+
+    Arguments:
+      page: héritier de BaseHandler, de type continous
+    
+    Versions:
+      03/08/2023 (mpham) : version initiale en copiant le HTML de help_window_definition
+    """
+    
+    page.add_javascript_include("/javascript/help.js")
+    page.add_html("""
+      <link rel="stylesheet" href="/css/dragWindow.css">
+      <script src="/javascript/help.js"></script>
+    
+      <div id="helpWindow" class="dragWindow" onmousedown="startDrag(this, event)">
+        <div class="dragHeader"><span id="helpHeader"></span><span style="float: right; cursor: pointer;" onclick="closeDrag(this)">&#x2716;</span></div>
+        <div id="helpContent" class="dragContent">
+        </div>
+      </div>
+      """)
+  
   
   def send_help(self):
     

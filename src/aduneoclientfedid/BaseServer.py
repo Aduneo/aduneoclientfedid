@@ -40,11 +40,16 @@ class BaseServer(BaseHTTPRequestHandler):
     
     mpham 27/01/2021
     26/12/2022 (mpham) : POST JSON
+    24/03/2023 (mpham) : gestion des pages continues (continuous pages)
     """
     
     self.top_sent = False
     self.content = ''
     self.session_id = None
+
+    self.continuous_page = False
+    self.continuous_page_id = None
+
     self.post_form = None
     self.post_json = None
     super().__init__(request, client_address, server)
@@ -55,10 +60,11 @@ class BaseServer(BaseHTTPRequestHandler):
     
     et par la même occasion filtre les requêtes de la console web des journaux
     
-    mpham 27/05/2022
+    27/05/2022 (mpham) : version initiale
+    03/08/2023 (mpham) : on ne logge pas /continuouspage/poll
     """
     
-    if not args[0].startswith("GET /webconsole/buffer"):
+    if not args[0].startswith("GET /webconsole/buffer") and not args[0].startswith("GET /continuouspage/poll"):
       logging.info(" HTTP %s " % self.address_string()+format%args)
 
 
@@ -99,19 +105,26 @@ class BaseServer(BaseHTTPRequestHandler):
     
     """
     envoie une page au navigateur
-    
-    mpham 27/01/2021 - 24/02/2021
+
+    Versions:
+      27/01/2021 - 24/02/2021 (mpham) version intiale
+      30/03/2023 (mpham) prise en compte des pages continues
     """
     
     if clear_buffer:
       self.content = ''
+
+    if self.continuous_page:
+      from .WebModules.ContinuousPage import ContinuousPageBuffer
+      ContinuousPageBuffer.add_content(self.continuous_page_id, html=self.content+content, stop=True)
+    else:
     
-    self.send_page_top(code)
-    
-    page = bytes(self.content + content, "UTF-8")
-    self.wfile.write(page)
-    
-    self.send_page_bottom()
+      self.send_page_top(code)
+      
+      page = bytes(self.content + content, "UTF-8")
+      self.wfile.write(page)
+      
+      self.send_page_bottom()
 
 
   def send_page_raw(self, content = '', code=200, clear_buffer=False):
@@ -128,14 +141,11 @@ class BaseServer(BaseHTTPRequestHandler):
     """
     envoie le haut d'une page
     
-    mpham 24/02/2021
+    24/02/2021 (mpham) version initiale
     """
     
     self.send_response(code)
-    self.send_header('Content-type', 'text/html; charset=utf-8')
-    if send_cookie and self.session_id is not None:
-      self.send_header('Set-Cookie', 'fedclient_sessionid='+self.session_id+'; Max-Age=1200; HttpOnly; path=/;')
-    self.end_headers()
+    self._send_page_headers(send_cookie)
     
     open_webconsole = False
     if (self.conf):
@@ -172,6 +182,60 @@ class BaseServer(BaseHTTPRequestHandler):
     self.wfile.write(page)
 
 
+  def add_html(self, html):
+    """ Envoie au navigateur du code HTML
+    
+    Args:
+      html: HTML à envoyer
+      
+    Versions:
+      29/03/2023 (mpham) version initiale
+    """
+    
+    if self.continuous_page:
+      from .WebModules.ContinuousPage import ContinuousPageBuffer
+      ContinuousPageBuffer.add_content(self.continuous_page_id, html=html)
+    else:
+      self.add_content(html)
+      
+
+  def add_javascript(self, code):
+    """ Envoie au navigateur du code Javascript à exécuter
+    
+    Utile en page continue, car <script> ne fonctionne pas avec add_content
+    
+    Args:
+      code: code Javascript à exécuter
+      
+    Versions:
+      30/03/2023 (mpham) version initiale
+    """
+    
+    if self.continuous_page:
+      from .WebModules.ContinuousPage import ContinuousPageBuffer
+      ContinuousPageBuffer.add_content(self.continuous_page_id, javascript=code)
+    else:
+      self.add_content('<script>{code}</script>'.format(code=code))
+
+
+  def add_javascript_include(self, url):
+    """ Envoie au navigateur un include de fichier Javascript
+    
+    Utile en page continue, car <script> ne fonctionne pas avec add_content
+    
+    Args:
+      url: URL de la ressource Javascript
+      
+    Versions:
+      29/03/2023 (mpham) version initiale
+    """
+    
+    if self.continuous_page:
+      from .WebModules.ContinuousPage import ContinuousPageBuffer
+      ContinuousPageBuffer.add_content(self.continuous_page_id, javascript_include=url)
+    else:
+      self.add_content('<script src="{url}"></script>'.format(url=url))
+      
 
   def send_redirection(self, url):
   
@@ -298,7 +362,7 @@ class BaseServer(BaseHTTPRequestHandler):
     Mécanisme de template simplifié
     Fourniture du template par un nom de fichier dans le dossier templates
     
-    mpham 16/08/2021
+    16/08/2021 (mpham) version initiale
     """
   
     tpl_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
@@ -331,6 +395,23 @@ class BaseServer(BaseHTTPRequestHandler):
         template_content = in_file.read()
         
       self.send_page_raw(self.apply_template(template_content, **parameters))
+
+  def _send_page_headers(self, send_cookie:bool=True):
+    """ Envoie les en-têtes d'une page :
+        - le Content-Type
+        - le cookie de session
+        
+    Args:
+      send_cookie: pour indiquer s'il faut envoyer le cookie de session
+        
+    Versions:
+      29/03/2023 (mpham) version initiale transférée de send_page_top
+    """
+
+    self.send_header('Content-type', 'text/html; charset=utf-8')
+    if send_cookie and self.session_id is not None:
+      self.send_header('Set-Cookie', 'fedclient_sessionid='+self.session_id+'; Max-Age=1200; HttpOnly; path=/;')
+    self.end_headers()
 
 
   def apply_template(self, template:str, **parameters):
@@ -538,9 +619,18 @@ class BaseHandler:
   def send_page_top(self, code = 200, template=True, send_cookie=True):
     self.hreq.send_page_top(code, template, send_cookie)
 
-
   def send_page_bottom(self):
     self.hreq.send_page_bottom()
+
+
+  def add_html(self, html):
+    self.hreq.add_html(html)
+
+  def add_javascript(self, code):
+    self.hreq.add_javascript(code)
+
+  def add_javascript_include(self, url):
+    self.hreq.add_javascript_include(url)
 
 
   def send_template(self, template_name:str, **parameters):
@@ -788,20 +878,27 @@ class WebRouter:
     eval('module.send_access_token_introspection_request_spa()')
     """
 
-def register_url(method:str, url:str = None):
+
+def register_url(method:str, url:str=None):
   """ Decorator pour les méthodes de classe
+  
+  Attention, ce décorateur doit être le dernier (se trouver le plus proche de la déclaration de la méthode), sinon il n'est pas pris en compte
+    (l'enregistrement se fait pas car func n'est pas la page mais le décorateur suivant)
   
   Args:
     method: méthode HTTP
-  
-  mpham 30/09/2022
+    url: URL relative par rapport à la racine déclarée au niveau de la classe par le décorateur register_web_module
+
+  Versions:
+    30/09/2022 (mpham) version initiale
+  DEPRECATED
   """
   def decorator(func):
   
     module_name = func.__module__
     class_name = func.__qualname__.split('.')[0]
     method_name = func.__qualname__.split('.')[1]
-
+    
     relative_url = url
 
     if relative_url is None:
@@ -809,9 +906,135 @@ def register_url(method:str, url:str = None):
     if module_name not in WebRouter.temp_urls[method.casefold()]:
       WebRouter.temp_urls[method.casefold()][module_name] = {}
     WebRouter.temp_urls[method.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name}
+
     return func
+    
   return decorator
+
   
+def register_page_url(method:str, url:str=None, template:str=None, continuous:bool=False):
+  """ Decorator de déclaration d'une page web représentée par une méthode de classe
+  
+  La méthode doit se trouver dans une classe décorée par @register_web_module
+  
+  Attention, ce décorateur doit être le dernier (se trouver le plus proche de la déclaration de la méthode), sinon il n'est pas pris en compte
+    (l'enregistrement se fait pas car func n'est pas la page mais le décorateur suivant)
+  
+  Args:
+    method: méthode HTTP
+    url: URL relative par rapport à la racine déclarée au niveau de la classe par le décorateur register_web_module
+    template: nom (optionnel) d'un fichier de modèle (du dossier templates) où le mot-clé {{content}} indique où insérer le contenu
+    continuous: indique si la page est de type continu (envoi progressif du contenu pour affichage partiel lors des opérations prenant du temps)
+
+  Versions:
+    30/09/2022 (mpham) version initiale
+    24/03/2023 (mpham) ajout de la fonction wrapper pour pouvoir ajouter d'autres décorateurs aux méthodes (en particulier @continuous_page)
+    29/03/2023 (mpham) ajout des paramètres template et continuous
+  """
+  def decorator(func):
+  
+    # Enregistrement de l'URL
+    module_name = func.__module__
+    class_name = func.__qualname__.split('.')[0]
+    method_name = func.__qualname__.split('.')[1]
+    
+    relative_url = url
+
+    if relative_url is None:
+      relative_url = method_name
+    if module_name not in WebRouter.temp_urls[method.casefold()]:
+      WebRouter.temp_urls[method.casefold()][module_name] = {}
+    WebRouter.temp_urls[method.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name}
+    
+    # Traitement de la page
+    def wrapper(*args, **kwargs):
+
+      from .Template import Template
+    
+      self = args[0] # correspond à l'objet de module héritant de BaseHandler
+      
+      template_content = '{{content}}'
+      if template:
+        from .Template import Template
+        template_content = Template.load_template(template)
+      
+      self.hreq.continuous_page = continuous
+      print('---- IN DECORATOR', self.hreq.continuous_page)
+      if continuous:
+        # Page continue
+        self.hreq.continuous_page_id = str(uuid.uuid4())
+        print('---- IN DECORATOR', self.hreq.continuous_page_id)
+        
+        content = """
+        <script src="/javascript/requestSender.js"></script>
+        <div id="text_ph"></div>
+        <div id="end_ph"></div>
+        
+        <script>getHtmlJsonContinue("GET", "/continuouspage/poll?cp_id={cp_id}")</script>
+        """.format(cp_id=self.hreq.continuous_page_id)
+        
+        self.hreq.send_response(200)
+        self.hreq._send_page_headers()
+        self.hreq.top_sent = True # TODO, regarder comment le supprimer
+        self.add_content(Template.apply_template(template_content, content=content))
+        func(*args, **kwargs)
+        
+      else:
+        # Page normale
+        
+        content_pos = template_content.find('{{content}}')
+        if content_pos == -1:
+          raise AduneoError(self.log_error("Le fichier de modèle de page "+template+" ne contient pas de balise de contenu {{content}}"))
+        template_top = template_content[:content_pos]
+        template_bottom = template_content[content_pos+11:]
+        
+        self.hreq.send_response(200)
+        self.hreq._send_page_headers()
+        self.hreq.top_sent = True # TODO, regarder comment le supprimer
+        self.add_content(Template.apply_template(template_top))
+        func(*args, **kwargs)
+        self.add_content(Template.apply_template(template_bottom))
+        
+    return wrapper
+    
+  return decorator
+
+
+def register_api_url(method:str, url:str=None):
+  """ Decorator de déclaration d'une API représentée par une méthode de classe
+  
+  La méthode doit se trouver dans une classe décorée par @register_web_module
+  
+  Attention, ce décorateur doit être le dernier (se trouver le plus proche de la déclaration de la méthode), sinon il n'est pas pris en compte
+    (l'enregistrement se fait pas car func n'est pas la page mais le décorateur suivant)
+  
+  Args:
+    method: méthode HTTP
+    url: URL relative par rapport à la racine déclarée au niveau de la classe par le décorateur register_web_module
+
+  Versions:
+    30/09/2022 (mpham) version initiale
+  """
+  def decorator(func):
+  
+    # Enregistrement de l'URL
+    module_name = func.__module__
+    class_name = func.__qualname__.split('.')[0]
+    method_name = func.__qualname__.split('.')[1]
+    
+    relative_url = url
+
+    if relative_url is None:
+      relative_url = method_name
+    if module_name not in WebRouter.temp_urls[method.casefold()]:
+      WebRouter.temp_urls[method.casefold()][module_name] = {}
+    WebRouter.temp_urls[method.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name}
+
+    return func
+    
+  return decorator
+
+
 def register_web_module(path):
   """ Decorator pour les classes descendant de BaseHandler contenant des méthodes de service d'URL
   
@@ -832,3 +1055,85 @@ def register_web_module(path):
   return decorator
   
   
+def continuous_page(html:str='', send_page_header:bool=True):
+
+# En fait, au lieu de passer du html et d'avoir un flag d'envoi du template, il faudrait revoir le fonctionnement global des templates
+#  pour avoir quelque chose de cohérent entre les pages normales et les pages continues
+# Peut-être avoir un flag pour les deux ?Qu'on positionnerait dans le code ?
+#   ou alors dans le register_url
+#   et on pourrait supprimer le décorateur continuous_page pour le mettre dans register_url
+#   (comme on a de toute façon des problèmes d'ordre dans les décorateurs)
+#   Par exemple: @register_url('GET', '/chemin', template='default', continuous=True)
+#
+# d'ailleurs pourrait-on unifier le template de page avec les templates de contenu de page ?
+
+# DEPRECATED
+
+  """
+  Les pages continues sont des pages qui s'affichent progressivement :
+  - la méthode de la page fait des appel à self.add_content(str) pour ajouter des informations à envoyer
+  - à chaque fois qu'elle souhaite envoyer les informations au navigateur, elle fait self.flush_content()
+  - à la fin, elle fait send_page(str)
+  
+  Techniquement, il est envoyé au navigateur du code Javascript qui fait des appels réguliers (toutes les secondes) à l'URL /continuouspage/poll
+  Cette page regarde s'il existe du contenu en attente et le cas échéant l'envoie
+  Lors d'un send_page, /continuouspage/poll envoie une commande de FIN qui arrête le polling
+  
+  Déclaration :
+  les pages continues ont le décorateur @continuous_page()
+  
+  Exemple :
+    @continuous_page()
+    @register_url(url='preparerequest', method='GET')
+    def prepare_request_temp(self):
+
+  
+  Technique :
+  les pages continues sont gérées par l'objet ContinuousPage qui
+  - conserve le buffer
+  - reçoit aux sollicitations de polling du navigateur
+  - y répond avec le buffer quand ce dernier est libéré
+  
+  Un identifiant unique de page est généré par le décorateur pour établir une sorte de session de page et envoyer le contenu non seulement au bon navigateur
+    (ce que ferait la session HTTP), mais au bon onglet dans le navigateur.
+    Pour récupérer du contenu, une vérification double est effectuée : la session HTTP + l'identifiant de page continue
+    (elle est nécessaire car l'identifiant de page continue est passé dans les requêtes, avec donc un risque d'interception)
+  
+  Un flag est mis dans l'objet BaseServer pour indiquer qu'on passe en mode continu et que le comportement doit être modifié:
+  - flush_content, qui ne fait rien en mode normal, transmet alors le contenu vers ContinuousPage
+  - send_page, au lieu d'envoyer toute la page, fait un flush_content avec fin de page
+  
+  Le décorateur @continuous_page met en place le flag dans BaseServer et envoie (si demandé) les en-têtes de la page
+  
+  24/03/2023 (mpham) version initiale
+  """
+
+  def decorator(func):
+  
+    def wrapper(*args, **kwargs):
+    
+      self = args[0] # correspond à l'objet de module héritant de BaseHandler
+      
+      cp_id = str(uuid.uuid4())
+      
+      self.add_content(html)
+      
+      self.add_content("""
+      <div id="text_ph"></div>
+      <div id="end_ph"></div>
+      
+      <script>""")
+      self.add_content('getHtmlJsonContinue("GET", "/continuouspage/poll?cp_id="'+cp_id+')')
+      self.add_content("""
+      </script>
+      """)
+      self.send_page()
+      
+      self.hreq.continuous_page = True
+      self.hreq.continuous_page_id = cp_id
+
+      func(*args, **kwargs)
+      
+    return wrapper
+    
+  return decorator

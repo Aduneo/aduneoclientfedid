@@ -14,8 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+#TODO : passer toutes les pages en continuous, en particulier le callback
+
 from ..BaseServer import AduneoError
-from ..BaseServer import register_web_module, register_url
+from ..BaseServer import register_web_module, register_url, register_page_url
+from ..BaseServer import continuous_page
 from ..Configuration import Configuration
 from ..Explanation import Explanation
 from ..Help import Help
@@ -72,8 +75,8 @@ import uuid
 
 @register_web_module('/client/oidc/login')
 class OIDCClientLogin(FlowHandler):
- 
-  @register_url(url='preparerequest', method='GET')
+
+  @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=True)
   def prepare_request(self):
 
     """
@@ -82,11 +85,23 @@ class OIDCClientLogin(FlowHandler):
     Versions:
       26/02/2021 - 05/03/2021 (mpham) : version initiale
       09/12/2022 (mpham) : ajout de token_endpoint_auth_method
-      23/12/2022 (mpham) : passage en mode SPA et menu de pied de page commun
       22/02/2023 (mpham) : on retire les références à fetch_userinfo car l'appel à userinfo est maintenant manuel
+      24/03/2023 (mpham) : passage en mode SPA
+      03/08/2023 (mpham) : on achève le passage en page continuous
     """
 
-    self.log_info('--- Start OIDC flow ---')
+  
+    """
+    print('HELLO')
+    self.add_javascript_include('/javascript/resultTable.js')
+    self.add_html('ENCORE HELLO<b>Oh oh</b>')
+    self.add_javascript('console.log("LEROY");')
+    
+    self.add_html('Blah blah')
+    self.send_page('Rohhh')
+    """
+
+    self.log_info('--- Start OpenID Connect flow ---')
 
     rp_id = self.get_query_string_param('id')
     context_id = self.get_query_string_param('contextid')
@@ -94,6 +109,8 @@ class OIDCClientLogin(FlowHandler):
     context = None
     if context_id:
       context = self.get_session_value(context_id)
+
+    fetch_configuration_document = False
 
     if context is None:
       if rp_id is None:
@@ -105,27 +122,7 @@ class OIDCClientLogin(FlowHandler):
         self.log_info(('  ' * 1)+'for OP '+rp['name'])
 
         if rp.get('endpoint_configuration', 'Local configuration').casefold() == 'discovery uri':
-          self.add_content('<span id="meta_data_ph">Retrieving metadata from<br>'+rp['discovery_uri']+'<br>...</span>')
-          try:
-            self.log_info('Starting metadata retrieval')
-            self.log_info('discovery_uri: '+rp['discovery_uri'])
-            verify_certificates = Configuration.is_on(rp.get('verify_certificates', 'on'))
-            self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-            r = requests.get(rp['discovery_uri'], verify=verify_certificates)
-            self.log_info(r.text)
-            meta_data = r.json()
-            self.add_content('<script>document.getElementById("meta_data_ph").style.display = "none"</script>')
-            meta_data['signature_key'] = rp.get('signature_key', '')
-          except Exception as error:
-            self.log_error(traceback.format_exc())
-            self.add_content('failed<br>'+str(error))
-            self.send_page()
-            return
-          if r.status_code != 200:
-            self.log_error('Server responded with code '+str(r.status_code))
-            self.add_content('failed<br>Server responded with code '+str(r.status_code))
-            self.send_page()
-            return
+          fetch_configuration_document = True
         else:
           meta_data = {}
           meta_data = dict((k, rp[k]) for k in ['issuer', 'authorization_endpoint', 'token_endpoint', 'jwks_uri', 'introspection_endpoint', 'signature_key'] if k in rp)
@@ -141,109 +138,132 @@ class OIDCClientLogin(FlowHandler):
       meta_data = context['meta_data']
       self.log_info(('  ' * 1)+'for OP '+rp['name'])
     
-    self.add_content("<h1>OIDC Client: "+rp["name"]+"</h1>")
+    self.add_html("<h1>OIDC Client: "+rp["name"]+"</h1>")
     
     state = str(uuid.uuid4())
     nonce = str(uuid.uuid4())
     
-    self.add_content('<form name="request" action="sendrequest" method="post">')
-    self.add_content('<input name="rp_id" value="'+html.escape(rp_id)+'" type="hidden" />')
-    self.add_content('<table class="fixed">')
-    self.add_content('<tr><td>'+self.row_label('Authorization Endpoint', 'authorization_endpoint')+'</td><td><input name="authorization_endpoint" value="'+html.escape(meta_data['authorization_endpoint'])+'"class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>'+self.row_label('Token endpoint', 'token_endpoint')+'</td><td><input name="token_endpoint" value="'+html.escape(meta_data['token_endpoint'])+'"class="intable" type="text"></td></tr>')
+    self.add_html('<form name="request" action="sendrequest" method="post">')
+    self.add_html('<input name="rp_id" value="'+html.escape(rp_id)+'" type="hidden" />')
+    self.add_html('<table class="fixed">')
+
+    if fetch_configuration_document:
+      self.add_content('<span id="meta_data_ph">Retrieving metadata from<br>'+rp['discovery_uri']+'<br>...</span>')
+      try:
+        self.log_info('Starting metadata retrieval')
+        self.log_info('discovery_uri: '+rp['discovery_uri'])
+        verify_certificates = Configuration.is_on(rp.get('verify_certificates', 'on'))
+        self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+        r = requests.get(rp['discovery_uri'], verify=verify_certificates)
+        self.log_info(r.text)
+        meta_data = r.json()
+        self.add_content('<script>document.getElementById("meta_data_ph").style.display = "none"</script>')
+        meta_data['signature_key'] = rp.get('signature_key', '')
+      except Exception as error:
+        self.log_error(traceback.format_exc())
+        self.add_content('failed<br>'+str(error))
+        self.send_page()
+        return
+      if r.status_code != 200:
+        self.log_error('Server responded with code '+str(r.status_code))
+        self.add_content('failed<br>Server responded with code '+str(r.status_code))
+        self.send_page()
+        return
+
+    self.add_html('<tr><td>'+self.row_label('Authorization Endpoint', 'authorization_endpoint')+'</td><td><input name="authorization_endpoint" value="'+html.escape(meta_data['authorization_endpoint'])+'"class="intable" type="text"></td></tr>')
+    self.add_html('<tr><td>'+self.row_label('Token endpoint', 'token_endpoint')+'</td><td><input name="token_endpoint" value="'+html.escape(meta_data['token_endpoint'])+'"class="intable" type="text"></td></tr>')
 
     # configuration de la clé de vérification de signature
-    self.add_content('<tr id="signature_key_configuration"><td>'+self.row_label('Signature key configuration', 'signature_key_configuration')+'</td><td><select name="signature_key_configuration" class="intable" onchange="changeSignatureKeyConfiguration()">')
+    self.add_html('<tr id="signature_key_configuration"><td>'+self.row_label('Signature key configuration', 'signature_key_configuration')+'</td><td><select name="signature_key_configuration" class="intable" onchange="changeSignatureKeyConfiguration()">')
     for value in ('JWKS URI', 'Local configuration'):
       selected = ''
       if value.casefold() == rp.get('signature_key_configuration', 'JWKS URI').casefold():
         selected = ' selected'
-      self.add_content('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
-    self.add_content('</td></tr>')
+      self.add_html('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
+    self.add_html('</td></tr>')
     
     # clé de signature récupérée par JWKS
     key_visible = (rp.get('signature_key_configuration', 'JWKS URI').casefold() == 'jwks uri')
     key_visible_style = 'none'
     if key_visible:
       key_visible_style = 'table-row'
-    self.add_content('<tr id="jwks_uri" style="display: '+key_visible_style+';"><td>'+self.row_label('JWKS URI', 'jwks_uri')+'</td><td><input name="jwks_uri" value="'+html.escape(meta_data.get('jwks_uri', ''))+'" class="intable" type="text"></td></tr>')
+    self.add_html('<tr id="jwks_uri" style="display: '+key_visible_style+';"><td>'+self.row_label('JWKS URI', 'jwks_uri')+'</td><td><input name="jwks_uri" value="'+html.escape(meta_data.get('jwks_uri', ''))+'" class="intable" type="text"></td></tr>')
     
     # clé de signature dans le fichier local
     key_visible = (rp.get('signature_key_configuration', 'JWKS URI').casefold() == 'local configuration')
     key_visible_style = 'none'
     if key_visible:
       key_visible_style = 'table-row'
-    self.add_content('<tr id="signature_key" style="display: '+key_visible_style+';"><td>'+self.row_label('Signature key', 'signature_key')+'</td><td><input name="signature_key" value="'+html.escape(meta_data.get('signature_key', ''))+'" class="intable" type="text"></td></tr>')
+    self.add_html('<tr id="signature_key" style="display: '+key_visible_style+';"><td>'+self.row_label('Signature key', 'signature_key')+'</td><td><input name="signature_key" value="'+html.escape(meta_data.get('signature_key', ''))+'" class="intable" type="text"></td></tr>')
     
-    self.add_content('<tr><td>'+self.row_label('UserInfo endpoint', 'userinfo_endpoint')+'</td><td><input name="userinfo_endpoint" value="'+html.escape(meta_data.get('userinfo_endpoint', ''))+'"class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>'+self.row_label('Issuer', 'issuer')+'</td><td><input name="issuer" value="'+html.escape(meta_data.get('issuer', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>'+self.row_label('Scope', 'scope')+'</td><td><input name="scope" value="'+html.escape(rp['scope'])+'" class="intable" type="text"></td></tr>')
+    self.add_html('<tr><td>'+self.row_label('UserInfo endpoint', 'userinfo_endpoint')+'</td><td><input name="userinfo_endpoint" value="'+html.escape(meta_data.get('userinfo_endpoint', ''))+'"class="intable" type="text"></td></tr>')
+    self.add_html('<tr><td>'+self.row_label('Issuer', 'issuer')+'</td><td><input name="issuer" value="'+html.escape(meta_data.get('issuer', ''))+'" class="intable" type="text"></td></tr>')
+    self.add_html('<tr><td>'+self.row_label('Scope', 'scope')+'</td><td><input name="scope" value="'+html.escape(rp['scope'])+'" class="intable" type="text"></td></tr>')
     
-    self.add_content('<tr><td>'+self.row_label('Reponse type', 'response_type')+'</td><td><select name="response_type" class="intable">')
+    self.add_html('<tr><td>'+self.row_label('Reponse type', 'response_type')+'</td><td><select name="response_type" class="intable">')
     for value in ['code']:
       selected = ''
       if value == rp.get('response_type', ''):
         selected = ' selected'
-      self.add_content('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
-    self.add_content('</select></td></tr>')
+      self.add_html('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
+    self.add_html('</select></td></tr>')
     
-    self.add_content('<tr><td>'+self.row_label('Client ID', 'client_id')+'</td><td><input name="client_id" value="'+html.escape(rp['client_id'])+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>'+self.row_label('Client secret', 'client_secret')+'</td><td><input name="client_secret!" class="intable" type="password"></td></tr>')
+    self.add_html('<tr><td>'+self.row_label('Client ID', 'client_id')+'</td><td><input name="client_id" value="'+html.escape(rp['client_id'])+'" class="intable" type="text"></td></tr>')
+    self.add_html('<tr><td>'+self.row_label('Client secret', 'client_secret')+'</td><td><input name="client_secret!" class="intable" type="password"></td></tr>')
 
-    self.add_content('<tr><td>'+self.row_label('Token endpoint auth method', 'token_endpoint_auth_method')+'</td><td><select name="token_endpoint_auth_method" class="intable">')
+    self.add_html('<tr><td>'+self.row_label('Token endpoint auth method', 'token_endpoint_auth_method')+'</td><td><select name="token_endpoint_auth_method" class="intable">')
     for value in ['Basic', 'POST']:
       selected = ''
       if value.casefold() == rp.get('token_endpoint_auth_method', 'POST').casefold():
         selected = ' selected'
-      self.add_content('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
-    self.add_content('</select></td></tr>')
+      self.add_html('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
+    self.add_html('</select></td></tr>')
 
-    self.add_content('<tr><td>'+self.row_label('Redirect URI', 'redirect_uri')+'</td><td><input name="redirect_uri" value="'+html.escape(rp.get('redirect_uri', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>'+self.row_label('State', 'state')+'</td><td>'+html.escape(state)+'</td></tr>')
-    self.add_content('<tr><td>'+self.row_label('Nonce', 'nonce')+'</td><td><input name="nonce" value="'+html.escape(nonce)+'" class="intable" type="text"></td></tr>')
+    self.add_html('<tr><td>'+self.row_label('Redirect URI', 'redirect_uri')+'</td><td><input name="redirect_uri" value="'+html.escape(rp.get('redirect_uri', ''))+'" class="intable" type="text"></td></tr>')
+    self.add_html('<tr><td>'+self.row_label('State', 'state')+'</td><td>'+html.escape(state)+'</td></tr>')
+    self.add_html('<tr><td>'+self.row_label('Nonce', 'nonce')+'</td><td><input name="nonce" value="'+html.escape(nonce)+'" class="intable" type="text"></td></tr>')
 
-    self.add_content('<tr><td>'+self.row_label('Display', 'display')+'</td><td><select name="display" class="intable">')
+    self.add_html('<tr><td>'+self.row_label('Display', 'display')+'</td><td><select name="display" class="intable">')
     for value in ('', 'page', 'popup', 'touch', 'wap'):
       selected = ''
       if value == rp.get('display', ''):
         selected = ' selected'
-      self.add_content('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
-    self.add_content('</select></td></tr>')
+      self.add_html('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
+    self.add_html('</select></td></tr>')
 
-    self.add_content('<tr><td>'+self.row_label('Prompt', 'prompt')+'</td><td><select name="prompt" class="intable">')
+    self.add_html('<tr><td>'+self.row_label('Prompt', 'prompt')+'</td><td><select name="prompt" class="intable">')
     for value in ('', 'none', 'login', 'consent', 'select_account'):
       selected = ''
       if value == rp.get('prompt', ''):
         selected = ' selected'
-      self.add_content('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
-    self.add_content('</select></td></tr>')
+      self.add_html('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
+    self.add_html('</select></td></tr>')
 
-    self.add_content('<tr><td>'+self.row_label('Max age', 'max_age')+'</td><td><input name="max_age" value="'+html.escape(rp.get('max_age', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>'+self.row_label('UI locales', 'ui_locales')+'</td><td><input name="ui_locales" value="'+html.escape(rp.get('ui_locales', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>'+self.row_label('ID token hint', 'id_token_hint')+'</td><td><input name="id_token_hint" value="'+html.escape(rp.get('id_token_hint', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>'+self.row_label('Login hint', 'login_hint')+'</td><td><input name="login_hint" value="'+html.escape(rp.get('login_hint', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>'+self.row_label('ACR values', 'acr_values')+'</td><td><input name="acr_values" value="'+html.escape(rp.get('acr_values', ''))+'" class="intable" type="text"></td></tr>')
+    self.add_html('<tr><td>'+self.row_label('Max age', 'max_age')+'</td><td><input name="max_age" value="'+html.escape(rp.get('max_age', ''))+'" class="intable" type="text"></td></tr>')
+    self.add_html('<tr><td>'+self.row_label('UI locales', 'ui_locales')+'</td><td><input name="ui_locales" value="'+html.escape(rp.get('ui_locales', ''))+'" class="intable" type="text"></td></tr>')
+    self.add_html('<tr><td>'+self.row_label('ID token hint', 'id_token_hint')+'</td><td><input name="id_token_hint" value="'+html.escape(rp.get('id_token_hint', ''))+'" class="intable" type="text"></td></tr>')
+    self.add_html('<tr><td>'+self.row_label('Login hint', 'login_hint')+'</td><td><input name="login_hint" value="'+html.escape(rp.get('login_hint', ''))+'" class="intable" type="text"></td></tr>')
+    self.add_html('<tr><td>'+self.row_label('ACR values', 'acr_values')+'</td><td><input name="acr_values" value="'+html.escape(rp.get('acr_values', ''))+'" class="intable" type="text"></td></tr>')
     
-    self.add_content('</table>')
+    self.add_html('</table>')
 
-    self.add_content("<h2>Non OIDC Options</h2>")
-    self.add_content('<table class="fixed">')
+    self.add_html("<h2>Non OIDC Options</h2>")
+    self.add_html('<table class="fixed">')
     checked = ''
     if Configuration.is_on(rp.get('verify_certificates', 'off')):
       checked = ' checked'
-    self.add_content('<tr><td>'+self.row_label('Certificate verification', 'verify_certificates')+'</td><td><input name="verify_certificates" type="checkbox"'+checked+'></td></tr>')
-    self.add_content('</table>')
+    self.add_html('<tr><td>'+self.row_label('Certificate verification', 'verify_certificates')+'</td><td><input name="verify_certificates" type="checkbox"'+checked+'></td></tr>')
+    self.add_html('</table>')
     
-    self.add_content('<div style="padding-top: 20px; padding-bottom: 12px;"><div style="padding-bottom: 6px;"><strong>Authentication request</strong> <img title="Copy request" class="smallButton" src="/images/copy.png" onClick="copyRequest()"/></div>')
-    self.add_content('<span id="auth_request" style="font-size: 14px;"></span></div>')
-    self.add_content('<input name="authentication_request" type="hidden">')
-    self.add_content('<input name="state" value="'+html.escape(state)+'" type="hidden">')
+    self.add_html('<div style="padding-top: 20px; padding-bottom: 12px;"><div style="padding-bottom: 6px;"><strong>Authentication request</strong> <img title="Copy request" class="smallButton" src="/images/copy.png" onClick="copyRequest()"/></div>')
+    self.add_html('<span id="auth_request" style="font-size: 14px;"></span></div>')
+    self.add_html('<input name="authentication_request" type="hidden">')
+    self.add_html('<input name="state" value="'+html.escape(state)+'" type="hidden">')
     
-    self.add_content('<button type="submit" class="button" onclick="openConsole();">Send to IdP</button>')
-    self.add_content('</form>')
+    self.add_html('<button type="submit" class="button" onclick="openConsole();">Send to IdP</button>')
+    self.add_html('</form>')
 
-    self.add_content("""
-    <script>
+    self.add_javascript("""
 
     window.addEventListener('load', (event) => {
       if (document.request.redirect_uri.value == '') {
@@ -298,10 +318,10 @@ class OIDCClientLogin(FlowHandler):
         document.getElementById('signature_key').style.display = 'table-row';
       }
     }
-    </script>
     """)
   
-    self.add_content(Help.help_window_definition())
+    #self.add_html(Help.help_window_definition())
+    Help.add_window_definitition_to_continous_page(self)
     
     self.send_page()
 
@@ -317,7 +337,6 @@ class OIDCClientLogin(FlowHandler):
     Versions:
       26/02/2021 - 28/02/2021 (mpham) : version initiale
       09/12/2022 (mpham) : ajout de token_endpoint_auth_method
-      23/12/2022 (mpham) : passage en mode SPA et menu de pied de page commun
       22/02/2023 (mpham) : on retire les références à fetch_userinfo car l'appel à userinfo est maintenant manuel
     """
     
@@ -364,7 +383,7 @@ class OIDCClientLogin(FlowHandler):
         
         Ca permet de rester sur la même page tout en faisant des interactions avec l'AS
       
-      mpham 23/12/2022
+      23/12/2022 (mpham) : passage en mode SPA et menu de pied de page commun
     """
 
     self.log_info('Callback from OpenID Provider. Query string: '+self.hreq.path)
