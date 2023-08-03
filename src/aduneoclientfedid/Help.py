@@ -26,7 +26,7 @@ class Help(BaseHandler):
   help_json = None
   
   
-  def help_window_definition():
+  def help_window_definition(page_id:str=None):
     
     """Retourne le code HTML et Javascript de la fenêtre d'affichage de l'aide
     
@@ -37,9 +37,14 @@ class Help(BaseHandler):
       mpham 23/04/2021
     """
     
+    page_id_code = ''
+    if page_id:
+      page_id_code = '<script>helpRootPageId = "'+page_id+'";</script>'
+    
     return """
       <link rel="stylesheet" href="/css/dragWindow.css">
       <script src="/javascript/help.js"></script>
+      """+page_id_code+"""
     
       <div id="helpWindow" class="dragWindow" onmousedown="startDrag(this, event)">
         <div class="dragHeader"><span id="helpHeader"></span><span style="float: right; cursor: pointer;" onclick="closeDrag(this)">&#x2716;</span></div>

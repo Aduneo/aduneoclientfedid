@@ -1,9 +1,20 @@
+/**
+ * @license
+ * Copyright 2023 Aduneo
+ * SPDX-License-Identifier: Apache-2.0
+ */
 function help(imgElement, itemId) {
-  // Il faut changer la manière d'identifier la page, car depuis que les utilisateurs peuvent configurer l'URL de retour OIDC, on ne peut plus se baser sur l'URL
-  // Il faudrait plutôt mettre un data-help-root dans le <form> et remonter le DOM
-  console.log(window.location.pathname.substring(1).replaceAll('/', '_')+'_'+itemId)
+  // on peut déterminer le root de l'identifiant d'aide de deux manières
+  //   - il a été donné explicitement lors de l'intégration du module d'aide (par exemple self.add_content(Help.help_window_definition(page_id='client_oidc')) )
+  //   - sinon on prend l'URL de la page
+  var absHelpItemId;
+  if (typeof helpRootPageId === 'undefined') {
+    absHelpItemId = window.location.pathname.substring(1).replaceAll('/', '_')+'_'+itemId;
+  } else {
+    absHelpItemId = helpRootPageId+'_'+itemId;
+  }
   var rect = imgElement.getBoundingClientRect();
-  displayHelpPopup(rect.left+50, rect.top, window.location.pathname.substring(1).replaceAll('/', '_')+'_'+itemId)
+  displayHelpPopup(rect.left+50, rect.top, absHelpItemId);
 }
 
 

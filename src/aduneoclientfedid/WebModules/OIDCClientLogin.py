@@ -389,7 +389,7 @@ class OIDCClientLogin(FlowHandler):
     self.log_info('Callback from OpenID Provider. Query string: '+self.hreq.path)
     self.log_info('Query string: '+self.hreq.path)
 
-    self.add_content(Help.help_window_definition())
+    self.add_content(Help.help_window_definition(page_id='client_oidc_callback'))
     self.add_content(Clipboard.get_window_definition())
     self.add_content("""
     <script src="/javascript/resultTable.js"></script>
