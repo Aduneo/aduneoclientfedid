@@ -348,7 +348,6 @@ def verify_compact_JWT(key:dict, jwt):
         print('JWE Validation: ')
         validate_JWE(key=key, jwe=jwt)
 
-# comment
 def validate_format(key, payload, signature, protected, header):
     protected_json = {}
     if protected:
