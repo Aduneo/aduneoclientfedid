@@ -22,6 +22,7 @@ from ..BaseServer import continuous_page
 from ..Configuration import Configuration
 from ..Explanation import Explanation
 from ..Help import Help
+from ..JWT import verify_JWT
 from .Clipboard import Clipboard
 from .FlowHandler import FlowHandler
 import base64
@@ -601,7 +602,7 @@ class OIDCClientLogin(FlowHandler):
         self.log_info('HMAC signature, the secret is client_secret')
         encoded_secret = base64.urlsafe_b64encode(str.encode(client_secret)).decode()
         key = {"alg":alg,"kty":"oct","use":"sig","kid":"1","k":encoded_secret}
-        token_key = jwcrypto.jwk.JWK(**key)
+        token_key = key
 
       else:
         # Signature asymétrique
@@ -653,11 +654,11 @@ class OIDCClientLogin(FlowHandler):
           self.log_info(json.dumps(token_jwk, indent=2))
           
         self.add_result_row('Signature JWK', json.dumps(token_jwk, indent=2), 'signature_jwk')
-        token_key = jwcrypto.jwk.JWK(**token_jwk)
+        token_key = token_jwk
 
       # On vérifie la signature
       try:
-        jwcrypto.jwt.JWT(key=token_key, jwt=id_token)
+        verify_JWT(key=token_key, jwt=id_token)
         self.log_info('Signature verification OK')
         self.add_result_row('Signature verification', 'OK', copy_button=False)
       except Exception as error:
@@ -676,10 +677,10 @@ class OIDCClientLogin(FlowHandler):
             self.log_info(configuration_key)
             json_key = json.loads(configuration_key)
           
-            token_key = jwcrypto.jwk.JWK(**json_key)
+            token_key = json_key
           
             try:
-              jwcrypto.jwt.JWT(key=token_key, jwt=id_token)
+              verify_JWT(key=token_key, jwt=id_token)
               self.log_info('Signature verification OK')
               self.add_result_row('Signature verification', 'OK', copy_button=False)
             except Exception as error:
@@ -1039,7 +1040,7 @@ class OIDCClientLogin(FlowHandler):
         self.log_info('HMAC signature, the secret is client_secret')
         encoded_secret = base64.urlsafe_b64encode(str.encode(client_secret)).decode()
         key = {"alg":alg,"kty":"oct","use":"sig","kid":"1","k":encoded_secret}
-        token_key = jwcrypto.jwk.JWK(**key)
+        token_key = key
 
       else:
         # Signature asymétrique
@@ -1091,11 +1092,11 @@ class OIDCClientLogin(FlowHandler):
           self.log_info(json.dumps(token_jwk, indent=2))
           
         self.add_result_row('Signature JWK', json.dumps(token_jwk, indent=2), 'signature_jwk')
-        token_key = jwcrypto.jwk.JWK(**token_jwk)
+        token_key = token_jwk
 
       # On vérifie la signature
       try:
-        jwcrypto.jwt.JWT(key=token_key, jwt=id_token)
+        verify_JWT(key=token_key, jwt=id_token)
         self.log_info('Signature verification OK')
         self.add_result_row('Signature verification', 'OK', copy_button=False)
       except Exception as error:
@@ -1114,10 +1115,10 @@ class OIDCClientLogin(FlowHandler):
             self.log_info(configuration_key)
             json_key = json.loads(configuration_key)
           
-            token_key = jwcrypto.jwk.JWK(**json_key)
+            token_key = json_key
           
             try:
-              jwcrypto.jwt.JWT(key=token_key, jwt=id_token)
+              verify_JWT(key=token_key, jwt=id_token)
               self.log_info('Signature verification OK')
               self.add_result_row('Signature verification', 'OK', copy_button=False)
             except Exception as error:
