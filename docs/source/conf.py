@@ -6,7 +6,6 @@ project = 'aduneoclientfedid'
 copyright = 'Aduneo'
 author = 'Aduneo'
 
-release = '0.1'
 version = '1.0.2'
 
 # -- General configuration
@@ -20,6 +19,7 @@ extensions = [
 ]
 
 intersphinx_mapping = {
+    "rtd": ("https://docs.readthedocs.io/en/stable/", None),
     'python': ('https://docs.python.org/3/', None),
     'sphinx': ('https://www.sphinx-doc.org/en/master/', None),
 }
@@ -29,7 +29,7 @@ templates_path = ['_templates']
 
 # -- Options for HTML output
 
-html_theme = 'classic'
+html_theme = 'sphinx_rtd_theme'
 
 # -- Options for EPUB output
 epub_show_urls = 'footnote'
