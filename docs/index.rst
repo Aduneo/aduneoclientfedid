@@ -1,6 +1,9 @@
 Quick view
 ==========
 
+Introduction
+------------
+
 aduneoclientfedid is used to test OpenID Connect, OAuth 2 and SAML configurations. It acts as a federation client mimicking an application.
 
 After an initial configuration, various flows are tested. The application may obtain tokens and assertions that can be validated, then used for user info, introspection and exchange.
@@ -21,3 +24,9 @@ Contents
    Quick View <self>
    protocols
    installation
+   running
+   runningFromSources
+   testingOpenIDConnect
+   testingOAuth2
+   testingSAML2
+   generalconf
