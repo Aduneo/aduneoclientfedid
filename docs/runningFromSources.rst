@@ -20,11 +20,10 @@ It's still possible to run it from the sources.
 * wrapt
 * jwcrypto
   
-1. Additionaly (for SAML):
+2. Additionaly (for SAML):
 
 * lxml
 * xmlsec
-* Sources are downloaded from `Aduneo Github Repository <https://github.com/Aduneo/aduneoclientfedid>`_, usually as a ZIP download through the Code button.
 
 3. Create a root directory.
 
@@ -35,3 +34,7 @@ It's still possible to run it from the sources.
 .. code-block:: console
 
     python -m aduneoclientfedid
+
+.. tip::
+    
+    Sources are downloaded from `Aduneo Github Repository <https://github.com/Aduneo/aduneoclientfedid>`_, usually as a ZIP download through the *Code* button.

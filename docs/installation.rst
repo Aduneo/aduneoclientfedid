@@ -3,7 +3,11 @@ Installation
 
 **aduneoclientfedid** is a web server that is installed locally, most of the time on localhost and accessed with a web browser.
 
-Python must be installed on the system which will run the web server. It is compatible with Python 3.6 and later (with an exception however: the xmlsec library required for SAML does not exist at the moment for Python 3.11 on Windows).
+Python must be installed on the system which will run the web server. It is compatible with Python 3.6 and later.
+
+.. note::
+    
+    There's an exception however: the xmlsec library required for SAML does not exist at the moment for Python 3.11 on Windows
 
 It has been tested on Windows and various Linux systems. On Windows, it can be executed from a command line prompt or in a Powershell window.
 

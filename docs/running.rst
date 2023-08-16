@@ -1,7 +1,7 @@
 Running aduneoclientfedid
 =========================
 
-Once the packages are successfully installed, create a root directory where the configuration and logs will be created. This root directory can be located anywhere on the disk. The natural option is the directory where the Python virtual environment (venv) has been created.
+Once the packages are successfully installed, create a root directory where the configuration and logs will be created. This root directory can be located anywhere on the disk. The natural option is the directory where the Python virtual environment (*venv*) has been created.
 
 If you want to create a new root directory:
 
@@ -66,8 +66,3 @@ Once the server is running, stop it with Ctrl+C.
 This server is only meant to be running for the time when the tests are conducted. It is not optimized to run for a long time. It is not optimized to run as a demon. It is definitely not secure enough.
 
 It is usually run on the tester's computer or on a computer controlled by the tester.
-
-
-.. raw:: html
-
-    <style> .red {color:red} </style>

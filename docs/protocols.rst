@@ -1,7 +1,7 @@
 Supported Protocols
 ===================
 
-aduneoclientfedid supports OpenID Connect, OAuth 2 and SAML.
+**aduneoclientfedid** supports OpenID Connect, OAuth 2 and SAML.
 
 OpenID Connect
 --------------
