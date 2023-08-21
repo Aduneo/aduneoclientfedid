@@ -109,6 +109,11 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+devEnv/*
+
+# readthedocs 
+_build/*
+*.ps1
 
 # Spyder project settings
 .spyderproject
