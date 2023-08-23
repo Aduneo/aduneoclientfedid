@@ -598,12 +598,12 @@ class OAuthClientLogin(FlowHandler):
     except AduneoError as error:
       if self.is_result_in_table():
         self.end_result_table()
-      self.add_content('<h3>Token exchange failed: '+html.escape(str(error))+'</h3>')
+      self.add_content('<h3>Token introspection failed: '+html.escape(str(error))+'</h3>')
     except Exception as error:
       if self.is_result_in_table():
         self.end_result_table()
       self.log_error(('  ' * 1)+traceback.format_exc())
-      self.add_content('<h3>Token exchange failed: '+html.escape(str(error))+'</h3>')
+      self.add_content('<h3>Token introspection failed: '+html.escape(str(error))+'</h3>')
 
     self._add_footer_menu(context) 
       
