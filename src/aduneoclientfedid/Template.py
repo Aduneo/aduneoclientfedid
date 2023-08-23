@@ -15,11 +15,13 @@ limitations under the License.
 """
 
 from .BaseServer import AduneoError
+from .BaseServer import BaseServer
 
 import html
+import os
 
 class Template:
-  
+
   """
     Mécanisme de template simplifié
     
@@ -41,6 +43,39 @@ class Template:
 
   """
   
+  def load_template(file_name:str) -> str:
+    """ Retourne le contenu d'un fichier de modèle du dossier template
+
+    Le fichier doit être codé en UTF-8
+    
+    Args:
+      file_name: nom court du fichier, qui doit être dans le dossier template
+      
+    Return:
+      Contenu du fichier
+      
+    Raises:
+      AduneoError si le fichier n'existe pas ou s'il n'est pas dans le bon dossier
+      
+    Versions:
+      29/03/2023 (mpham) version initiale
+    """
+    
+    template_content = None
+    
+    tpl_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
+    requested_path = os.path.join(tpl_dir, file_name)
+
+    if not BaseServer.check_path_traversal(tpl_dir, requested_path):
+      raise AduneoError("Fichier de modèle "+file_name+" en dehors du dossier templates")
+    else:
+      if not os.path.isfile(requested_path):
+        raise AduneoError("Fichier de modèle "+requested_path+" introuvable dans le dossier templates")
+      with open(requested_path, mode='r', encoding="utf-8") as in_file:
+        template_content = in_file.read()
+    
+    return template_content
+
   
   def apply_template(text, **values):
 
