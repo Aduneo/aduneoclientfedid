@@ -132,3 +132,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Files to ignore in general
+*.ignore
+
+# Certs, keys and confs
+*.key
+*.cnf
+*.crt

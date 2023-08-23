@@ -238,7 +238,10 @@ def ed_verify(payload: bytes, signature: bytes, key: dict, *args):
         verifyfn = get_fn_from_key(key, curve=curve)
         return verifyfn.verify(signature, payload)
     raise NotImplementedError
-    
+
+def todo():
+    ...
+
 def sign(to_sign: bytes, signature: bytes, key: dict, alg: str):
     # Possible algorithms
     padfn256 = padding.PSS(padding.MGF1(hashes.SHA256()), hashes.SHA256.digest_size)
@@ -277,19 +280,19 @@ def sign(to_sign: bytes, signature: bytes, key: dict, alg: str):
         # 'ECDH-ES+A128KW': _EcdhEsAes128Kw,        # TODO: JWE enc alg
         # 'ECDH-ES+A192KW': _EcdhEsAes192Kw,        # TODO: JWE enc alg
         # 'ECDH-ES+A256KW': _EcdhEsAes256Kw,        # TODO: JWE enc alg
-        'EdDSA': (edfn, ),                    
+        'EdDSA': (edfn, ),
         # 'A128GCMKW': _A128GcmKw,                  # TODO: JWE enc alg
         # 'A192GCMKW': _A192GcmKw,                  # TODO: JWE enc alg
         # 'A256GCMKW': _A256GcmKw,                  # TODO: JWE enc alg
         # 'PBES2-HS256+A128KW': _Pbes2Hs256A128Kw,  # TODO: JWE enc alg
         # 'PBES2-HS384+A192KW': _Pbes2Hs384A192Kw,  # TODO: JWE enc alg
         # 'PBES2-HS512+A256KW': _Pbes2Hs512A256Kw,  # TODO: JWE enc alg
-        # 'A128CBC-HS256': _A128CbcHs256,           # TODO: JWE enc alg
-        # 'A192CBC-HS384': _A192CbcHs384,           # TODO: JWE enc alg
-        # 'A256CBC-HS512': _A256CbcHs512,           # TODO: JWE enc alg
-        # 'A128GCM': _A128Gcm,                      # TODO: JWE enc alg
-        # 'A192GCM': _A192Gcm,                      # TODO: JWE enc alg
-        # 'A256GCM': _A256Gcm,                      # TODO: JWE enc alg
+        'A128CBC-HS256': todo,
+        'A192CBC-HS384': todo,
+        'A256CBC-HS512': todo,
+        'A128GCM': todo,
+        'A192GCM': todo,
+        'A256GCM': todo,
         'BP256R1': (esfn, 'BP-256', SHA256),        # Not Tested
         'BP384R1': (esfn, 'BP-384', SHA384),        # Not Tested
         'BP512R1': (esfn, 'BP-512', SHA512)         # Not Tested
