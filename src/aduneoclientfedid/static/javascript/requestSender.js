@@ -55,7 +55,7 @@ function _getHtml(method, thisurl, data, menu_id=null, continueRequest=false) {
 }
 
 function getHtmlJson(method, thisurl, data, menu_id=null) {
-
+  
   if (menu_id) {
     document.getElementById(menu_id).style.display = 'none'
   }
@@ -72,6 +72,70 @@ function getHtmlJson(method, thisurl, data, menu_id=null) {
       window.eval(xhttp.response.javascript)
     }
   };
+  xhttp.responseType = 'json';
+  xhttp.open(method, thisurl);
+  if (method === 'GET') {
+    xhttp.send();
+  } else {
+    let formData = new FormData();
+    for (const [key, value] of Object.entries(data)) {
+      formData.append(key, value);
+    }
+    xhttp.setRequestHeader('Content-Type','application/x-www-form-urlencoded')
+    xhttp.send(new URLSearchParams(formData));
+  }
+}
+
+
+let intervalId = null;
+function getHtmlJsonContinue(method, thisurl, data, menu_id=null) {
+  _getHtmlJson(method, thisurl, data, menu_id, true);
+}
+
+
+function _getHtmlJson(method, thisurl, data, menu_id=null, continueRequest=false) {
+
+  if (menu_id) {
+    document.getElementById(menu_id).style.display = 'none'
+  }
+
+  //textPH = document.getElementById('text_ph');
+  //textPH.id = '';
+  //document.getElementById('end_ph').insertAdjacentHTML('beforebegin', '<div id="text_ph"></div>');
+
+  let xhttp = new XMLHttpRequest();
+  xhttp.onload = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      console.log(xhttp.response)
+      //document.getElementById('text_ph').innerHTML += xhttp.response.html;
+      document.getElementById('text_ph').insertAdjacentHTML('beforeend', xhttp.response.html);
+      document.getElementById('end_ph').scrollIntoView();
+      
+      xhttp.response.javascript_include.forEach(include => {
+        let scriptEl = document.createElement("script");
+        scriptEl.setAttribute("src", include);
+        scriptEl.setAttribute("type", "text/javascript");
+        document.body.appendChild(scriptEl);
+      })
+  
+      //xhttp.response.javascript_include.forEach(include => { window.eval('<script src="'+include+'"></script>)'); })
+      window.eval(xhttp.response.javascript)
+      if (continueRequest) {
+        if (xhttp.response.stop === true) {
+          if (intervalId) { clearInterval(intervalId); intervalId = null; }
+        } else {
+          if (intervalId === null) {
+            console.log('START')
+            intervalId = setInterval(_getHtmlJson, 3000, method, thisurl, data, menu_id, true);
+          }
+        }
+      }
+    }
+  };
+  xhttp.onerror = function(e) {
+    console.log(e)
+    if (intervalId) { clearInterval(intervalId); intervalId = null; }
+  }
   xhttp.responseType = 'json';
   xhttp.open(method, thisurl);
   if (method === 'GET') {
