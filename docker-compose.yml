@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  aduneoclientfedid:
+    build:
+        context: .
+    container_name: aduneoclientfedid
+    ports:
+      - "443:443"
+    volumes:
+      - app:/usr/src/app
+volumes:
+  app: {}
