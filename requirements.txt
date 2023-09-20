@@ -1,4 +1,3 @@
 build
 xmlsec
-#aduneoclientfedid
-#aduneoclientfedid[saml]
+python-jose

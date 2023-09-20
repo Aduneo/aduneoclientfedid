@@ -968,9 +968,13 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
         content = """
         <script src="/javascript/requestSender.js"></script>
         <div id="text_ph"></div>
-        <div id="end_ph"></div>
-        
-        <script>getHtmlJsonContinue("GET", "/continuouspage/poll?cp_id={cp_id}")</script>
+        <div id="end_ph"></div>        
+        <script>
+        function getHtmlJsonContinueDelayed() {{
+          getHtmlJsonContinue("GET", "/continuouspage/poll?cp_id={cp_id}");
+        }}
+        setTimeout(getHtmlJsonContinueDelayed, 5000);    
+        </script>
         """.format(cp_id=self.hreq.continuous_page_id)
         
         self.hreq.send_response(200)

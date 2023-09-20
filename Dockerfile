@@ -10,8 +10,8 @@ WORKDIR /usr/src/app
 COPY . .
 RUN chmod +x ./bin/entrypoint.sh && \
 export VERSION=$(grep version pyproject.toml | head -n 1 | awk -F= '{ print $2 }' | tr -d ' "') && \
-python -m venv myenv && \
-. ./myenv/bin/activate  && \
+#python -m venv myenv && \
+#. ./myenv/bin/activate  && \
 pip install --no-cache-dir -r requirements.txt && \
 python -m build && \
 pip install --force-reinstall dist/aduneoclientfedid-${VERSION}-py3-none-any.whl

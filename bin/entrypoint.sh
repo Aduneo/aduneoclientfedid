@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "ok"
-. ./myenv/bin/activate
+#. ./myenv/bin/activate
 echo "ok2"
 # Run your main process
 # aduneoclientfedid &
