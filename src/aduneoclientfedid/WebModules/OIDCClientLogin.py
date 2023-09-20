@@ -22,7 +22,9 @@ from ..BaseServer import continuous_page
 from ..Configuration import Configuration
 from ..Explanation import Explanation
 from ..Help import Help
-from ..JWT import verify_JWT
+from ..JWT.jws import verify_jws
+from ..JWT.crypto import import_from_PEM
+from ..JWT.jwe import verify_jwe
 from .Clipboard import Clipboard
 from .FlowHandler import FlowHandler
 import base64
@@ -514,6 +516,46 @@ class OIDCClientLogin(FlowHandler):
       token_items = id_token.split('.')
       encoded_token_header = token_items[0]
       token_header_string = base64.urlsafe_b64decode(encoded_token_header + '=' * (4 - len(encoded_token_header) % 4))
+#       # TODO: A changer pour les JWE : La Deuxième partie du token est la clé chiffré et pas le payload
+#       # Ajouter option JWE si cocher > traitement JWE, sinon JWT ?
+#       local_key = \
+#         b"""-----BEGIN PRIVATE KEY-----
+# MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCijVrnkvcPv7wH
+# bGRVBna5yrXnyEaYHzxsuKpvSGeg9qDpL8YceT6XLgg2+QWb7Oh2kj4EnLhoDR8Y
+# 5z9fYApbpKudVa7nqjTTsgnxw8FsE7mmtzmzOnRLhZvRnpGi5XJd/D+msnZ8KpQO
+# PBltD53+4eTqcY502ZWCL51njQAxLImUSb7bBy3ZyDMUhaPN8sWtvcq4uIsFVXax
+# R15zH0UpVDEWXsR+dCIOU2XTsZ+ai+JkPeCS5cGnVA/6JG6f21MMnyD3VvgJn8E1
+# iJb9uB5j2/dfxkBCmd/3KGJbJVAjp1R5jCWtUtvLCaiCzFBvUrkjA1ufz2ptkBlV
+# nfb5Yb25AgMBAAECggEAAUhcw9rdcSl0kpJP6nosuAyJ6d44dCmtYXfpPJoQE/EN
+# YJxX7H6migl3Xi8DsTumT5wZwTxlPVdlYx4Ar8O6cE6FT9HuvRUvm5V6Jqq0Io0a
+# 9jq7nyGSXhMxPbZJ+EvJeyjgUV7W3B7MclcWHtTiogcNy59276tGpP4JBstnV8oz
+# ph04QiW2gE3ZZj4GbpuitsaiHtGwI3DOVyS4kjAMKCk1gu/9tr/L65ZL14831lHE
+# ASUzRCOk0M3KwUWzlt3RvwLqTfhd08A7CbtvWNmgepmwWnO4lyDdolpb3vLhKvnY
+# BblZXJWIewfZyZZDRYqEHdl9vf3wwEIs4IGRk2lXJQKBgQDX6dKE42gDzsbVUMIb
+# nk3xNWaI0iCIsV+fR6i5mRhB3Cwcvuci6C29tMmmzkX38+Sr/ZmkoZIIZdkxUgm/
+# 9hjp6diS8g9PvlTKwNyHRje8jj2KQXF00QgFUhzMFxly1th9Ki4vishKzIVDkfKY
+# TehqOaLrEAeQUdPlAf6lvxhS1QKBgQDAu1IQ4HAvvb6WagyZrhrKZKuS+NN2HYjL
+# oCcch4vForLIGmJ56CR7H7DjhMdiFJv4DqwPm1idIjZR7QgJLdAiIKyhFL9ZXGlc
+# QhUQqXmJT4wbAtH2L+dPPXafelWmHtxKTW/Sm7YHQuo9pOgzPjDgE8zATCxqZN8N
+# AW7KiLHJVQKBgQCcywg9yIZ4fWiW8BaFx+gCCi1znmRR37z5BijY3vxml2TRWzCu
+# gLz2zprBr3nQHiUpYPh6PXq27n9S+ahq5mQhOdg0nePQnP8mXffHpI5FN2YpSG0D
+# z+hrNL4E16F7a9m6yy7PB5F8ABmmgA4T3D+zJDfTS8iyXTnrTA+IfcVEIQKBgCoQ
+# uHi2g8XnxBFQVC+2sGI8VrZdWMoO6CyJZ//yFa+tMxg5qgSxhkTZReJiuKHPnbsm
+# eKdvYIfrT6/R7E8UkLjiKMt/m8QFR3m7cp2QX9Z4Zjv/AZSaIAJLh/iG2urHEY2m
+# GSH+mlw7XqTVuVh12nUN3UKbXZZbLdPI3EWYUDWBAoGBAKblvCLOa46vw3dTpVsT
+# GGVSa7Ge8VHkv96l+1LEcETBe0Du1aBZhsFiHtBPwEkQ+NAVw3evEfavS08XpVJ9
+# /OenE0+mk1d1Bg17IyZHatoWBLSgFm6pjLLz8nbk0eSL9V71ueEloZJtfzPPNHPC
+# dZGDspf53kBzH0nmpLH0E2q5
+# -----END PRIVATE KEY-----"""
+#       decoded_key = import_from_PEM(local_key)
+#       self.log_info('My key:')
+#       self.log_info(json.dumps(decoded_key, indent=2))
+#       self.log_info('--------------------------------------------')
+#       data = verify_jwe(decoded_key, id_token)
+#       self.log_info('Decoded data:')
+#       self.log_info(data[0])
+#       self.log_info('--------------------------------------------')
+#       # Pour l'instant je faits le déchiffrement avant que ça crash
       encoded_token_payload = token_items[1]
       token_payload = base64.urlsafe_b64decode(encoded_token_payload + '=' * (4 - len(encoded_token_payload) % 4))
 
@@ -658,7 +700,7 @@ class OIDCClientLogin(FlowHandler):
 
       # On vérifie la signature
       try:
-        verify_JWT(key=token_key, jwt=id_token)
+        verify_jws(key=token_key, jwt=id_token)
         self.log_info('Signature verification OK')
         self.add_result_row('Signature verification', 'OK', copy_button=False)
       except Exception as error:
@@ -680,7 +722,7 @@ class OIDCClientLogin(FlowHandler):
             token_key = json_key
           
             try:
-              verify_JWT(key=token_key, jwt=id_token)
+              verify_jws(key=token_key, jwt=id_token)
               self.log_info('Signature verification OK')
               self.add_result_row('Signature verification', 'OK', copy_button=False)
             except Exception as error:
@@ -1096,7 +1138,7 @@ class OIDCClientLogin(FlowHandler):
 
       # On vérifie la signature
       try:
-        verify_JWT(key=token_key, jwt=id_token)
+        verify_jws(key=token_key, jwt=id_token)
         self.log_info('Signature verification OK')
         self.add_result_row('Signature verification', 'OK', copy_button=False)
       except Exception as error:
@@ -1118,7 +1160,7 @@ class OIDCClientLogin(FlowHandler):
             token_key = json_key
           
             try:
-              verify_JWT(key=token_key, jwt=id_token)
+              verify_jws(key=token_key, jwt=id_token)
               self.log_info('Signature verification OK')
               self.add_result_row('Signature verification', 'OK', copy_button=False)
             except Exception as error:
