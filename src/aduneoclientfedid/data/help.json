@@ -1,76 +1,90 @@
 {
-  "oidc_client_modifyclient_name": {
+  "client_oidc_admin_modifyclient_name": {
     "header_en": "Name",
     "content_en": "<p>Le nom est un libellé arbitraire que vous attribuez au client OIDC que vous définissez</p>"
   },
-  "oidc_client_modifyclient_redirect_uri": {
+  "client_oidc_admin_modifyclient_redirect_uri": {
     "header_en": "URI de redirection",
     "content_en": "<p>Le client doit indiquer l'URL qui accueillera l'utilisateur à son retour d'authentification par l'IdP. Cette URL doit faire partie des URL configurées auprès de l'IdP.</p><p>La valeur proposée par défaut est déduite par Aduneo Identity Federation Test. En fonction du contexte, il peut être nécessaire de modifier la partie domaine pour donner le nom avec lequel le client est visible des utilisateurs.</p><p>La valeur de ce champ doit donc être reportée dans la configuration de l'IdP.</p>"
   },
-  "oidc_client_modifyclient_endpoint_configuration": {
+  "client_oidc_admin_modifyclient_endpoint_configuration": {
     "header_en": "Endpoint Configuration",
     "content_en": "<p>Un client OpenID Connect a besoin de connaître les points d'entrées du serveur afin d'y rediriger l'utilisateur pour authentification, puis d'y récupérer les jetons, les informations sur l'utilisateur, etc. Il s'agit d'URL publiées par l'IdP OIDC, souvent spécifiques au client.</p><p>Par exemple l'URL accueillant les utilisateurs pour authentification ressemble souvent à https://login.idp.com/&lt;un identifiant du client&gt;/oauth2/v2.0/authorize</p><p>Afin de faciliter la configuration des clients, les IdP publient souvent une URL avec l'ensemble des endpoint. La configuration se résume alors à la saisie d'une unique URL au lieu de la liste des URL des différents endpoint</p>Le client de fédération accepte les deux manières de déclaration :</p><ul><li>en choisissant Discovery URI, vous n'avez qu'à donner cette URL unique, qui ressemble souvent à https://www.idp.com/.well-known/openid-configuration</li><li>avec Local Configuration, il vous faudra donner individuellement les URL de chaque endpoint, telles qu'elles sont indiquées par l'IdP.</li></ul>"
   },
-  "oidc_client_modifyclient_discovery_uri": {
+  "client_oidc_admin_modifyclient_discovery_uri": {
     "header_en": "Discovery URI",
     "content_en": "<p>L'URI de découverte (Discovery URI) donne la configuration de l'OpenID Provider (appelé dans le langage courant IdP). Elle est définie dans la spécification \"OpenID Connect Discovery 1.0 incorporating errata set 1\" (<a href=\"https://openid.net/specs/openid-connect-discovery-1_0.html \" target=\"_blank\">https://openid.net/specs/openid-connect-discovery-1_0.html</a>) qui traite de la récupération automatique de l'IdP d'un utilisateur. Si cette fonctionnalité n'est finalement pas utilisée, la récupération de la configuration de l'IdP est entrée dans les moeurs.<p><p>La plupart des IdP publient une URL retournant un fichier JSON avec la liste des différents endpoint et des informations associées. Selon les cas, ces endpoint sont communs à l'ensemble des applications authentifiées par l'IdP, sont spécifiques à une entité (IdP opérant par tenant par exemple), voire dédiés à un client (c'est-à-dire une application) particulier.</p><p>La spécification impose que l'URI de découverte soit formée de l'URL identifiant l'IdP (issuer) à laquelle est ajoutée la chaîne \"/.well-known/openid-configuration\" à la fin. On trouvera donc habituelleent des URI avec les formes suivantes</p><ul><li>https://www.idp/com/.well-known/openid-configuration quand la configuration est globale</li><li>https://&lt;tenant&gt;.idp/com/.well-known/openid-configuration pour des IdP en tenant</li><li>https://www.idp/com/&lt;client&gt;.well-known/openid-configuration lorsque la configuration est spécifique à une application ou à un tenant</li></ul>"
   },
-  "oidc_client_modifyclient_issuer": {
+  "client_oidc_admin_modifyclient_issuer": {
     "header_en": "Issuer",
     "content_en": "<p>L'émetteur (issuer) est l'entité qui authentifie l'utilisateur et génère les jetons. En langage commun, c'est donc l'OpenID Provider (OP ou IdP). On notera pour être plus précis qu'un même serveur peut héberger plusieurs émetteurs, par exemple s'il gère des tenants différents.</p><p>La spécification précise qu'un émetteur est donné sous la forme d'une URL en https, avec un domaine, et éventuellement un port et un chemin (mais pas de query string). Attention cette écriture est sensible à la casse.</p><p>Ce paramètre est à récupérer auprès de l'IdP. Il est la plupart du temps donné lors de la configuration du client (application), parfois dans une page regroupant tous les endpoint ou toutes les options</p><p>Voici quelques exemples d'émetteurs :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/v2.0</li><li>https://societe.okta.com</li></ul>"
   },
-  "oidc_client_modifyclient_authorization_endpoint": {
+  "client_oidc_admin_modifyclient_authorization_endpoint": {
     "header_en": "Authorization Endpoint",
     "content_en": "<p>L'endpoint d'autorisation (authorization endpoint) est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs pour y être authentifiés. C'est donc le point de départ de la cinématique OpenID Connect.</p><p>On notera qu'il n'est pas facile de traduire le terme endpoint en français. Certains utilisent point de terminaison ou point d'extrémité. Point d'entrée nous paraît un meilleur candidat, mais on préfère finalement ne pas traduire le terme qui est passé dans le langage courant informatique.<p>La spécification n'impose pas de syntaxe à l'URL, qui doit obligatoirement être en https. Voici quelques exemples d'authorization endpoint :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/oauth2/v2.0/authorize</li><li>https://societe.okta.com/oauth2/v1/authorize</li></ul><p>Ce paramètre est à récupérer auprès de l'IdP. Il est la plupart du temps donné lors de la configuration du client (application), parfois dans une page regroupant tous les endpoint ou toutes les options.</p>"
   },
-  "oidc_client_modifyclient_token_endpoint": {
+  "client_oidc_admin_modifyclient_token_endpoint": {
     "header_en": "Token Endpoint",
     "content_en": "<p>L'endpoint de jeton (token endpoint) est l'URL de l'API de l'IdP qui est appelée directement par le client (l'application) afin d'obtenir les jetons. Il le faut lors de la cinématique initiale en présentant le code retourné par l'IdP, mais aussi par la suite s'il souhaite renouveler le jeton d'accès.</p><p>La spécification n'impose pas de syntaxe à l'URL, qui doit obligatoirement être en https. Voici quelques exemples de token endpoint :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/oauth2/v2.0/token</li><li>https://societe.okta.com/oauth2/v1/token</li></ul><p>Ce paramètre est à récupérer auprès de l'IdP. Il est la plupart du temps donné lors de la configuration du client (application), parfois dans une page regroupant tous les endpoint ou toutes les options.</p>"
   },
-  "oidc_client_modifyclient_end_session_endpoint": {
+  "client_oidc_admin_modifyclient_end_session_endpoint": {
     "header_en": "Logout Endpoint",
     "content_en": "<p>L'endpoint de déconnexion (logout endpoint) est le symétrique de l'endpoint d'autorisation (authorization endpoint). Il permet de mettre fin à la session. Il represente l'URL vers laquelle l'utilisateur est redirigé avec une requête de déconnexion. La déconnexion n'est pas abordée dans la spécification principale (<a href=\"https://openid.net/specs/openid-connect-core-1_0.html \">OpenID Connect Core</a>), mais dans un document à part : <a href=\"https://openid.net/specs/openid-connect-rpinitiated-1_0.html \">OpenID Connect RP-Initiated Logout</a></p><p>La cinématique de déconnexion est similaire à celle de l'authentification : l'utilisateur est redirigé vers l'IdP qui réalise alors la déconnexion. Optionnellement, le client peut demander que l'utilisateur lui soit retourné.</p><p>Dans les informations de connexion retournées par l'URI de découverte (Discovery URI), cet endpoint est appelé endpoint de fin de session (end session endpoint) et non endpoint de déconnexion.</p><p>Attention, il est parfois nécessaire d'activer explicitemnet la fonctionnalité de déconnexion dans l'IdP lors de la configuration<p>Il est parfois nécessaire d'activer explicitemnet la fonctionnalité de déconnexion dans l'IdP lors de la configuration</p><p>Tout comme pour l'URL d'autorisation, la spécification n'impose pas de syntaxe à l'URL, qui doit obligatoirement être en https. Voici quelques exemples de logout endpoint :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/oauth2/v2.0/logout</li><li>https://societe.okta.com/oauth2/v1/logout</li></ul><p>Ce paramètre est à récupérer auprès de l'IdP. Il est la plupart du temps donné lors de la configuration du client (application), parfois dans une page regroupant tous les endpoint ou toutes les options.</p><p>Le mécanisme de déconnexion peut aller plus loin, afin que la déconnexion soit propagée à toutes les applications auxquelles l'utilisateur est authentifié (par le même IdP en session SSO s'entend). OpenID Connect définit pour cela deux méthodes : <a href=\"https://openid.net/specs/openid-connect-frontchannel-1_0.html \">OpenID Connect Front-Channel Logout</a> et <a href=\"https://openid.net/specs/openid-connect-backchannel-1_0.html \">OpenID Connect Back-Channel Logout</a>.</p>"
   },
-  "oidc_client_modifyclient_userinfo_endpoint": {
+  "client_oidc_admin_modifyclient_userinfo_endpoint": {
     "header_en": "Userinfo Endpoint",
     "content_en": "<p>L'endpoint d'information sur l'utilisateur (userinfo endpoint) est l'URL de l'API de l'IdP qui est appelée directement par le client (l'application) afin d'obtenir des informations complémentaires sur l'utilisateur.</p><p>Il est effet préconisé de ne pas transmettre de données confidentielles dans les claims du jeton qui est parfois transporté sur internet et est parfois visible de l'utilisateur. On préfère une communication directe entre serveurs au travers d'un service web exposé par l'IdP.</p><p>La sécurisation de cette API est réalisée par OAuth 2. Le client doit donc disposer d'un jeton d'accès (access token) qu'il présente lors de sa connexion au service web. Ce jeton d'accès est récupéré lors de la cinématique OpenID Connect en même temps que le jeton d'identité (ID token).</p><p>La spécification n'impose pas de syntaxe à l'URL, qui doit obligatoirement être en https. Voici quelques exemples de userinfo endpoint :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/oauth2/v2.0/userinfo</li><li>https://societe.okta.com/oauth2/v1/userinfo</li></ul><p>Ce paramètre est à récupérer auprès de l'IdP. Il est la plupart du temps donné lors de la configuration du client (application), parfois dans une page regroupant tous les endpoint ou toutes les options.</p>"
   },
-  "oidc_client_modifyclient_signature_key_configuration": {
+  "client_oidc_admin_modifyclient_signature_key_configuration": {
     "header_en": "Signature Key Configuration",
     "content_en": "<p>Après retour d'authentification, le client se connecte à l'endpoint de jeton pour récupérer le jeton d'identité (et un jeton d'accès). Ce jeton d'identité (ID token) doit être validé avant de considérer l'authentification comme effective. Parmi les différents tests de validation, l'un des plus importants est la vérification de signature.</p><p>Le jeton d'identité est un jeton JSON (JWT) signé par une clé privée de l'IdP (ce qui en fait techniquement un JWS). Pour vérifier la signature, le client doit disposer de la clé publique de l'IdP correspondant à la clé de signature.</p><p>Les clés étant susceptibles de changer dans le temps (leur rotation étant une bonne pratique de sécurité), les IdP les mettent à disposition au travers d'une URL (appelée JWKS URI). Le client de fédération donne toutefois la possibilité de fournir manuellement la bonne clé à des fins de test.</p><ul><li>JWKS URI : URL de récupération automatique des clés publiques, (par exemple https://societe.okta.com/oauth2/v1/keys). Lorsque la configuration des endpoint est réalisée automatiquement, l'URL est récupérée à cette occasion</li><li>Local configuration : la clé publique est fournie directement dans le formulaire</li></ul>"
   },
-  "oidc_client_modifyclient_jwks_uri": {
+  "client_oidc_admin_modifyclient_jwks_uri": {
     "header_en": "JWKS URI",
     "content_en": "<p>L'URI JWKS est publiée par l'IdP pour que le client récupère en temps réel la liste des clés publiques à utiliser pour vérifier la signature du jeton d'identité (et celle des jetons d'accès s'ils sont au format Json Web Token). Afin de rendre possible une rotation des clés, l'IdP a la possibilité d'en publier plusieurs. Chaque clé est repérée par un identifiant pour que le client puisse déterminer la clé qui correspond au jeton qu'il a reçu (et qui contient la référence à l'identifiant.</p><p>La spécification n'impose pas de syntaxe à l'URL, qui doit obligatoirement être en https. Voici quelques exemples de userinfo endpoint :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/discovery/v2.0/keys</li><li>https://societe.okta.com/oauth2/v1/keys</li></ul><p>Ce paramètre est à récupérer auprès de l'IdP. Il est la plupart du temps donné lors de la configuration du client (application), parfois dans une page regroupant tous les endpoint ou toutes les options.</p>"
   },
-  "oidc_client_modifyclient_signature_key": {
+  "client_oidc_admin_modifyclient_signature_key": {
     "header_en": "Signature Key",
     "content_en": "<p>S'il est préférable que le client récupère en temps réel les clés de vérification du jeton par l'URI JWKS, le client de test de fédération donne la possibilité de lui fournir directement la clé à utiliser</p><p>Une clé ressemble à</p><ul><li>{\"kty\":\"RSA\",\"alg\":\"RS256\",\"kid\":\"&lt;identifiant de la clé&gt;\",\"use\":\"sig\",\"e\":\"AQAB\",\"n\":\"g53BhV2Rx5CHaa...RNozJLU0t1eNU9qplC3AbkbN3v8weG6ew\"}</li></ul><p>(il s'agit ici d'une clé RSA, mais des clés d'autres types sont permises par la norme)</p>"
   },
-  "oidc_client_modifyclient_client_id": {
+  "client_oidc_admin_modifyclient_client_id": {
     "header_en": "Client ID",
     "content_en": "<p>L'IdP attribue un identifiant unique à chaque application qu'il doit authentifier. Cet identifiant est appelé Client ID. C'est ce qui lui permet de savoir quelle politique de sécurité appliquer. Il sert aussi lors des différentes vérifications : authentification lors des appels d'API, validation des jetons, contrôle de l'URL de retour</p><p>Ce paramètre est évidemment à récupérer auprès de l'IdP</p>"
   },
-  "oidc_client_modifyclient_client_secret": {
+  "client_oidc_admin_modifyclient_client_secret": {
     "header_en": "Client Secret",
     "content_en": "<p>Lorsque le client se connecte aux endpoint de l'IdP (récupération des jetons par exemple), il est formellement authentifié par la donnée du Client ID et par une méthode d'authentification. Le client de test de fédération n'est actuellement compatible qu'avec la méthode client_secret_post, qui est un simple mot de passe.</p><p>Les autres méthodes d'authentification sera prochainement prises en charge :</p><ul><li>client_secret_basic : transmission du mot de passe en en-tête de la requête HTTP</li><li>client_secret_jwt : authentification par JWT signé en HMAC (de fait une authentification par HMAC)</li><li>private_key_jwt : authentification par JWT signé par une clé privée. La clé publique doit être communiquée à l'IdP pour qu'il puisse vérifier la signature</li></ul><p>Les jetons non signés (méthode none) ne sont pas autorisés pour des raisons évidentes de sécurité</p>"
   },
-  "oidc_client_modifyclient_scope": {
+  "client_oidc_admin_modifyclient_scope": {
     "header_en": "Scope",
     "content_en": "<p>Le scope OAuth 2 permet de véhiculer le type d'autorisation demandée au serveur d'autorisation. Une application pourra par exemple demander des droits en écriture sur un objet particulier, et l'exprimera en fournissant des scopes (périmètres) associés. OpenID Connect en détourne un peu la définition pour son utilisation propre. Il sert au client de préciser la demande d'authentification.</p><p>Le client doit nécessairement demander le scope \"openid\" qui indique au serveur qu'il s'agit d'une demande d'authentification OpenID Connect et non une cinématique OAuth 2.</p><p>En ajoutant le scope offline_access, le client indique à l'IdP qu'il souhaite recevoir un jeton de rafraîchissement du jeton d'accès en même temps que les autres jetons.</p><p>D'autres valeurs sont utilisées pour demander à recevoir des informations sur l'utilisateur authentifié (appelées claims). Il s'agit de</p><ul><li>profile : ensemble d'informations par défaut (nom, nom de famille, prénom, second prénom, alias, etc.)</li><li>email : adresse de messagerie et indication que cette adresse a bien été vérifiée</li><li>address : adresse</li><li>phone : numéro de téléphone et indication que ce numéro a bien été vérifié</li></ul><p>L'utilisation de scopes pour identifier les informations à retourner est, on le voit, limitée. Le client n'a évidemment aucune garantie que l'information lui soit fournie (par exemple si l'utilisateur n'a pas donné son consentement). La plupart du temps, les informations à transmettre au client sont configurées au niveau de l'IdP, qui précise en plus la manière dont elles sont communiquées : dans le jeton d'identité, dans le jeton d'accès et/ou au travers de l'API userinfo.</p>"
   },
-  "oidc_client_modifyclient_response_type": {
+  "client_oidc_admin_modifyclient_response_type": {
     "header_en": "Response Type",
     "content_en": "<p>Le paramètre response type indique la cinématique souhaitée par le client : code d'autorisation, implicite, hybride. Etant donné que la cinématique implicite a été rendue obsolète, le client de test de fédération ne propose que la cinématique code.</p>"
   },
-  "oidc_client_modifyclient_fetch_userinfo": {
+    "client_oidc_admin_modifyclient_token_endpoint_auth_method": {
+    "header_en": "Auth method",
+    "content_en": "<p>Les méthodes d'autorisation courantes sont :</p><p>Client Secret Basic :</p><p>Le client utilise son client_id et son client_secret pour s'authentifier auprès du serveur d'autorisation.</p><p>Ces informations d'identification sont incluses dans le header de la requête et encodées en base64 (client_id:client_secret)</p><br/><p>Client Secret Post :</p><p>Comme Client Secret Basic, mais les informations d'identification sont transmises dans le corps de la requête POST au lieu de l'en-tête.</p>"
+  },
+  "client_oidc_admin_modifyclient_fetch_userinfo": {
     "header_en": "Userinfo Retrieval",
     "content_en": "<p>Ce paramètre ne configure pas le protocole OIDC. Il indique uniquement au client de test de fédération que l'on souhaite tester l'endpoint userinfo après avoir récupéré les jetons.</p>"
   },
-  "oidc_client_modifyclient_verify_certificates": {
+  "client_oidc_admin_modifyclient_verify_certificates": {
     "header_en": "Certificate verification",
     "content_en": "<p>Indique si le client doit vérifier la validité des certificats de l'IdP lors des connexions aux différents points d'entrées des API.</p><p>Cette vérification est l'un des points essentiels assurant la sécurité d'OpenID Connect.</p><p>Les erreurs de certificats sont la cause de nombreux dysfonctionnement, en particulier lorsque les autorités sont internes.</p>"
   },
+  "client_oidc_admin_modifyclient_post_logout_redirect_uri": {
+    "header_en": "Logout Endpoint",
+    "content_en": "<p>L'endpoint de déconnexion (logout endpoint) est le symétrique de l'endpoint d'autorisation (authorization endpoint). Il permet de mettre fin à la session. Il represente l'URL vers laquelle l'utilisateur est redirigé avec une requête de déconnexion. La déconnexion n'est pas abordée dans la spécification principale.</p><p>La cinématique de déconnexion est similaire à celle de l'authentification : l'utilisateur est redirigé vers l'IdP qui réalise alors la déconnexion. Optionnellement, le client peut demander que l'utilisateur lui soit retourné.</p><p>Dans les informations de connexion retournées par l'URI de découverte (Discovery URI), cet endpoint est appelé endpoint de fin de session (end session endpoint) et non endpoint de déconnexion.</p><p>Attention, il est parfois nécessaire d'activer explicitemnet la fonctionnalité de déconnexion dans l'IdP lors de la configuration<p>Il est parfois nécessaire d'activer explicitemnet la fonctionnalité de déconnexion dans l'IdP lors de la configuration</p><p>Tout comme pour l'URL d'autorisation, la spécification n'impose pas de syntaxe à l'URL, qui doit obligatoirement être en https. Voici quelques exemples de logout endpoint :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/oauth2/v2.0/logout</li><li>https://societe.okta.com/oauth2/v1/logout</li></ul><p>Ce paramètre est à récupérer auprès de l'IdP. Il est la plupart du temps donné lors de la configuration du client (application), parfois dans une page regroupant tous les endpoint ou toutes les options.</p><p>Le mécanisme de déconnexion peut aller plus loin, afin que la déconnexion soit propagée à toutes les applications auxquelles l'utilisateur est authentifié (par le même IdP en session SSO s'entend). OpenID Connect définit pour cela deux méthodes : <a href=\"https://openid.net/specs/openid-connect-frontchannel-1_0.html \">OpenID Connect Front-Channel Logout</a> et <a href=\"https://openid.net/specs/openid-connect-backchannel-1_0.html \">OpenID Connect Back-Channel Logout</a>.</p>"
+  },
+    "client_oidc_login_preparerequest_token_endpoint_auth_method": {
+    "header_en": "Auth method",
+    "content_en": "<p>Les méthodes d'autorisation courantes sont :</p><p>Client Secret Basic :</p><p>Le client utilise son client_id et son client_secret pour s'authentifier auprès du serveur d'autorisation.</p><p>Ces informations d'identification sont incluses dans le header de la requête et encodées en base64 (client_id:client_secret)</p><br/><p>Client Secret Post :</p><p>Comme Client Secret Basic, mais les informations d'identification sont transmises dans le corps de la requête POST au lieu de l'en-tête.</p>"
+  },
+  
+  
   "client_oidc_login_preparerequest_authorization_endpoint": {
     "header_en": "Authorization Endpoint",
     "content_en": "<p>L'endpoint d'autorisation (authorization endpoint) est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs pour y être authentifiés. C'est donc le point de départ de la cinématique OpenID Connect.</p><p>On notera qu'il n'est pas facile de traduire le terme endpoint en français. Certains utilisent point de terminaison ou point d'extrémité. Point d'entrée nous paraît un meilleur candidat, mais on préfère finalement ne pas traduire le terme qui est passé dans le langage courant informatique.<p>La spécification n'impose pas de syntaxe à l'URL, qui doit obligatoirement être en https. Voici quelques exemples d'authorization endpoint :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/oauth2/v2.0/authorize</li><li>https://societe.okta.com/oauth2/v1/authorize</li></ul><p>On donne ici la valeur utilisée lors de la dernière tentative d'authentification, ou la valeur déduite de la configuration du client, qu'elle ait été fournie directement ou qu'elle ait été récupérée auprès de l'URL de découverte.</p><p>Vous avez le loisir de modifier cette valeur (qui ne sera pas reportée dans la configuration) et que vous retrouverez si vous refaites une nouvelle tentative d'authentification juste derrière celle-ci.</p>"
@@ -159,6 +173,10 @@
     "header_en": "Userinfo Retrieval",
     "content_en": "<p>Ce paramètre ne configure pas le protocole OIDC. Il indique uniquement à Aduneo Identity Federation Test que l'on souhaite tester l'endpoint userinfo après avoir récupéré les jetons.</p>"
   },
+  "client_oidc_login_preparerequest_verify_certificates": {
+    "header_en": "Certificate verification",
+    "content_en": "<p>Indique si le client doit vérifier la validité des certificats de l'IdP lors des connexions aux différents points d'entrées des API.</p><p>Cette vérification est l'un des points essentiels assurant la sécurité d'OpenID Connect.</p><p>Les erreurs de certificats sont la cause de nombreux dysfonctionnement, en particulier lorsque les autorités sont internes.</p>"
+  },  
   "oidc_client_callback_idp_state": {
     "header_en": "State retourné par l'IDP",
     "content_en": "<p>Le paramètre <i>state</i> est un identifiant transmis dans la requête d'authentification.</p><p>L'IdP le retourne tel quel dans l'URL de retour d'authentification, afin de vérifier que la réponse correspond bien à une demande réalisée par le client.</p><p>Si le <i>state</i> est inconnu par le client, il est probable qu'un attaquant tente de forcer une authentification, par exemple dans le but de faciliter une attaque de type CRSF.</p>"
@@ -243,75 +261,96 @@
     "header_en": "Données récupérées de l'endpoint Userinfo",
     "content_en": "<p>On affiche ici de manière brute les informations transmises par le serveur après appel à l'endpoint Userinfo.</p><p>La norme indique qu'elles doivent être représentées dans un objet JSON.</p>"
   },
-  "oauth_client_modifyclient_name": {
+  "client_oauth_admin_modifyclient_name": {
     "header_en": "Name",
     "content_en": "<p>Le nom est un libellé arbitraire que vous attribuez au client OAuth 2 que vous définissez</p>"
   },
-  "oauth_client_modifyclient_redirect_uri": {
+  "client_oauth_admin_modifyclient_redirect_uri": {
     "header_en": "URI de redirection",
     "content_en": "<p>Le client doit indiquer l'URL qui accueillera l'utilisateur à son retour d'authentification par l'IdP. Cette URL doit faire partie des URL configurées auprès de l'IdP.</p><p>La valeur proposée par défaut est déduite par Aduneo Identity Federation Test. En fonction du contexte, il peut être nécessaire de modifier la partie domaine pour donner le nom avec lequel le client est visible des utilisateurs, voire de modifier le chemin.</p><p>La valeur de ce champ doit donc être reportée dans la configuration de l'IdP.</p>"
   },
-  "oauth_client_modifyclient_endpoint_configuration": {
+  "client_oauth_admin_modifyclient_endpoint_configuration": {
     "header_en": "Endpoint Configuration",
     "content_en": "<p>Un client OAuth 2 a besoin de connaître les points d'entrées du serveur afin d'y rediriger l'utilisateur pour authentification, puis d'y récupérer les jetons, les informations sur l'utilisateur, etc. Il s'agit d'URL publiées par l'IdP, souvent spécifiques au client.</p><p>Par exemple l'URL accueillant les utilisateurs pour authentification ressemble souvent à https://login.idp.com/&lt;un identifiant du client&gt;/oauth2/v2.0/authorize</p><p>Afin de faciliter la configuration des clients, les IdP publient souvent une URL avec l'ensemble des endpoint. La configuration se résume alors à la saisie d'une unique URL au lieu de la liste des URL des différents endpoint</p>Le client de fédération accepte les deux manières de déclaration :</p><ul><li>en choisissant Discovery URI, vous n'avez qu'à donner cette URL unique, qui ressemble souvent à https://www.idp.com/.well-known/openid-configuration</li><li>avec Local Configuration, il vous faudra donner individuellement les URL de chaque endpoint, telles qu'elles sont indiquées par l'IdP.</li></ul>"
   },
-  "oauth_client_modifyclient_discovery_uri": {
+  "client_oauth_admin_modifyclient_discovery_uri": {
     "header_en": "Discovery URI",
     "content_en": "<p>L'URI de découverte (Discovery URI) donne la configuration du fournisseur d'accès (appelé dans le langage courant IdP). Cet URL traite de la récupération automatique de l'IdP d'un utilisateur. Si cette fonctionnalité n'est finalement pas utilisée, la récupération de la configuration de l'IdP est entrée dans les moeurs.<p><p>La plupart des IdP publient une URL retournant un fichier JSON avec la liste des différents endpoint et des informations associées. Selon les cas, ces endpoint sont communs à l'ensemble des applications authentifiées par l'IdP, sont spécifiques à une entité (IdP opérant par tenant par exemple), voire dédiés à un client (c'est-à-dire une application) particulier.</p><p>La spécification impose que l'URI de découverte soit formée de l'URL identifiant l'IdP (issuer) à laquelle est ajoutée la chaîne \"/.well-known/openid-configuration\" à la fin. On trouvera donc habituelleent des URI avec les formes suivantes</p><ul><li>https://www.idp/com/.well-known/openid-configuration quand la configuration est globale</li><li>https://&lt;tenant&gt;.idp/com/.well-known/openid-configuration pour des IdP en tenant</li><li>https://www.idp/com/&lt;client&gt;.well-known/openid-configuration lorsque la configuration est spécifique à une application ou à un tenant</li></ul>"
   },
-  "oauth_client_modifyclient_issuer": {
+  "client_oauth_admin_modifyclient_issuer": {
     "header_en": "Issuer",
     "content_en": "<p>L'émetteur (issuer) est l'entité qui authentifie l'utilisateur et génère les jetons. En langage commun, c'est donc l'IdP. On notera pour être plus précis qu'un même serveur peut héberger plusieurs émetteurs, par exemple s'il gère des tenants différents.</p><p>La spécification précise qu'un émetteur est donné sous la forme d'une URL en https, avec un domaine, et éventuellement un port et un chemin (mais pas de query string). Attention cette écriture est sensible à la casse.</p><p>Ce paramètre est à récupérer auprès de l'IdP. Il est la plupart du temps donné lors de la configuration du client (application), parfois dans une page regroupant tous les endpoint ou toutes les options</p><p>Voici quelques exemples d'émetteurs :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/v2.0</li><li>https://societe.okta.com</li></ul>"
   },
-  "oauth_client_modifyclient_authorization_endpoint": {
+  "client_oauth_admin_modifyclient_authorization_endpoint": {
     "header_en": "Authorization Endpoint",
     "content_en": "<p>L'endpoint d'autorisation (authorization endpoint) est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs pour y être authentifiés. C'est donc le point de départ de la cinématique OAuth 2.</p><p>On notera qu'il n'est pas facile de traduire le terme endpoint en français. Certains utilisent point de terminaison ou point d'extrémité. Point d'entrée nous paraît un meilleur candidat, mais on préfère finalement ne pas traduire le terme qui est passé dans le langage courant informatique.<p>La spécification n'impose pas de syntaxe à l'URL, qui doit obligatoirement être en https. Voici quelques exemples d'authorization endpoint :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/oauth2/v2.0/authorize</li><li>https://societe.okta.com/oauth2/v1/authorize</li></ul><p>Ce paramètre est à récupérer auprès de l'IdP. Il est la plupart du temps donné lors de la configuration du client (application), parfois dans une page regroupant tous les endpoint ou toutes les options.</p>"
   },
-  "oauth_client_modifyclient_token_endpoint": {
+  "client_oauth_admin_modifyclient_token_endpoint": {
     "header_en": "Token Endpoint",
     "content_en": "<p>L'endpoint de jeton (token endpoint) est l'URL de l'API de l'IdP qui est appelée directement par le client (l'application) afin d'obtenir les jetons. Il le faut lors de la cinématique initiale en présentant le code retourné par l'IdP, mais aussi par la suite s'il souhaite renouveler le jeton d'accès.</p><p>La spécification n'impose pas de syntaxe à l'URL, qui doit obligatoirement être en https. Voici quelques exemples de token endpoint :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/oauth2/v2.0/token</li><li>https://societe.okta.com/oauth2/v1/token</li></ul><p>Ce paramètre est à récupérer auprès de l'IdP. Il est la plupart du temps donné lors de la configuration du client (application), parfois dans une page regroupant tous les endpoint ou toutes les options.</p>"
   },
-  "oauth_client_modifyclient_end_session_endpoint": {
+  "client_oauth_admin_modifyclient_end_session_endpoint": {
     "header_en": "Logout Endpoint",
     "content_en": "<p>L'endpoint de déconnexion (logout endpoint) est le symétrique de l'endpoint d'autorisation (authorization endpoint). Il permet de mettre fin à la session. Il represente l'URL vers laquelle l'utilisateur est redirigé avec une requête de déconnexion. La déconnexion n'est pas abordée dans la spécification principale.</p><p>La cinématique de déconnexion est similaire à celle de l'authentification : l'utilisateur est redirigé vers l'IdP qui réalise alors la déconnexion. Optionnellement, le client peut demander que l'utilisateur lui soit retourné.</p><p>Dans les informations de connexion retournées par l'URI de découverte (Discovery URI), cet endpoint est appelé endpoint de fin de session (end session endpoint) et non endpoint de déconnexion.</p><p>Attention, il est parfois nécessaire d'activer explicitemnet la fonctionnalité de déconnexion dans l'IdP lors de la configuration<p>Il est parfois nécessaire d'activer explicitemnet la fonctionnalité de déconnexion dans l'IdP lors de la configuration</p><p>Tout comme pour l'URL d'autorisation, la spécification n'impose pas de syntaxe à l'URL, qui doit obligatoirement être en https. Voici quelques exemples de logout endpoint :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/oauth2/v2.0/logout</li><li>https://societe.okta.com/oauth2/v1/logout</li></ul><p>Ce paramètre est à récupérer auprès de l'IdP. Il est la plupart du temps donné lors de la configuration du client (application), parfois dans une page regroupant tous les endpoint ou toutes les options.</p><p>Le mécanisme de déconnexion peut aller plus loin, afin que la déconnexion soit propagée à toutes les applications auxquelles l'utilisateur est authentifié (par le même IdP en session SSO s'entend). OpenID Connect définit pour cela deux méthodes : <a href=\"https://openid.net/specs/openid-connect-frontchannel-1_0.html \">OpenID Connect Front-Channel Logout</a> et <a href=\"https://openid.net/specs/openid-connect-backchannel-1_0.html \">OpenID Connect Back-Channel Logout</a>.</p>"
   },
-  "oauth_client_modifyclient_userinfo_endpoint": {
+  "client_oauth_admin_modifyclient_userinfo_endpoint": {
     "header_en": "Userinfo Endpoint",
     "content_en": "<p>L'endpoint d'information sur l'utilisateur (userinfo endpoint) est l'URL de l'API de l'IdP qui est appelée directement par le client (l'application) afin d'obtenir des informations complémentaires sur l'utilisateur.</p><p>Il est effet préconisé de ne pas transmettre de données confidentielles dans les claims du jeton qui est parfois transporté sur internet et est parfois visible de l'utilisateur. On préfère une communication directe entre serveurs au travers d'un service web exposé par l'IdP.</p><p>La sécurisation de cette API est réalisée par OAuth 2. Le client doit donc disposer d'un jeton d'accès (access token) qu'il présente lors de sa connexion au service web. Ce jeton d'accès est récupéré lors de la cinématique OpenID Connect en même temps que le jeton d'identité (ID token).</p><p>La spécification n'impose pas de syntaxe à l'URL, qui doit obligatoirement être en https. Voici quelques exemples de userinfo endpoint :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/oauth2/v2.0/userinfo</li><li>https://societe.okta.com/oauth2/v1/userinfo</li></ul><p>Ce paramètre est à récupérer auprès de l'IdP. Il est la plupart du temps donné lors de la configuration du client (application), parfois dans une page regroupant tous les endpoint ou toutes les options.</p>"
   },
-  "oauth_client_modifyclient_signature_key_configuration": {
+  "client_oauth_admin_modifyclient_signature_key_configuration": {
     "header_en": "Signature Key Configuration",
     "content_en": "<p>Après retour d'authentification, le client se connecte à l'endpoint de jeton pour récupérer le jeton d'identité (et un jeton d'accès). Ce jeton d'identité (ID token) doit être validé avant de considérer l'authentification comme effective. Parmi les différents tests de validation, l'un des plus importants est la vérification de signature.</p><p>Le jeton d'identité est un jeton JSON (JWT) signé par une clé privée de l'IdP (ce qui en fait techniquement un JWS). Pour vérifier la signature, le client doit disposer de la clé publique de l'IdP correspondant à la clé de signature.</p><p>Les clés étant susceptibles de changer dans le temps (leur rotation étant une bonne pratique de sécurité), les IdP les mettent à disposition au travers d'une URL (appelée JWKS URI). Le client de fédération donne toutefois la possibilité de fournir manuellement la bonne clé à des fins de test.</p><ul><li>JWKS URI : URL de récupération automatique des clés publiques, (par exemple https://societe.okta.com/oauth2/v1/keys). Lorsque la configuration des endpoint est réalisée automatiquement, l'URL est récupérée à cette occasion</li><li>Local configuration : la clé publique est fournie directement dans le formulaire</li></ul>"
   },
-  "oauth_client_modifyclient_jwks_uri": {
+  "client_oauth_admin_modifyclient_jwks_uri": {
     "header_en": "JWKS URI",
     "content_en": "<p>L'URI JWKS est publiée par l'IdP pour que le client récupère en temps réel la liste des clés publiques à utiliser pour vérifier la signature du jeton d'identité (et celle des jetons d'accès s'ils sont au format Json Web Token). Afin de rendre possible une rotation des clés, l'IdP a la possibilité d'en publier plusieurs. Chaque clé est repérée par un identifiant pour que le client puisse déterminer la clé qui correspond au jeton qu'il a reçu (et qui contient la référence à l'identifiant.</p><p>La spécification n'impose pas de syntaxe à l'URL, qui doit obligatoirement être en https. Voici quelques exemples de userinfo endpoint :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/discovery/v2.0/keys</li><li>https://societe.okta.com/oauth2/v1/keys</li></ul><p>Ce paramètre est à récupérer auprès de l'IdP. Il est la plupart du temps donné lors de la configuration du client (application), parfois dans une page regroupant tous les endpoint ou toutes les options.</p>"
   },
-  "oauth_client_modifyclient_signature_key": {
+  "client_oauth_admin_modifyclient_signature_key": {
     "header_en": "Signature Key",
     "content_en": "<p>S'il est préférable que le client récupère en temps réel les clés de vérification du jeton par l'URI JWKS, le client de test de fédération donne la possibilité de lui fournir directement la clé à utiliser</p><p>Une clé ressemble à</p><ul><li>{\"kty\":\"RSA\",\"alg\":\"RS256\",\"kid\":\"&lt;identifiant de la clé&gt;\",\"use\":\"sig\",\"e\":\"AQAB\",\"n\":\"g53BhV2Rx5CHaa...RNozJLU0t1eNU9qplC3AbkbN3v8weG6ew\"}</li></ul><p>(il s'agit ici d'une clé RSA, mais des clés d'autres types sont permises par la norme)</p>"
   },
-  "oauth_client_modifyclient_client_id": {
+  "client_oauth_admin_modifyclient_client_id": {
     "header_en": "Client ID",
     "content_en": "<p>L'IdP attribue un identifiant unique à chaque application qu'il doit authentifier. Cet identifiant est appelé Client ID. C'est ce qui lui permet de savoir quelle politique de sécurité appliquer. Il sert aussi lors des différentes vérifications : authentification lors des appels d'API, validation des jetons, contrôle de l'URL de retour</p><p>Ce paramètre est évidemment à récupérer auprès de l'IdP</p>"
   },
-  "oauth_client_modifyclient_client_secret": {
+  "client_oauth_admin_modifyclient_client_secret": {
     "header_en": "Client Secret",
     "content_en": "<p>Lorsque le client se connecte aux endpoint de l'IdP (récupération des jetons par exemple), il est formellement authentifié par la donnée du Client ID et par une méthode d'authentification. Le client de test de fédération n'est actuellement compatible qu'avec la méthode client_secret_post, qui est un simple mot de passe.</p><p>Les autres méthodes d'authentification sera prochainement prises en charge :</p><ul><li>client_secret_basic : transmission du mot de passe en en-tête de la requête HTTP</li><li>client_secret_jwt : authentification par JWT signé en HMAC (de fait une authentification par HMAC)</li><li>private_key_jwt : authentification par JWT signé par une clé privée. La clé publique doit être communiquée à l'IdP pour qu'il puisse vérifier la signature</li></ul><p>Les jetons non signés (méthode none) ne sont pas autorisés pour des raisons évidentes de sécurité</p>"
   },
-  "oauth_client_modifyclient_scope": {
+  "client_oauth_admin_modifyclient_scope": {
     "header_en": "Scope",
     "content_en": "<p>Le scope OAuth 2 permet de véhiculer le type d'autorisation demandée au serveur d'autorisation. Une application pourra par exemple demander des droits en écriture sur un objet particulier, et l'exprimera en fournissant des scopes (périmètres) associés.</p><p>En ajoutant le scope offline_access, le client indique à l'IdP qu'il souhaite recevoir un jeton de rafraîchissement du jeton d'accès en même temps que les autres jetons.</p>"
   },
-  "oauth_client_modifyclient_response_type": {
+  "client_oauth_admin_modifyclient_response_type": {
     "header_en": "Response Type",
     "content_en": "<p>Le paramètre response type indique la cinématique souhaitée par le client : code d'autorisation, implicite, hybride. Etant donné que la cinématique implicite a été rendue obsolète, le client de test de fédération ne propose que la cinématique code.</p>"
   },
-  "oauth_client_modifyclient_introspection_uri": {
+  "client_oauth_admin_modifyclient_token_endpoint_auth_method": {
+    "header_en": "Auth method",
+    "content_en": "<p>Les méthodes d'autorisation courantes sont :</p><p>Client Secret Basic :</p><p>Le client utilise son client_id et son client_secret pour s'authentifier auprès du serveur d'autorisation.</p><p>Ces informations d'identification sont incluses dans le header de la requête et encodées en base64 (client_id:client_secret)</p><br/><p>Client Secret Post :</p><p>Comme Client Secret Basic, mais les informations d'identification sont transmises dans le corps de la requête POST au lieu de l'en-tête.</p>"
+  },
+  
+  "client_oauth_admin_modifyclient_introspect_at": {
+    "header_en": " Introspect access token",
+    "content_en": "<p>Après obtention d'un access token on peut introspecter</p>"
+  },
+  "client_oauth_admin_modifyclient_rs_client_id": {
+    "header_en": " Resource server client ID",
+    "content_en": "<p></p>"
+  },
+  "client_oauth_admin_modifyclient_rs_client_secret": {
+    "header_en": "Resource server client secret",
+    "content_en": "<p></p>"
+  },
+  "client_oauth_admin_modifyclient_verify_certificates": {
+    "header_en": " Verify certificates",
+    "content_en": "<p>Indique si le client doit vérifier la validité des certificats de l'IdP lors des connexions aux différents points d'entrées des API.</p><p>Cette vérification est l'un des points essentiels assurant la sécurité de  OAuth 2.0.</p><p>Les erreurs de certificats sont la cause de nombreux dysfonctionnement, en particulier lorsque les autorités sont internes.</p>"
+  },
+  "client_oauth_admin_modifyclient_introspection_endpoint": {
     "header_en": "Introspection endpoint",
     "content_en": "<p>Il s'agit d'un URL présent chez l'IdP. Cet endpoint permet à un client de demander à l'IdP si le token en sa posession est valide. Le client délègue la vérification du token au fournisseur d'accès.</p>"
   },
-  "oauth_client_modifyclient_response_mode": {
+  "client_oauth_admin_modifyclient_response_mode": {
     "header_en": "Response mode",
     "content_en": "<p>Le paramètre response mode permet de préciser de quelle manière le serveur d'autorisation va transmettre les informations de retour au client.</p>"
   },
