@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   aduneoclientfedid:
-    image: docker.io/gpozniakaduneo/client-fed-id:1.1.0
+    image: docker.io/gpozniakaduneo/client-fed-id:latest
     container_name: aduneoclientfedid
     ports:
       - "443:443"
@@ -11,8 +11,6 @@ services:
   postgres:
     image: postgres:15.3
     container_name: postgres
-    #ports:
-    #  - "5432:5432"
     environment:
       - POSTGRES_DB=keycloak
       - POSTGRES_USER=keycloak
@@ -23,14 +21,14 @@ services:
       - mynet
 
   keycloak:
-    image: docker.io/gpozniakaduneo/keycloak-sp:0.1.0
+    image: docker.io/gpozniakaduneo/keycloak-sp:latest
     container_name: keycloak
     environment:
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
     ports:
       - "8443:8443"
-    command: start --optimized
+    command: start --optimized --import-realm
     depends_on:
       - postgres
     healthcheck:

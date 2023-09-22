@@ -6,16 +6,12 @@ services:
     container_name: aduneoclientfedid
     ports:
       - "443:443"
-#    volumes:
-#      - app:/usr/src/app
     networks:
       - mynet
       
   postgres:
     image: postgres:15.3
     container_name: postgres
-    ports:
-      - "5432:5432"
     environment:
       - POSTGRES_DB=keycloak
       - POSTGRES_USER=keycloak
@@ -26,7 +22,6 @@ services:
       - mynet
 
   keycloak:
-    #image: quay.io/keycloak/keycloak:22.0.1
     build:
         context: ./keycloak/
     container_name: keycloak
@@ -34,11 +29,8 @@ services:
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
     ports:
-#      - "8080:8080"
       - "8443:8443"
-    volumes:
-      - ./aduneo-realm.json:/opt/keycloak/data/import/aduneo-realm.json
-    command: start --optimized
+    command: start --optimized --import-realm
     depends_on:
       - postgres
     healthcheck:
@@ -48,7 +40,3 @@ services:
       
 networks:
      mynet:
-
-
-#volumes:
-#  app: {}

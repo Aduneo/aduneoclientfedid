@@ -9,7 +9,7 @@ var ArrayList = Java.type("java.util.ArrayList");
 //var bindings = javax.script.Bindings;
 var myList = new ArrayList();
 myList.add(user.username);
-myList.add(user.realm);
+myList.add(user.email);
 
 
 // The 'user' and 'token' objects are bound to the script context automatically
