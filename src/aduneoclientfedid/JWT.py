@@ -2,6 +2,8 @@ from base64 import urlsafe_b64decode, b64encode
 import json
 from binascii import hexlify
 from collections import namedtuple
+from typing import Callable
+
 
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -36,6 +38,8 @@ class InvalidJWSSignature(JWException):
         msg = None
         if message:
             msg = str(message)
+            print("InvalidJWSSignature")
+            print(msg)
         else:
             msg = 'Unknown Signature Verification Failure'
         if exception:
@@ -301,7 +305,7 @@ def sign(to_sign: bytes, signature: bytes, key: dict, alg: str):
     # Determiner l'algorithme utiliser
     if alg in algorithms_registry:
         fdata = algorithms_registry[alg]
-        signing_function: function = fdata[0]
+        signing_function: Callable = fdata[0]
         signing_function(to_sign, signature, key, fdata[1:])
         print("Signature validation successful")
     else:
@@ -318,6 +322,8 @@ def validate_compact_JWS(key: dict, jose_header: str, payload_b64encoded: bytes,
     signature = base64url_decode(signature_b64encoded)
 
     to_sign =  b'.'.join([b64encode(jose_header_clean.replace(b" ", b"")), b64encode(payload)])
+    print("to_sign")
+    print(to_sign)
     sign(to_sign.replace(b"=",b""), signature, key, alg)
 
 def validate_JWE(key: dict, jwe: str):
@@ -325,11 +331,19 @@ def validate_JWE(key: dict, jwe: str):
 
 def verify_compact_JWT(key:dict, jwt):
     jwt_list = jwt.split('.')
+    print('verify_compact_JWT')
+    print(key)
+    print(jwt)
     jose_header_b64encoded = jwt_list[0]
     payload_b64encoded = jwt_list[1]
     signature_b64encoded = jwt_list[2]
+    print(jose_header_b64encoded)
+    print(payload_b64encoded)
+    print(signature_b64encoded)
     try:
         jose_header = base64url_decode(jose_header_b64encoded).decode("utf-8")
+        print(jose_header)
+
     except UnicodeDecodeError:
         raise InvalidJWSSignature("Invalid JOSE header - not utf8 encoded")
     is_JWS = False
@@ -438,6 +452,7 @@ def deserialize_signature(s):
 
 def deserialize_JWT(key:dict, djwt: dict):
     o = {}
+    print('deserialize_JWT')
     try:
         if 'signatures' in djwt:
             o['signatures'] = []

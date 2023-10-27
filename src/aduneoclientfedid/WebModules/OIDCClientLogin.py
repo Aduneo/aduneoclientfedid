@@ -23,6 +23,8 @@ from ..Configuration import Configuration
 from ..Explanation import Explanation
 from ..Help import Help
 from ..JWT import verify_JWT
+from ..JWT import InvalidJWSSignature
+from ..VerifyJwt import verify_jwt
 from .Clipboard import Clipboard
 from .FlowHandler import FlowHandler
 import base64
@@ -593,6 +595,7 @@ class OIDCClientLogin(FlowHandler):
       
       # Vérification de signature, on commence par regarde l'algorithme
       token_key = None
+      keyset = None
       alg = token_header.get('alg')
       self.log_info('Signature verification')
       self.log_info('Signature algorithm in token header : '+alg)
@@ -657,13 +660,14 @@ class OIDCClientLogin(FlowHandler):
         self.add_result_row('Signature JWK', json.dumps(token_jwk, indent=2), 'signature_jwk')
         token_key = token_jwk
 
-      # On vérifie la signature
       try:
-        verify_JWT(key=token_key, jwt=id_token)
+        verify_jwt(id_token, keyset) #key=token_key, jwt=id_token)  
+        #verify_JWT(key=token_key, jwt=id_token)
         self.log_info('Signature verification OK')
         self.add_result_row('Signature verification', 'OK', copy_button=False)
-      except Exception as error:
-
+      except InvalidJWSSignature as error:
+        print("An exception occurred 1 ")
+        print(str(error))
         default_case = True
         # Si on est en HS256, peut-être que le serveur a utilisé une clé autre que celle du client_secret (cas Keycloak)
         if alg == 'HS256':
@@ -1101,7 +1105,6 @@ class OIDCClientLogin(FlowHandler):
         self.log_info('Signature verification OK')
         self.add_result_row('Signature verification', 'OK', copy_button=False)
       except Exception as error:
-
         default_case = True
         # Si on est en HS256, peut-être que le serveur a utilisé une clé autre que celle du client_secret (cas Keycloak)
         if alg == 'HS256':
