@@ -32,6 +32,7 @@ import logging
 class WebConsole(BaseHandler):
   
   def display(self):
+    buffer = []
     for hdlr in logging.getLogger().handlers:
       if isinstance(hdlr, WebConsoleHandler):
         buffer = hdlr.get_content(self.session_id)

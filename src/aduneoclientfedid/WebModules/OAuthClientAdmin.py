@@ -88,6 +88,9 @@ class OAuthClientAdmin(BaseHandler):
     
     rp = self.conf['oauth_clients'][rp_id]
     
+    if self.post_form['name'] == '':
+      self.post_form['name'] = rp_id
+    
     for item in ['name', 'redirect_uri', 'endpoint_configuration', 'authorization_endpoint', 'token_endpoint', 'introspection_endpoint', 'discovery_uri', 
       'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'rs_client_id']:
       if self.post_form[item] == '':
@@ -146,7 +149,7 @@ class OAuthClientAdmin(BaseHandler):
     while not ok:
       id = ''.join(c for c in base.casefold() if c.isalnum())
       if id == '':
-        id = 'oidc_rp'
+        id = 'oauth_rp'
       if rank > 0:
         id = id+str(rank)
       
