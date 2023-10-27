@@ -140,3 +140,4 @@ dmypy.json
 *.key
 *.cnf
 *.crt
+conf/
