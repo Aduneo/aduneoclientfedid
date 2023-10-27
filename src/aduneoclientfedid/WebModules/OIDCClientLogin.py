@@ -171,7 +171,8 @@ class OIDCClientLogin(FlowHandler):
         self.send_page()
         return
 
-    self.add_html('<tr><td>'+self.row_label('Authorization Endpoint', 'authorization_endpoint')+'</td><td><input name="authorization_endpoint" value="'+html.escape(meta_data['authorization_endpoint'])+'"class="intable" type="text"></td></tr>')
+    self.add_html('<input name="introspection_endpoint" type="hidden" value="'+html.escape(meta_data['introspection_endpoint'])+'">')
+    self.add_html('<tr><td>'+self.row_label('Authorization Endpoint', 'authorization_endpoint')+'</td><td><input name="authorization_endpoint" value="'+html.escape(meta_data['authorization_endpoint'])+'" class="intable" type="text"></td></tr>')
     self.add_html('<tr><td>'+self.row_label('Token endpoint', 'token_endpoint')+'</td><td><input name="token_endpoint" value="'+html.escape(meta_data['token_endpoint'])+'"class="intable" type="text"></td></tr>')
 
     # configuration de la clé de vérification de signature
@@ -348,7 +349,7 @@ class OIDCClientLogin(FlowHandler):
     context = {"context_id": state, "initial_flow": {"app_id": rp_id, "flow_type": "OIDC"}, "request": {}, "tokens": {}}
     
     meta_data = {}
-    for item in ['authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'jwks_uri', 'issuer', 'signature_key']:
+    for item in ['authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'jwks_uri', 'issuer', 'signature_key', 'introspection_endpoint']:
       if self.post_form[item] != '':
         meta_data[item] = self.post_form[item]
 
@@ -356,7 +357,7 @@ class OIDCClientLogin(FlowHandler):
     
     request = {}
     context['request'] = request
-    for item in ['rp_id', 'state', 'scope', 'response_type', 'client_id', 'client_secret!', 'token_endpoint_auth_method', 'redirect_uri', 'state', 'nonce', 'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values', 'signature_key_configuration', ]:
+    for item in ['rp_id', 'state', 'scope', 'response_type', 'client_id', 'client_secret!', 'token_endpoint_auth_method', 'redirect_uri', 'state', 'nonce', 'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values', 'signature_key_configuration']:
       if self.post_form[item] != '':
         request[item] = self.post_form[item]
 
