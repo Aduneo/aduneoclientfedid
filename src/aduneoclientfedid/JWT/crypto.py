@@ -162,6 +162,27 @@ class _AesCbcHmacSha2:
         d = decryptor.update(e) + decryptor.finalize()
         unpadder = PKCS7(self.blocksize).unpadder()
         return unpadder.update(d) + unpadder.finalize()
+
+class _Direct:
+
+    name = 'dir'
+    description = "Direct use of a shared symmetric key"
+    keysize = 128
+    algorithm_usage_location = 'alg'
+    algorithm_use = 'kex'
+
+    def _check_key(self, key):
+        if key['kty'] != 'oct':
+            raise InvalidJWEKeyType('oct', key['kty'])
+
+    def unwrap(self, key, bitsize, ek, headers):
+        self._check_key(key)
+        if ek != b'':
+            raise ValueError('Invalid Encryption Key.')
+        cek = base64url_decode(get_fn_from_private_key(key))
+        if _bitsize(cek) != bitsize:
+            raise InvalidJWEKeyLength(bitsize, _bitsize(cek))
+        return cek
     
 class _A128CbcHs256(_AesCbcHmacSha2):
 
@@ -331,7 +352,7 @@ def get_alg(name):
         # 'A128KW': _A128KW,                        # TODO: JWE enc alg
         # 'A192KW': _A192KW,                        # TODO: JWE enc alg
         # 'A256KW': _A256KW,                        # TODO: JWE enc alg
-        # 'dir': _Direct,                           # TODO: JWE enc alg
+        'dir': _Direct,                           # TODO: JWE enc alg
         # 'ECDH-ES': _EcdhEs,                       # TODO: JWE enc alg
         # 'ECDH-ES+A128KW': _EcdhEsAes128Kw,        # TODO: JWE enc alg
         # 'ECDH-ES+A192KW': _EcdhEsAes192Kw,        # TODO: JWE enc alg

@@ -580,6 +580,8 @@ class OAuthClientLogin(FlowHandler):
       
       self.log_info("Submitting introspection request")
       r = self.send_form_http_request(default_secret=request.get('rs_client_secret!', ''))
+
+      # TODO: Implement introspection token encryption here
       response = r.json()
 
       self.log_info('Introspection response'+json.dumps(response, indent=2))

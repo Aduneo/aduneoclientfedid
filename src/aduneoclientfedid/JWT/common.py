@@ -48,5 +48,5 @@ def decode_int(n):
 
 def encode_int(n, bits):
     e = '{:x}'.format(n)
-    ilen = ((bits + 7) // 8) * 2  # number of bytes rounded up times 2 bytes
+    ilen = ((bits + 7) // 8) * 2 
     return unhexlify(e.rjust(ilen, '0')[:ilen])

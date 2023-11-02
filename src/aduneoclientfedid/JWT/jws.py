@@ -15,8 +15,10 @@ def validate_compact_JWS(key: dict, jose_header, payload_b64encoded: bytes, sign
     payload = base64url_decode(payload_b64encoded)
     signature = base64url_decode(signature_b64encoded)
 
+    sig_key = get_key(json_jose_header, key) 
+
     to_sign =  b'.'.join([jose_header.encode("utf8"), b64encode(payload)])
-    sign(to_sign.replace(b"=",b""), signature, key, alg)
+    sign(to_sign.replace(b"=",b""), signature, sig_key, alg)
 
 def verify_compact_jws(key:dict, jwt):
     jwt_list = jwt.split('.')
@@ -69,6 +71,12 @@ def validate_format(key, payload, signature, protected, header):
     alg: str = jose_header.get('alg')
 
     # Find appropriate key in key set
+    sig_key = get_key(jose_header, key) 
+
+    to_sign =  b'.'.join([b64encode(protected.encode("utf8")), b64encode(payload)])
+    sign(to_sign.replace(b"=",b""), signature, sig_key, alg)
+
+def get_key(jose_header, key):
     if 'keys' in key:
         if isinstance(key['keys'], list):
             if 'kid' in jose_header:
@@ -76,6 +84,7 @@ def validate_format(key, payload, signature, protected, header):
                 # We try to verify with the last key if multiple keys found
                 try:
                     key = kid_keys[-1]
+                    return key
                 except IndexError:
                     raise JWKeyNotFound("key not found")
             else:
@@ -83,10 +92,9 @@ def validate_format(key, payload, signature, protected, header):
                 raise InvalidJWSSignature(f"kid parameter not found in JOSE header")
         else: 
             raise InvalidJWKSet(f"{type(key['keys']) =}, type list required")
-
-    to_sign =  b'.'.join([b64encode(protected.encode("utf8")), b64encode(payload)])
-    sign(to_sign.replace(b"=",b""), signature, key, alg)
-
+    else:
+        return key
+        
 def validate_deserialized_jws(key: dict, o: dict):
     is_valid = False
     missingkey = False

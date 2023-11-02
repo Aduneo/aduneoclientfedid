@@ -95,8 +95,8 @@ def decrypt(key, jwe, objects):
                                             objects['tag'])
                 decryptlog.append("Success")
                 break
-            except Exception as e:  # pylint: disable=broad-except
-                keyid = k.get('kid', k.thumbprint())
+            except Exception as e:
+                keyid = k.get('kid')
                 decryptlog.append('Key [{}] failed: [{}]'.format(
                                         keyid, repr(e)))
 
@@ -132,7 +132,7 @@ def general_decrypt(key: dict, objects: dict):
             try:
                 data = decrypt(key, rec, objects)
                 logdata.append(data)
-            except Exception as e:  # pylint: disable=broad-except
+            except Exception as e:  
                 if isinstance(e, JWKeyNotFound):
                     missingkey = True
                 decryptlog.append('Failed: [%s]' % repr(e))
@@ -140,7 +140,7 @@ def general_decrypt(key: dict, objects: dict):
         try:
             data = decrypt(key, None, objects)
             logdata.append(data)
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e: 
             if isinstance(e, JWKeyNotFound):
                 missingkey = True
             decryptlog.append('Failed: [%s]' % repr(e))
@@ -173,7 +173,7 @@ def verify_jwe(key: dict, jwe):
                             base64url_decode(rec['encrypted_key'])
                     if 'header' in rec:
                         e['header'] = json_dumps(rec['header'])
-                    o['recipients'].aond(e)
+                    o['recipients'].append(e)
             else:
                 if 'encrypted_key' in djwe:
                     o['encrypted_key'] = \
@@ -194,7 +194,7 @@ def verify_jwe(key: dict, jwe):
             o['ciphertext'] = base64url_decode(c[3])
             o['tag'] = base64url_decode(c[4])
 
-    except Exception as e:  # pylint: disable=broad-except
+    except Exception as e: 
         raise InvalidJWEData('Invalid format', repr(e)) from e
     
     general_decrypt(key, o)
