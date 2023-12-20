@@ -173,7 +173,7 @@ class OIDCClientLogin(FlowHandler):
         self.send_page()
         return
 
-    self.add_html('<input name="introspection_endpoint" type="hidden" value="'+html.escape(meta_data['introspection_endpoint'])+'">')
+    self.add_html('<input name="introspection_endpoint" type="hidden" value="'+html.escape(meta_data.get('introspection_endpoint', ''))+'">')
     self.add_html('<tr><td>'+self.row_label('Authorization Endpoint', 'authorization_endpoint')+'</td><td><input name="authorization_endpoint" value="'+html.escape(meta_data['authorization_endpoint'])+'" class="intable" type="text"></td></tr>')
     self.add_html('<tr><td>'+self.row_label('Token endpoint', 'token_endpoint')+'</td><td><input name="token_endpoint" value="'+html.escape(meta_data['token_endpoint'])+'"class="intable" type="text"></td></tr>')
 
@@ -251,7 +251,7 @@ class OIDCClientLogin(FlowHandler):
     
     self.add_html('</table>')
 
-    self.add_html("<h2>Non OIDC Options</h2>")
+    self.add_html("<h2>Client Options</h2>")
     self.add_html('<table class="fixed">')
     checked = ''
     if Configuration.is_on(rp.get('verify_certificates', 'off')):
