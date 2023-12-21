@@ -11,6 +11,10 @@
     "ssl_generate_keys": "on"
   },
   "preferences": {
+    "jose_module":[
+      "builtin",
+      "jwcrypto"
+    ],
     "logging": {
       "handler": [
         "file",

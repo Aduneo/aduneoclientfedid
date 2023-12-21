@@ -31,7 +31,6 @@ import base64
 import datetime
 import html
 import json
-import jwcrypto.jwt
 import requests
 import traceback
 import uuid
@@ -78,6 +77,30 @@ import uuid
 
 @register_web_module('/client/oidc/login')
 class OIDCClientLogin(FlowHandler):
+
+  def __init__(self, hreq):
+    super().__init__(hreq)
+
+    # jwcrypto is off by default
+    self.use_jwcrypto = False
+    self.jwcrypto = None
+
+    self.jose_modules = self.conf['preferences']['jose_module']
+    if self.jose_modules[0] == "jwcrypto":
+      # we try to import
+      try:
+        import jwcrypto
+        self.jwcrypto = jwcrypto
+        self.use_jwcrypto = True
+      except ImportError:
+        if len(self.jose_modules) == 1:
+          raise AduneoError("jwcrypto is not installed and the use of the builtin module is not specified in jose_module conf")
+        if self.jose_modules[1] == "builtin":
+          pass
+        else:
+          raise AduneoError("jwcrypto is not installed and the use of the 'builtin' module is not specified in jose_module conf")
+    elif self.jose_modules[0] != "builtin":
+      raise AduneoError("Unknown module specified in jose_module conf")
 
   @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=True)
   def prepare_request(self):
@@ -518,7 +541,7 @@ class OIDCClientLogin(FlowHandler):
       token_header_string = base64.urlsafe_b64decode(encoded_token_header + '=' * (4 - len(encoded_token_header) % 4))
       # TODO: Implémenter JWE ici : verify_jwe()
       # Ajouter option JWE si cocher > traitement JWE, sinon JWT ?
-      
+
       encoded_token_payload = token_items[1]
       token_payload = base64.urlsafe_b64decode(encoded_token_payload + '=' * (4 - len(encoded_token_payload) % 4))
 
@@ -659,11 +682,17 @@ class OIDCClientLogin(FlowHandler):
           self.log_info(json.dumps(token_jwk, indent=2))
           
         self.add_result_row('Signature JWK', json.dumps(token_jwk, indent=2), 'signature_jwk')
-        token_key = token_jwk
+        if self.use_jwcrypto:
+          token_key = self.jwcrypto.jwk.JWK(**token_jwk)
+        else:
+          token_key = token_jwk
 
       # On vérifie la signature
       try:
-        verify_jws(key=token_key, jws=id_token)
+        if self.use_jwcrypto:
+          self.jwcrypto.jwt.JWT(key=token_key, jwt=id_token)
+        else:
+          verify_jws(key=token_key, jws=id_token)
         self.log_info('Signature verification OK')
         self.add_result_row('Signature verification', 'OK', copy_button=False)
       except Exception as error:
@@ -682,10 +711,16 @@ class OIDCClientLogin(FlowHandler):
             self.log_info(configuration_key)
             json_key = json.loads(configuration_key)
           
-            token_key = json_key
+            if self.use_jwcrypto:
+              token_key = self.jwcrypto.jwk.JWK(**json_key)
+            else:  
+              token_key = json_key
           
             try:
-              verify_jws(key=token_key, jws=id_token)
+              if self.use_jwcrypto:
+                self.jwcrypto.jwt.JWT(key=token_key, jwt=id_token)
+              else:
+                verify_jws(key=token_key, jws=id_token)
               self.log_info('Signature verification OK')
               self.add_result_row('Signature verification', 'OK', copy_button=False)
             except Exception as error:
@@ -1105,11 +1140,18 @@ class OIDCClientLogin(FlowHandler):
           self.log_info(json.dumps(token_jwk, indent=2))
           
         self.add_result_row('Signature JWK', json.dumps(token_jwk, indent=2), 'signature_jwk')
-        token_key = token_jwk
+        
+        if self.use_jwcrypto:
+          token_key = self.jwcrypto.jwk.JWK(**token_jwk)
+        else:
+          token_key = token_jwk
 
       # On vérifie la signature
       try:
-        verify_jws(key=token_key, jws=id_token)
+        if self.use_jwcrypto:
+          self.jwcrypto.jwt.JWT(key=token_key, jwt=id_token)
+        else:
+          verify_jws(key=token_key, jws=id_token)
         self.log_info('Signature verification OK')
         self.add_result_row('Signature verification', 'OK', copy_button=False)
       except Exception as error:
