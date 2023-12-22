@@ -973,7 +973,8 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
         function getHtmlJsonContinueDelayed() {{
           getHtmlJsonContinue("GET", "/continuouspage/poll?cp_id={cp_id}");
         }}
-        setTimeout(getHtmlJsonContinueDelayed, 5000);    
+        //setTimeout(getHtmlJsonContinueDelayed, 1000);
+        getHtmlJsonContinueDelayed()
         </script>
         """.format(cp_id=self.hreq.continuous_page_id)
         

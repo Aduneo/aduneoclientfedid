@@ -18,20 +18,16 @@ limitations under the License.
 
 from ..BaseServer import AduneoError
 from ..BaseServer import register_web_module, register_url, register_page_url
-from ..BaseServer import continuous_page
 from ..Configuration import Configuration
 from ..Explanation import Explanation
 from ..Help import Help
-from ..JWT import verify_JWT
-from ..JWT import InvalidJWSSignature
-from ..VerifyJwt import verify_jwt
+from ..JWT import JWT
 from .Clipboard import Clipboard
 from .FlowHandler import FlowHandler
 import base64
 import datetime
 import html
 import json
-import jwcrypto.jwt
 import requests
 import traceback
 import uuid
@@ -417,8 +413,10 @@ class OIDCClientLogin(FlowHandler):
         
       Regarde le flow correspondant au state retourné pour faire un simple routage vers
       - callback_flow_code_spa (Authorization Code et Authorization Code with PKCE)
-      
-    mpham 14/09/2022
+    
+    Versions:
+      14/09/2022 (mpham) version initiale
+      22/12/2023 (mpham) utilisation de JWT pour la vérification de signature afin de pouvoir choisir la bibliothèque de validation
     """
     
     context = None
@@ -661,13 +659,12 @@ class OIDCClientLogin(FlowHandler):
         token_key = token_jwk
 
       try:
-        verify_jwt(id_token, keyset) #key=token_key, jwt=id_token)  
-        #verify_JWT(key=token_key, jwt=id_token)
+        jwt = JWT(id_token)
+        jwt.is_signature_valid(token_key)
         self.log_info('Signature verification OK')
         self.add_result_row('Signature verification', 'OK', copy_button=False)
-      except InvalidJWSSignature as error:
-        print("An exception occurred 1 ")
-        print(str(error))
+      except Exception as error:
+      
         default_case = True
         # Si on est en HS256, peut-être que le serveur a utilisé une clé autre que celle du client_secret (cas Keycloak)
         if alg == 'HS256':
@@ -685,7 +682,7 @@ class OIDCClientLogin(FlowHandler):
             token_key = json_key
           
             try:
-              verify_JWT(key=token_key, jwt=id_token)
+              jwt.is_signature_valid(token_key)
               self.log_info('Signature verification OK')
               self.add_result_row('Signature verification', 'OK', copy_button=False)
             except Exception as error:

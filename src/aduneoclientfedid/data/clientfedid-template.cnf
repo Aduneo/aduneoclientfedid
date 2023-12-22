@@ -11,6 +11,9 @@
     "ssl_generate_keys": "on"
   },
   "preferences": {
+    "jwt": {
+      "library": "jwcrypto"
+    },
     "logging": {
       "handler": [
         "file",

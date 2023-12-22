@@ -106,7 +106,7 @@ function _getHtmlJson(method, thisurl, data, menu_id=null, continueRequest=false
   let xhttp = new XMLHttpRequest();
   xhttp.onload = function() {
     if (this.readyState == 4 && this.status == 200) {
-      console.log(xhttp.response)
+      //console.log(xhttp.response)
       //document.getElementById('text_ph').innerHTML += xhttp.response.html;
       document.getElementById('text_ph').insertAdjacentHTML('beforeend', xhttp.response.html);
       document.getElementById('end_ph').scrollIntoView();

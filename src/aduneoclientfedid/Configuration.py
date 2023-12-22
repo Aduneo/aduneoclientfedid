@@ -28,6 +28,160 @@ import string
 import sys
 
 
+class conf_dict(dict):
+  """ dict personnalisé pour la configuration, donnant un accès direct à une clé dans un arbre
+  
+  Le chemin d'une valeur est donné par la liste des clés depuis la racine, séparées par des barres obliques (/)
+  
+  Par exemple : preferences/jwt/library
+  
+  L'accès est possible par :
+    - les crochets : conf['clé']
+    - get : conf.get('clé', 'valeur par défaut')
+  
+  Versions:
+    22/12/2023 (mpham) version initiale
+  """
+  
+  def copy(d:dict) -> dict:
+    """ Réalise une copie d'un dictionnaire en conf_dict
+    en itérant à tous les niveaux
+    
+    Args:
+      d: dictionnaire à traduire
+      
+    Returns;
+      un conf_dict avec le même contenu que dans
+      
+    Versions:
+      22/12/2023 (mpham) version initiale
+    """
+  
+    copy = conf_dict()
+    for (key, value) in d.items():
+    
+      if isinstance(value, dict):
+        copy[key] = conf_dict.copy(value)
+      else:
+        copy[key] = value
+    
+    return copy
+
+
+  def __getitem__(self, path:str):
+    """ obtention de la valeur d'une clé, par les crochets []
+      soit une clé au premier niveau (par de / dans le chemin), avec le même comportement que []
+      soit une clé dans le sous-arbre (le chemin étant donné par les clés séparées par des /)
+      
+    Lève une exception si la valeur ne peut être trouvé (clé ou chemin invalide)
+      
+    Args:
+      path: chemin des clés dans le sous-arbre, s'il commence par un / il est ignoré
+      
+    Returns:
+      valeur de la clé
+      
+    Versions:
+      22/12/2023 (mpham) version initiale
+    """
+    
+    if path.startswith('/'):
+      path = path[1:]
+    if path.find('/') >= 0:
+      d = self
+      for key in path.split('/'):
+        d = d[key]
+      value = d
+    else:
+      value = super().__getitem__(path)
+      
+    return value
+
+  
+  def get(self, path:str, default=None):
+    """ obtention de la valeur d'une clé, par la méthode get
+      soit une clé au premier niveau (par de / dans le chemin), avec le même comportement que []
+      soit une clé dans le sous-arbre (le chemin étant donné par les clés séparées par des /)
+      
+    Retourne la valeur par défaut si la valeur ne peut être trouvé (clé ou chemin invalide)
+      
+    Args:
+      path: chemin des clés dans le sous-arbre, s'il commence par un / il est ignoré
+      default: valeur par défaut (None si pas donnée) retournée si la clé n'est pas trouvée
+
+    Returns:
+      valeur de la clé si elle peut être récupérée, la valeur par défaut sinon
+      
+    Versions:
+      22/12/2023 (mpham) version initiale
+    """
+    
+    value = default
+    
+    if path.startswith('/'):
+      path = path[1:]
+    d = self
+    try:
+      for key in path.split('/'):
+        d = d[key]
+      value = d
+    except:
+      pass
+    
+    return value
+    
+
+  def is_on(self, path:str, default:bool=False):
+    """ Indique si un paramètre de configuration est true (au sens Configuration.is_on)
+    
+    Le paramètre est donné par son chemin dans le fichier JSON, par exemple /preferences/open_webconsole
+    
+    Si le paramètre n'est pas trouvé, une valeur par défaut est retournée, qu'elle ait été fournie en entrée ou qu'il s'agisse de False sinon.
+    
+    Args:
+      path (str): chemin du paramètre à partir de la racine, en séparant les éléments par un slash (barre oblique /). Exemple : preferences/jwt/library
+      default: valeur par défaut (optionnelle)
+      
+    Returns:
+      True si la valeur du paramètre est vraie selon is_on, False sinon
+      La valeur par défaut si la paramètre n'a pas pu être trouvé dans la configuration
+
+    mpham 22/12/2023
+    """
+    
+    value = self.get(path, default)
+    if not isinstance(value, bool):
+      value = Configuration.is_on(value)
+      
+    return value
+      
+    
+  def is_off(self, path:str, default:bool=False):
+    """ Indique si un paramètre de configuration est faux (au sens Configuration.is_on)
+    
+    Le paramètre est donné par son chemin dans le fichier JSON, par exemple /preferences/open_webconsole
+    
+    Si le paramètre n'est pas trouvé, une valeur par défaut est retournée, qu'elle ait été fournie en entrée ou qu'il s'agisse de False sinon.
+    
+    Args:
+      path (str): chemin du paramètre à partir de la racine, en séparant les éléments par un slash (barre oblique /). Exemple : preferences/jwt/library
+      default: valeur par défaut (optionnelle)
+      
+    Returns:
+      True si la valeur du paramètre est fausse selon is_off, False sinon
+      La valeur par défaut si la paramètre n'a pas pu être trouvé dans la configuration
+
+    mpham 22/12/2023
+    """
+    
+    value = self.get(path, default)
+    if not isinstance(value, bool):
+      value = Configuration.is_off(value)
+      
+    return value
+      
+    
+
 class Configuration():
 
   conf_dir = os.path.join(os.getcwd(), 'conf')
@@ -119,6 +273,7 @@ class Configuration():
     return value.lower() in ('off', 'no', 'false', 'non')
 
 
+
   def is_parameter_on(conf:dict, path:str, default:bool = False):
     """ Indique si un paramètre de configuration est true (au sens Configuration.is_on)
     
@@ -128,12 +283,13 @@ class Configuration():
     
     Args:
       conf (dict): une configuration issue de self.read_configuration
-      default (bool): valeur par défaut (optionnelle)
+      path (str): chemin du paramètre à partir de la racine, en séparant les éléments par un slash (barre oblique /). Exemple : preferences/jwt/library
+      default: valeur par défaut (optionnelle)
       
     Returns:
       True si la valeur du paramètre est vraie selon is_on, False sinon
       La valeur par défaut si la paramètre n'a pas pu être trouvé dans la configuration
-      
+
     mpham 19/12/2022
     """
     
@@ -243,10 +399,11 @@ class ConfCrypto:
     """ Déchiffre les secrets contenus dans le fichier de configuration et met le fichier à jour si des secrets en clair sont trouvés
     
     Versions:
-      00/00/2021 (mpham) : version initiale
+      00/00/2021 (mpham) version initiale
+      22/12/2023 (mpham) la configuration n'est plus un dict, mais un conf_dict
     """
     
-    self.app_conf = copy.deepcopy(self.file_conf)
+    self.app_conf = conf_dict.copy(self.file_conf)
     self.decrypt_json(self.app_conf)
     
     if self.modification:

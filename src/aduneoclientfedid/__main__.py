@@ -33,7 +33,7 @@ from socketserver import ThreadingMixIn
 from .Configuration import Configuration
 from .CmdArgs import CmdArgs
 # Regarde s'il faut initialiser un nouveau fichier de configuration
-args = CmdArgs({'host': 'string', 'port': 'int'}).parsed_args
+args = CmdArgs({'host': 'string', 'port': 'int', 'test': 'switch'}).parsed_args
 if not os.path.isfile(os.path.join(os.getcwd(), 'conf', 'clientfedid.cnf')):
   Configuration.read_configuration('clientfedid.cnf', listen_host=args.get('host'), listen_port=args.get('port'))
 
@@ -107,6 +107,16 @@ def main():
     os.unlink(conf_dir+'/'+conf['server']['ssl_key_file'])
     os.unlink(conf_dir+'/'+conf['server']['ssl_cert_file'])
     
+
+def test():
+  print('--- test mode ----')
+  
+  from .test.TestMain import TestMain
+  TestMain.test()
+
     
 if __name__ == '__main__':
+  if args.get('test'):
+    test()
+  else:
     main()
