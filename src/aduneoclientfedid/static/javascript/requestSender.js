@@ -108,11 +108,7 @@ function _getHtmlJson(method, thisurl, data, menu_id=null, continueRequest=false
     if (this.readyState == 4 && this.status == 200) {
       //console.log(xhttp.response)
       //document.getElementById('text_ph').innerHTML += xhttp.response.html;
-      document.getElementById('text_ph').insertAdjacentHTML('beforeend', xhttp.response.html);
-      if (xhttp.response.html != '') {
-        document.getElementById('end_ph').scrollIntoView();
-      }
-      
+
       xhttp.response.javascript_include.forEach(include => {
         let scriptEl = document.createElement("script");
         scriptEl.setAttribute("src", include);
@@ -120,6 +116,11 @@ function _getHtmlJson(method, thisurl, data, menu_id=null, continueRequest=false
         document.body.appendChild(scriptEl);
       })
   
+      document.getElementById('text_ph').insertAdjacentHTML('beforeend', xhttp.response.html);
+      if (xhttp.response.html != '') {
+        document.getElementById('end_ph').scrollIntoView();
+      }
+      
       //xhttp.response.javascript_include.forEach(include => { window.eval('<script src="'+include+'"></script>)'); })
       window.eval(xhttp.response.javascript)
       if (continueRequest) {

@@ -160,9 +160,9 @@ class CfiForm():
     return self
   
   
-  def start_section(self, section_id:str, title:str, help_button:bool=True, level:int=1):
+  def start_section(self, section_id:str, title:str, help_button:bool=True, level:int=1, displayed_when:str="True"):
 
-    section = self._add_template_item('start_section', section_id, title, help_button, {}, holds_value=False)
+    section = self._add_template_item('start_section', section_id, title, help_button, displayed_when, holds_value=False)
     section['level'] = level
     return self
 
@@ -274,7 +274,7 @@ class CodeGenerator():
     self.html += '<span class="middlebutton" onClick="reinitFormRequest(\''+html.escape(self.form.form_uuid)+'\')">Reinit request</span>'
 
     if self.form.mode == 'new_page':
-      self.html += '<span class="middlebutton" onClick="document.getElementById(\'form-'+html.escape(self.form.form_uuid)+'\').submit();">Send request</span>'
+      self.html += '<span class="middlebutton" onClick="document.getElementById(\'form-'+html.escape(self.form.form_uuid)+'\').submit();">Send</span>'
     else:
       self.html += '<span class="middlebutton" onClick="sendToRequester(\''+html.escape(self.form.form_uuid)+'\')">Send request</span>'
     
@@ -450,7 +450,7 @@ class CodeGenerator():
     display = self._evaluate_display(template_item['displayed_when'])
     self._add_display_javascript(template_item['id'], template_item['displayed_when'])
 
-    self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><input type="checkbox" name="{field_id}" {checked} id={input_uuid} class="{form_uuid}" {disabled}{readonly}/></td><td></td><td></td></tr>'.format(
+    self.html += '<tr id="{tr_uuid}" style="display: {display};"><td>{label}</td><td><input type="checkbox" name="{field_id}" {checked} id={input_uuid} class="{form_uuid}" {disabled}{readonly}/></td><td></td><td></td></tr>'.format(
       form_uuid = self.form.form_uuid,
       tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
       input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
@@ -474,12 +474,22 @@ class CodeGenerator():
       
   def _generate_code_start_section(self, template_item:str):
     self._end_table()
-    self.html += '<h{header}>{title}</h{header}>'.format(title=html.escape(template_item['label']), header=template_item['level']+1)
+
+    display = self._evaluate_display(template_item['displayed_when'])
+    self._add_display_javascript(template_item['id'], template_item['displayed_when'], element_type='span')
+
+    self.html += '<span id="{section_id}" style="display: {display};"><h{header}>{title}</h{header}>'.format(
+      section_id = self.form.form_uuid+'_span_'+template_item['id'],
+      display = 'block' if display else 'none',
+      title=html.escape(template_item['label']), 
+      header=template_item['level']+1
+      )
 
 
   def _generate_code_end_section(self, template_item:str):
     self._end_table()
   
+    self.html += '</span>'
 
   def _generate_code_raw_html(self, template_item:str):
     self.html += template_item['html']
@@ -522,29 +532,31 @@ class CodeGenerator():
     return display
     
     
-  def _add_display_javascript(self, field_id:str, condition:dict) -> str:
+  def _add_display_javascript(self, field_id:str, condition:dict, element_type:str='tr') -> str:
   
     if condition != 'True' and condition != 'False' :
 
       proposition = Proposition(condition)
       js_condition = proposition.transpose_javascript(lambda var: "document.getElementById('" + self.form.form_uuid+'_d_'+var + "').value")
 
+      display_value = 'table-row' if element_type == 'tr' else 'block'
+
       # ajuste la visibilité des champs (et activation des INPUT) en fonction des SELECT
       #   appelés lorsque l'utilisateur change un SELECT
       self.javascript += """
       function update_visibility_"""+self.form.form_uuid+'_d_'+html.escape(field_id)+"""() {
-        let tr_id = '"""+self.form.form_uuid+'_tr_'+html.escape(field_id)+"""';
+        let el_id = '"""+self.form.form_uuid+'_'+element_type+'_'+html.escape(field_id)+"""';
         let styleDisplay = 'none';
         let disabled = true;
         if ("""+js_condition+""") {
-          styleDisplay = 'table-row';
+          styleDisplay = '"""+display_value+"""';
           disabled = false;
         }
-        document.getElementById(tr_id).style.display = styleDisplay;
-        Array.from(document.getElementById(tr_id).getElementsByTagName('input')).forEach(element => {
+        document.getElementById(el_id).style.display = styleDisplay;
+        Array.from(document.getElementById(el_id).getElementsByTagName('input')).forEach(element => {
           element.disabled = disabled;
         });
-        Array.from(document.getElementById(tr_id).getElementsByTagName('select')).forEach(element => {
+        Array.from(document.getElementById(el_id).getElementsByTagName('select')).forEach(element => {
           element.disabled = disabled;
         });
 
