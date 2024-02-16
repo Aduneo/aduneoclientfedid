@@ -1,27 +1,43 @@
+/**
+ * @license
+ * Copyright 2023 Aduneo
+ * SPDX-License-Identifier: Apache-2.0
+ */
 clipboardCategories = {
   "authorization_endpoint": "Authorization endpoint",
   "token_endpoint": "Token endpoint",
   "jwks_uri": "JWKS URI",
   "client_id": "Client ID",
+  "client_secret": "Client secret",
   "client_secret!": "Client secret",
   "redirect_uri": "Redirect URI",
   "scope": "Scope",
   "resource": "Resource",
   "introspection_endpoint": "Introspection endpoint",
   "access_token": "Access token",
+  "request_url": "URL",
 }
 var clipboardTarget;
 var clipboardCategory;
 
 function displayClipboard(imgElement) {
   
+  clipboardTarget = null
+  
   clipboardSpan = imgElement.parentElement;
   clipboardTD = clipboardSpan.parentElement;
   commonTR = clipboardTD.parentElement;
   inputs = commonTR.getElementsByTagName('input');
   if (inputs.length == 1) {
-    
     clipboardTarget = inputs[0]
+  } else {
+    textareas = commonTR.getElementsByTagName('textarea');
+    if (textareas.length == 1) {
+      clipboardTarget = textareas[0]
+    }
+  }
+  
+  if (clipboardTarget) {
   
     var rect = imgElement.getBoundingClientRect();
     var targetRect = clipboardTarget.getBoundingClientRect();

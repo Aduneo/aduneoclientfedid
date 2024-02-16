@@ -43,7 +43,7 @@ img.smallButton {
 
 table.fixed { 
   table-layout:fixed; 
-  width: 1074px; 
+  width: 1108px; 
   border: 1px solid grey; 
   border-collapse: collapse;
   font-size: 12px;
@@ -59,6 +59,10 @@ table.fixed td:nth-child(2) {
   border-right-width: 0px;
 }
 table.fixed td:nth-child(3) {
+  border-left-width: 0px;
+  border-right-width: 0px;
+}
+table.fixed td:nth-child(4) {
   border-left-width: 0px;
 }
 table.fixed td:nth-of-type(1) {width:200px;}

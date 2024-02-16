@@ -63,12 +63,14 @@ class CryptoTools:
     
     .. notes::
       mpham 21/05/2021
+      mpham 06/06/2023 : on crée des certificats en version 3
     """
 
     key_pair = crypto.PKey()
     key_pair.generate_key(crypto.TYPE_RSA, 4096)
 
     cert = crypto.X509()
+    cert.set_version(2)
     cert.get_subject().C = 'FR'
     cert.get_subject().L = 'Paris'
     cert.get_subject().O = 'Aduneo'
@@ -97,6 +99,7 @@ class CryptoTools:
     
     .. notes::
       mpham 21/05/2021
+      mpham 06/06/2023 : on crée des certificats en version 3
     """
     
     cn = conf['server'].get('host', '')
@@ -107,6 +110,7 @@ class CryptoTools:
     key_pair.generate_key(crypto.TYPE_RSA, 4096)
     
     cert = crypto.X509()
+    cert.set_version(2)
     cert.get_subject().C = 'FR'
     cert.get_subject().L = 'Paris'
     cert.get_subject().O = 'Aduneo'
@@ -147,12 +151,14 @@ class CryptoTools:
     Versions:
       23/12/2022 (mpham) : version initiale
       03/03/2023 (mpham) : on retire le SAN, comme pour generate_temp_certificate
+      06/06/2023 (mpham) : on crée des certificats en version 3
     """
     
     key_pair = crypto.PKey()
     key_pair.generate_key(crypto.TYPE_RSA, 4096)
     
     cert = crypto.X509()
+    cert.set_version(2)
     cert.get_subject().C = 'FR'
     cert.get_subject().L = 'Paris'
     cert.get_subject().O = 'Aduneo'

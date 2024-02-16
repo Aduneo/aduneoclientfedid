@@ -292,6 +292,12 @@ class SAMLClientLogin(FlowHandler):
 
   
   def send_request_redirect(self, context, conf_client):
+    """ Envoie la requête d'authentification en HTTP-Redirect
+    
+    Versions:
+      00/00/2022 (mpham) : version initiale
+      03/03/2023 (mpham) : le protocolBonding était à POST au lieu de Redirect dans la requête
+    """
     
     self.log_info('  sending request in HTTP Redirect')
     

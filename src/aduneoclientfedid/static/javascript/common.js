@@ -65,3 +65,13 @@ function highlight_word(word) {
 function repla(str, find, replace) {
   return str.replace(new RegExp(find, 'g'), replace);
 }
+
+function copyTextToClipboard(text) {
+  var tempArea = document.createElement('textarea')
+  tempArea.value = text
+  document.body.appendChild(tempArea)
+  tempArea.select()
+  tempArea.setSelectionRange(0, 99999)
+  document.execCommand("copy")
+  document.body.removeChild(tempArea)
+}

@@ -769,6 +769,15 @@ class AduneoError(Exception):
     super().__init__(message)
 
 
+class DesignError(Exception):
+  """ Erreur de conception
+  """
+  
+  def __init__(self, message:str, explanation_code:str=None):
+    self.explanation_code = explanation_code
+    super().__init__(message)
+
+
 class WebRouter:
   """
     URL registration
@@ -780,14 +789,20 @@ class WebRouter:
     @register_web_module('/client/oauth/login')
     class OAuthClientLogin(BaseHandler):
     
-    Les méthodes de l'objet devant servir des URL ont le decorator @register_url avec la méthode (une même URL ne peut donc pas servir en même temps GET et POST)
+    Les méthodes de l'objet devant servir des URL ont le decorator @register_page_url avec la méthode (une même URL ne peut donc pas servir en même temps GET et POST)
     
-    @register_url('POST')
+    @register_page_url('send_access_token_introspection_request', 'POST')
     def send_access_token_introspection_request_spa(self):
 
+    L'URL est donnée relativement au module. 
+    L'URL complète sera donc /client/oauth/login/send_access_token_introspection_request
+    
+    L'URL vide ('') correspond à la page d'accueil du module, c'est-à-dire à /client/oauth/login dans notre exemple
+
+    Si l'URL n'est pas donnée dans le décorateur,
     Le nom de la méthode donne l'URL relative (ici send_access_token_introspection_request_spa)
     
-    L'URL complète sera donc /client/oauth/login/send_access_token_introspection_request_spa
+    L'URL complète sera alors /client/oauth/login/send_access_token_introspection_request_spa
     
     Pour servir une URL, on commence par vérifier qu'elle existe par WebRouter.is_authorized_url
     Puis on crée un objet WebRouter avec l'URL et la méthode HTTP
@@ -959,13 +974,15 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
         template_content = Template.load_template(template)
       
       self.hreq.continuous_page = continuous
-      print('---- IN DECORATOR', self.hreq.continuous_page)
+      #print('---- IN DECORATOR', self.hreq.continuous_page)
       if continuous:
         # Page continue
         self.hreq.continuous_page_id = str(uuid.uuid4())
-        print('---- IN DECORATOR', self.hreq.continuous_page_id)
+        #print('---- IN DECORATOR', self.hreq.continuous_page_id)
         
-        content = """
+        from .WebModules.Clipboard import Clipboard
+        content = Clipboard.get_window_definition()
+        content += """
         <script src="/javascript/requestSender.js"></script>
         <div id="text_ph"></div>
         <div id="end_ph"></div>        
@@ -1045,14 +1062,19 @@ def register_web_module(path):
   
   Args:
     path: URL relative servie par la classe, par exemple /client/oauth/login
-  
-  mpham 30/09/2022
+
+  Versions:
+    30/09/2022 (mpham) version initiale
+    28/12/2023 (mpham) page d'accueil des modules
   """
   def decorator(class_def):
     module_name = class_def.__module__
     for method in ['get', 'post']:
       for relative_url in WebRouter.temp_urls[method.casefold()].get(module_name, []):
-        full_url = path+'/'+relative_url
+        if relative_url == '':
+          full_url = path
+        else:
+          full_url = path+'/'+relative_url
         func_def = WebRouter.temp_urls[method.casefold()][module_name][relative_url]
         WebRouter.authorized_urls[method][full_url] = func_def
     

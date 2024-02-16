@@ -162,14 +162,14 @@ class FlowHandler(BaseHandler):
           - display_text : texte en lecture seule
           - edit_text : texte en modification
           - (ajouter en fonction des besoins edit_json, edit_textarea, edit_select, edit_checkbox, etc.)
-          - value : valeur par défaut
+        - value : valeur par défaut
 
     Les données de la requête sont mises à jour automatiquement lorsque des valeurs des <input> dont l'identifiant commence par <dom_id>_ sont modifiées (par exemple 424986_scope
     Pour cela, il doit être fourni le code Javascript de génération, qui retourne (dans return) les données.
       Dans ce code, les valeurs sont récupérées par la fonction get_form_value_with_dom qui prend en argument l'identifiant de l'<input> sans le dom
     
     Par exemple :
-      data = {'scope': get_form_value_with_dom('scope')};
+      data = {'scope': get_form_value_with_dom(domId, 'scope')};
       return data;
       
     Ces informations sont mises dans le corps en POST, et en query string en GET.
@@ -269,7 +269,7 @@ class FlowHandler(BaseHandler):
     if clipboard != '':
       html_code += '<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>'
     html_code += '</td>'
-    html_code += '</td></tr>'
+    html_code += '</td></tr>' # TODO : il n'y a pas un </td> en trop ?
     
     methods = [m.strip().upper() for m in method.split(',')]
     for m in methods:

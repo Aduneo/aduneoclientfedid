@@ -60,6 +60,8 @@ class ClipboardContent(object):
     
     add = True
     
+    
+    # OBSOLETE : les champs secrets ne ne terminent plus par !
     if category.endswith('!'):
       # on regarde si on doit bien stocker les secrets
       add = Configuration.is_parameter_on(self.conf, '/preferences/clipboard/remember_secrets', False)
@@ -136,6 +138,7 @@ class Clipboard(BaseHandler):
   def get_window_definition():
     return """
 <script src="/javascript/clipboard.js"></script>
+<script src="/javascript/dragWindow.js"></script>
 <div id="clipboardWindowBackground" class="modal-background" onclick="clipboardClickBackground(event)">
 </div>
 <div id="clipboardWindow" class="dragWindow" style="z-index: 2;" onmousedown="startDrag(this, event)">

@@ -109,7 +109,9 @@ function _getHtmlJson(method, thisurl, data, menu_id=null, continueRequest=false
       //console.log(xhttp.response)
       //document.getElementById('text_ph').innerHTML += xhttp.response.html;
       document.getElementById('text_ph').insertAdjacentHTML('beforeend', xhttp.response.html);
-      document.getElementById('end_ph').scrollIntoView();
+      if (xhttp.response.html != '') {
+        document.getElementById('end_ph').scrollIntoView();
+      }
       
       xhttp.response.javascript_include.forEach(include => {
         let scriptEl = document.createElement("script");
@@ -155,6 +157,30 @@ function get_form_value_with_dom(domId, input_name) {
   return document.getElementById(domId+'_d_'+input_name).value;
 }
 
+function reinitFormRequest(domId) {
+  
+  let fields = document.querySelectorAll('input.'+domId);
+  fields.forEach((field) => {
+    field.value = field.defaultValue
+    field.checked = field.defaultChecked
+  });
+
+  eval('initForm_'+domId+'()')
+
+  /*
+  document.getElementById(domId+'_d_url').value = document.getElementById(domId+'_d_url').defaultValue
+  if (document.getElementById(domId+'_d_data')) {
+    eval('f_'+domId+'_update()')
+  }
+  if (document.getElementById(domId+'_d_auth_method')) {
+    authMethodSelect = document.getElementById(domId+'_d_auth_method')
+    Array.from(authMethodSelect.options, (opt => { opt.selected = opt.defaultSelected; } ));
+    changeRequestHTTPAuth(domId)
+  }
+  document.getElementById(domId+'_d_verify_cert').checked = document.getElementById(domId+'_d_verify_cert').defaultChecked
+  */
+}
+
 function reinitRequest(domId) {
   
   let fields = document.querySelectorAll('input.'+domId);
@@ -162,7 +188,7 @@ function reinitRequest(domId) {
     field.value = field.defaultValue
     field.checked = field.defaultChecked
   });
-  
+
   document.getElementById(domId+'_d_url').value = document.getElementById(domId+'_d_url').defaultValue
   if (document.getElementById(domId+'_d_data')) {
     eval('f_'+domId+'_update()')
@@ -177,12 +203,15 @@ function reinitRequest(domId) {
 
 function changeRequestHTTPAuth(domId) {
   if (document.getElementById(domId+'_d_auth_method')) {
-    if (document.getElementById(domId+'_d_auth_method').value == 'Basic') {
+    if (document.getElementById(domId+'_d_auth_method').value == 'basic') {
       document.getElementById(domId+'_tr_auth_login').style.display = 'table-row';
       document.getElementById(domId+'_tr_auth_secret').style.display = 'table-row';
-    } else if (document.getElementById(domId+'_d_auth_method').value == 'POST') {
+    } else if (document.getElementById(domId+'_d_auth_method').value == 'post') {
       document.getElementById(domId+'_tr_auth_login').style.display = 'table-row';
       document.getElementById(domId+'_tr_auth_secret').style.display = 'table-row';
+    } else if (document.getElementById(domId+'_d_auth_method').value == 'bearer_token') {
+      document.getElementById(domId+'_tr_auth_login').style.display = 'table-row';
+      document.getElementById(domId+'_tr_auth_secret').style.display = 'none';
     } else {
       document.getElementById(domId+'_tr_auth_login').style.display = 'none';
       document.getElementById(domId+'_tr_auth_secret').style.display = 'none';
@@ -224,3 +253,138 @@ function cancelRequest(domId, contextId) {
   document.getElementById(domId+'_button_bar').style.display = 'none';
   getHtml("GET", '/client/flows/cancelrequest?contextid='+contextId);
 }
+
+
+function copyFieldValue(imgElement) {
+
+  buttonSpan = imgElement.parentElement;
+  buttonTD = buttonSpan.parentElement;
+  commonTR = buttonTD.parentElement;
+  inputs = commonTR.getElementsByTagName('input');
+  if (inputs.length == 1) {
+    field = inputs[0];
+    field.select();
+    document.execCommand("copy");
+  }
+}
+
+// Nouvelles fonctions
+
+function sendToRequester(formUUID) {
+
+  request_form = document.getElementById('form-'+formUUID);
+
+  // on commence par activer les champs du requêteur
+  request_form.querySelectorAll('.'+formUUID).forEach(el => {
+    if (el.name.startsWith('hr_')) {
+      el.disabled = false;
+    }
+  });
+
+  request_form.submit();
+}
+
+
+/*
+  Active/désactive les champs du formulaire (en haut) et de requêteur (en bas) en fonction de la case "Modify request"
+*/
+function updateModifyRequest(formUUID) {
+  
+  // flags donnant la visibilité et non l'inactivité
+  formState = true; 
+  requesterState = false;
+  if (document.getElementById(formUUID+'_modify_request').checked) {
+    formState = false;
+    requesterState = true;
+  }
+
+  request_form = document.getElementById('form-'+formUUID);
+  
+  // on commence par activer ce qui doit l'être (les champs du formulaire ont pour classe formUUID pour une identification plus facile)
+  request_form.querySelectorAll('.'+formUUID).forEach(el => {
+    if (el.name.startsWith('hr_') && requesterState) {
+      el.disabled = false;
+    } else if (!el.name.startsWith('hr_') && formState) {
+      el.disabled = false;
+    }
+  });
+  
+  // on active maintenant les éléments en fonction des displayed_when 
+  eval("update_form_visibility_"+formUUID+"();");
+
+  // on désactive maintenant le formulaire ou le requêteur
+  request_form.querySelectorAll('.'+formUUID).forEach(el => {
+    if (el.name.startsWith('hr_') && !requesterState) {
+      el.disabled = true;
+    } else if (!el.name.startsWith('hr_') && !formState) {
+      el.disabled = true;
+    }
+  });
+}
+
+
+function updateFormData(formUUID, requesterFieldValues, paramValues) {
+  
+  //console.log(requesterFieldValues)
+  //console.log(paramValues)
+  
+  // on commence par vérifier qu'on n'est pas en modification manuelle de la requête
+  if (!document.getElementById(formUUID+'_modify_request').checked) {
+    
+    // on initialise les champs du requêteur
+    Object.entries(requesterFieldValues).forEach(([field_name, value]) => {
+      field_id = 'hr_'+field_name
+      if (document.getElementById(formUUID+'_d_'+field_id)) {
+        setFormValue(formUUID, field_id, value);
+      }
+    });
+  
+    let formMethod = getFormValue(formUUID, 'hr_form_method')
+    let bodyFormat = getFormValue(formUUID, 'hr_body_format')
+    let authMethod = getFormValue(formUUID, 'hr_auth_method');
+
+    // les champs pour l'authentification Form sont particuliers
+    if ((authMethod == 'form') && (formMethod == 'post' || formMethod == 'redirect')) {
+      paramValues[getFormValue(formUUID, 'hr_auth_login_param')] = getFormValue(formUUID, 'hr_auth_login');
+      paramValues[getFormValue(formUUID, 'hr_auth_secret_param')] = getFormValue(formUUID, 'hr_auth_secret');
+    }
+    
+  
+    
+    // on met maintenant à jour les données de la requête finale
+    if (formMethod == 'get') {
+      request_url = getFormValue(formUUID, 'hr_request_url');
+      request_url += (request_url.includes('?') ? '&' : '?');
+      request_url += new URLSearchParams(Object.entries(paramValues)).toString();
+      setFormValue(formUUID, 'hr_request_url', request_url);
+    } else {
+      if (bodyFormat == 'x-www-form-urlencoded') {
+        setFormValue(formUUID, 'hr_request_data', new URLSearchParams(Object.entries(paramValues)).toString());
+      } else if (bodyFormat == 'json') {
+        setFormValue(formUUID, 'hr_request_data', JSON.stringify(paramValues, null, 2));
+      }
+    }
+    
+    //console.log(method)
+  }
+}
+  
+
+function getFormValue(formUUID, field_id) {
+  return document.getElementById(formUUID+'_d_'+field_id).value;
+}
+
+
+function setFormValue(formUUID, field_id, value) {
+  el = document.getElementById(formUUID+'_d_'+field_id);
+  
+  if (el.tagName == 'INPUT' && el.type == 'checkbox') {
+    el.checked = value;
+  } else {
+    el.value = value;
+  }
+}
+
+
+
+
