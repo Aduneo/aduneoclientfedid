@@ -205,7 +205,7 @@ class WebTest(BaseHandler):
       'verify_certificates': Configuration.is_on(rp.get('verify_certificates', 'on')),
       }
     
-    form = CfiForm('oidcauth', form_content, action='/test/form') \
+    form = CfiForm('oidcauth', form_content, action='/test/form', submit_label='Save') \
       .text('name', label='Name') \
       .start_section('op_endpoints', title="OP endpoints") \
         .closed_list('endpoint_configuration', label='Endpoint configuration', 

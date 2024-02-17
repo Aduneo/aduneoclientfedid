@@ -62,7 +62,7 @@ class OIDCClientAdmin(BaseHandler):
       'verify_certificates': Configuration.is_on(rp.get('verify_certificates', 'on')),
       }
     
-    form = CfiForm('oidcadmin', form_content) \
+    form = CfiForm('oidcadmin', form_content, submit_label='Save') \
       .hidden('rp_id') \
       .text('name', label='Name') \
       .start_section('op_endpoints', title="OP endpoints") \

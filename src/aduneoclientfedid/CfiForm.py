@@ -70,7 +70,7 @@ class CfiForm():
     27/12/2023 (mpham) version initiale
   """
 
-  def __init__(self, form_id:str, content:dict, action:str=None, mode:str='new_page'):
+  def __init__(self, form_id:str, content:dict, action:str=None, mode:str='new_page', submit_label:str=None):
     """ Constructeur
     
     Args:
@@ -80,6 +80,7 @@ class CfiForm():
       mode: indique comment le formulaire est envoyé
         - new_page : mode normal où la réponse remplace la page
         - api : la requête est effectuée par ClientFedID en service web et la réponse est ajoutée dans la page courante, juste après le formulaire
+      submit_label: libellé du bouton de soumission du formulaire
     
     Versions:
       27/12/2023 (mpham) version initiale
@@ -88,6 +89,7 @@ class CfiForm():
     self.form_id = form_id
     self.action = action
     self.mode = mode
+    self.submit_label = submit_label
     self.form_uuid = 'i'+str(uuid.uuid4()).replace('-', '_') # car on utilise dom_id dans le nom de fonctions Javascript, et document.querySelectorAll n'aime pas les classes commençant par un chiffre
 
     # Template (construit par les méthodes text(), closed_list(), check_box(), etc.)
@@ -274,9 +276,15 @@ class CodeGenerator():
     self.html += '<span class="middlebutton" onClick="reinitFormRequest(\''+html.escape(self.form.form_uuid)+'\')">Reinit request</span>'
 
     if self.form.mode == 'new_page':
-      self.html += '<span class="middlebutton" onClick="document.getElementById(\'form-'+html.escape(self.form.form_uuid)+'\').submit();">Send</span>'
+      label = self.form.submit_label
+      if label is None:
+        label = 'Send'
+      self.html += f'<span class="middlebutton" onClick="document.getElementById(\'form-{html.escape(self.form.form_uuid)}\').submit();">{label}</span>'
     else:
-      self.html += '<span class="middlebutton" onClick="sendToRequester(\''+html.escape(self.form.form_uuid)+'\')">Send request</span>'
+      label = self.form.submit_label
+      if label is None:
+        label = 'Send request'
+      self.html += f'<span class="middlebutton" onClick="sendToRequester(\'{html.escape(self.form.form_uuid)}\')">{label}</span>'
     
     #self.html += '<span class="middlebutton" onClick="cancelRequest(\''+html.escape(self.form.form_uuid)+'\', \''+html.escape(context)+'\')">Cancel</span>'
     self.html += '</div>'
@@ -568,7 +576,7 @@ class CodeGenerator():
       
 class RequesterForm(CfiForm):
   
-  def __init__(self, form_id:str, content:dict, request_url:str, action:str=None, mode:str='new_page'):
+  def __init__(self, form_id:str, content:dict, request_url:str, action:str=None, mode:str='new_page', submit_label:str=None):
     """ Constructeur
     
     Une requêteur HTTP a deux comportements possibles :
@@ -598,12 +606,13 @@ class RequesterForm(CfiForm):
       mode: indique comment le formulaire est envoyé
         - new_page : mode normal où la réponse remplace la page
         - api : la requête est effectuée par ClientFedID en service web et la réponse est ajoutée dans la page courante, juste après le formulaire
+      submit_label: libellé du bouton de soumission du formulaire
       
     Versions:
       28/12/2023 (mpham) version initiale, adaptée de FlowHandler.display_form_http_request
     """
     
-    super().__init__(form_id, content, action, mode)
+    super().__init__(form_id, content, action, mode, submit_label)
     self.mode = mode
     self.title = None
     if self.action is None:
