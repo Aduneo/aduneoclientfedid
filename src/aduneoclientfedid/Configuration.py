@@ -401,6 +401,7 @@ class ConfCrypto:
     Versions:
       00/00/2021 (mpham) version initiale
       22/12/2023 (mpham) la configuration n'est plus un dict, mais un conf_dict
+      17/02/2024 (mpham) conversion de valeur de token_endpoint_auth_method
     """
     
     self.app_conf = conf_dict.copy(self.file_conf)
@@ -423,6 +424,11 @@ class ConfCrypto:
           if value.startswith('{Fernet}'):
             data[key] = self._get_crypto().decrypt_string(value[8:])           
           else:
+            self.modification = True
+        elif key == 'token_endpoint_auth_method':
+          # Conversion de valeur de février 2024
+          if value in ['Basic', 'POST']:
+            data[key] = {'Basic': 'client_secret_basic', 'POST': 'client_secret_post'}[value]
             self.modification = True
         else:
           self.decrypt_json(value)
