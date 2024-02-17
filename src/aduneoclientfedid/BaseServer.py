@@ -906,7 +906,6 @@ def register_url(method:str, url:str=None):
 
   Versions:
     30/09/2022 (mpham) version initiale
-  DEPRECATED
   """
   def decorator(func):
   
