@@ -23,6 +23,24 @@ import logging
 import os
 
 class Help(BaseHandler):
+  """ Aide en ligne accessible dans les tableaux
+  
+  Pour modifier le texte de l'aide directement dans l'app, on passe le paramètre de configuration /preferences/help/edit_topics à on
+    Cela ajoute un bouton de modification dans la fenêtre de popup
+    
+    On peut modifier :
+      - le titre
+      - le contenu
+      
+    Le contenu suit une syntaxe de type markdown très simplifié :
+      - l'italique est l'astérisque seule : *italique*
+      - le gras est une double astérique : **gras**
+      - le gras+italique est une triple astérique : ***gras+italique***
+      - le retour à la ligne se fait en terminant une ligne par deux espaces ou par <br>
+      - une liste se fait en commençant chaque ligne par un tiret -
+      - une liste numérotée se fait en commençant chaque ligne par un nombre suivi d'un point (le nombre n'a pas d'importance)
+  
+  """
   
   help_json = None
   
@@ -96,6 +114,7 @@ class Help(BaseHandler):
     Versions    
       13/04/2021 (mpham) version initiale
       21/20/2024 (mpham) l'utilisateur peut avoir la posibilité de modifier le texte d'aide (si paramètre de configuration preferences/help/edit_topics à on
+      24/02/2024 (mpham) on envoie maintenant les informations nécessaires à la modification du texte : help_id, language, edit_topics (true/false) et edit_content (contenu au format light markdown)
     """
   
     help_id = self.get_query_string_param('id', '')
@@ -148,6 +167,15 @@ class Help(BaseHandler):
 
 
   def save_help(self):
+    """ Enregistre de nouveaux textes pour une rubrique d'aide
+
+    Returns:
+      une page avec un code 200 si tout c'est bien déroulé
+      une page avec un code 500 en cas d'erreur
+    
+    Versions:
+      24/02/2024 (mpham) version initiale
+    """
     
     code = 200
     
@@ -184,6 +212,22 @@ class Help(BaseHandler):
 
 
   def convert_from_light_markdown(text:str) -> str:
+    """ Convertit du light markdown en HTML
+    
+    Voir le commentaire de la classe pour une description du light markdown de ClientFedID
+    
+    Args:
+      text : texte en light markdown
+      
+    Returns:
+      Code HTML correspondant
+      
+    Raises:
+      AduneoError en cas de conversion impossible
+    
+    Versions:
+      24/02/2024 (mpham) version initiale
+    """
     
     result = ''
     
@@ -247,6 +291,24 @@ class Help(BaseHandler):
     
     
   def _convert_text_from_light_markdown(text:str) -> str:
+    """ Convertit un paragraphe light markdown en HTML
+    
+    (la différence avec convert_from_light_markdown, c'est qu'on ne traite que la décoration du texte : italique et gras)
+    
+    Voir le commentaire de la classe pour une description du light markdown de ClientFedID
+    
+    Args:
+      text : paragraphe en light markdown
+      
+    Returns:
+      Code HTML correspondant
+      
+    Raises:
+      AduneoError en cas de conversion impossible
+    
+    Versions:
+      24/02/2024 (mpham) version initiale
+    """
     
     start = 0
     
@@ -283,6 +345,18 @@ class Help(BaseHandler):
     
     
   def _count_asterisks(text:str, asterisk_pos:int) -> int:
+    """ Compte le nombre d'astériques contiguës
+    
+    Args:
+      text: texte concerné
+      asterisk_pos: position de la première astérisque
+      
+    Returns:
+      nombre d'astérisques
+      
+    Versions:
+      24/02/2024 (mpham) version initiale
+    """
     
     count = 0
     loop = True
