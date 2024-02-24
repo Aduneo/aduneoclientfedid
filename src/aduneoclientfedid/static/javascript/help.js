@@ -7,16 +7,26 @@ function help(imgElement, itemId) {
   // on peut déterminer le root de l'identifiant d'aide de deux manières
   //   - il a été donné explicitement lors de l'intégration du module d'aide (par exemple self.add_content(Help.help_window_definition(page_id='client_oidc')) )
   //   - sinon on prend l'URL de la page
-  var absHelpItemId;
-  if (typeof helpRootPageId === 'undefined') {
-    absHelpItemId = window.location.pathname.substring(1).replaceAll('/', '_')+'_'+itemId;
-  } else {
-    absHelpItemId = helpRootPageId+'_'+itemId;
+  var absHelpItemId = itemId;
+  if (!absHelpItemId.startsWith('/')) {
+    if (typeof helpRootPageId === 'undefined') {
+      absHelpItemId = window.location.pathname.substring(1).replaceAll('/', '_')+'_'+itemId;
+    } else {
+      absHelpItemId = helpRootPageId+'_'+itemId;
+    }
   }
   var rect = imgElement.getBoundingClientRect();
   displayHelpPopup(rect.left+50, rect.top, absHelpItemId);
 }
 
+var help_topic = {
+  'content': '',
+  'edit_topics': false,
+  'header': '',
+  'help_id': null,
+  'language': 'en',
+  'topics_defined': false,
+};
 
 function displayHelpPopup(x, y, helpId) {
   
@@ -26,9 +36,18 @@ function displayHelpPopup(x, y, helpId) {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
-      jsonResponse = JSON.parse(xhttp.responseText);
-      document.getElementById("helpHeader").innerHTML = jsonResponse.header;
-      document.getElementById("helpContent").innerHTML = jsonResponse.content;
+      help_topic = JSON.parse(xhttp.responseText);
+      if (help_topic.topics_defined) {
+        switchHelpMode('read');
+        document.getElementById("helpHeaderInput").value = help_topic.header;
+        document.getElementById("helpContentInput").value = help_topic.edit_content;
+      } else {
+        switchHelpMode('edit');
+        document.getElementById("helpHeaderInput").value = help_topic.help_id;
+        document.getElementById("helpContentInput").value = '';
+      }
+      document.getElementById("helpHeader").innerHTML = help_topic.header;
+      document.getElementById("helpContent").innerHTML = help_topic.content;
     }
   };
   xhttp.open("GET", "/help?id="+helpId, true);
@@ -36,6 +55,67 @@ function displayHelpPopup(x, y, helpId) {
   
   openDrag('helpWindow', x, window.pageYOffset+y)
 }
+
+
+function switchHelpMode(mode) {
+  if (mode == 'read') {
+    document.getElementById('helpHeader').style.display = 'inline';
+    document.getElementById('helpHeaderEdit').style.display = 'none';
+    document.getElementById('helpEditButton').style.display = help_topic.edit_topics ? 'inline' : 'none';
+    document.getElementById('helpContent').style.display = 'block';
+    document.getElementById('helpContentEdit').style.display = 'none';
+  } else {
+    document.getElementById('helpHeader').style.display = 'none';
+    document.getElementById('helpHeaderEdit').style.display = 'inline';
+    document.getElementById('helpEditButton').style.display = 'none';
+    document.getElementById('helpContent').style.display = 'none';
+    document.getElementById('helpContentEdit').style.display = 'block';
+  };
+  document.getElementById('helpSaveButton').style.display = 'inline';
+}
+  
+
+function editHelp() {
+  switchHelpMode('edit');
+}
+
+
+function saveHelp() {
+
+  var params = {
+    'help_id': help_topic.help_id,
+    'header': document.getElementById("helpHeaderInput").value,
+    'content': document.getElementById("helpContentInput").value,
+    'language': help_topic.language,
+  };
+
+  let urlEncodedDataPairs = [];
+  for (name in params) {
+    urlEncodedDataPairs.push(encodeURIComponent(name)+'='+encodeURIComponent(params[name]));
+  }
+  urlEncodedData = urlEncodedDataPairs.join('&');
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/help', true);
+  xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+  xhr.onreadystatechange = function() {
+    if (this.readyState == 4) {
+      if (this.status == 200) {
+        closeHelpWindow();
+      } else {
+        document.getElementById('helpSaveButton').style.display = 'inline';
+      }
+    }
+  };
+  xhr.send(urlEncodedData);
+  document.getElementById('helpSaveButton').style.display = 'none';
+}
+
+
+function closeHelpWindow() {
+  document.getElementById('helpWindow').style.visibility = 'hidden';
+}
+  
 
 // draggable windows
 

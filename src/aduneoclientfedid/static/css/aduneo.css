@@ -12,6 +12,7 @@
 }
 
 .middlebutton {
+  font-family: Verdana;
   background-color: #FFA500;
   border: none;
   color: white;
@@ -35,6 +36,20 @@ div.idpList {
   padding-right: 12px;
   margin-top: 6px;
   margin-bottom: 6px;
+}
+
+span.smallButton {
+  font-family: Verdana;
+  background-color: #FFA500;
+  border: none;
+  color: white;
+  padding: 4px 8px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 12px;
+  margin: 2px 1px;
+  cursor: pointer;
 }
 
 img.smallButton {
@@ -128,6 +143,14 @@ span.cellimg img {
   outline:none;
 }
 
+
+span.helpHeader {
+  font-family: Verdana;
+}
+
+div.helpContent {
+  font-family: Verdana;
+}
 
 .etape_un {
   border: solid 3px #004c97;

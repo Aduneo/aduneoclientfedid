@@ -608,8 +608,8 @@ class BaseHandler:
     self.hreq.add_content(content)
     
   
-  def send_page(self, content = ''):
-    self.hreq.send_page(content)
+  def send_page(self, content = '', code=200):
+    self.hreq.send_page(content, code)
 
 
   def send_page_raw(self, content = ''):

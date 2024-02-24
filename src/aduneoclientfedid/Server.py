@@ -372,6 +372,22 @@ class Server(BaseServer):
       self.send_page(str(error), clear_buffer=True)
 
 
+  def post_help(self):
+  
+    """
+    Enregistre une rubrique d'aide
+      
+    mpham 22/02/2024
+    """
+    
+    help_handler = Help(self)
+
+    try:
+      help_handler.save_help()
+    except AduneoError as error:
+      self.send_page(str(error), clear_buffer=True)
+
+
   def get_oidc_client_preparerequestazerty(self):
 
     """

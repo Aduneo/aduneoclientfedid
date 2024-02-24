@@ -63,7 +63,7 @@
     "header_en": "Response Type",
     "content_en": "<p>Le paramètre response type indique la cinématique souhaitée par le client : code d'autorisation, implicite, hybride. Etant donné que la cinématique implicite a été rendue obsolète, le client de test de fédération ne propose que la cinématique code.</p>"
   },
-    "client_oidc_admin_modifyclient_token_endpoint_auth_method": {
+  "client_oidc_admin_modifyclient_token_endpoint_auth_method": {
     "header_en": "Auth method",
     "content_en": "<p>Les méthodes d'autorisation courantes sont :</p><p>Client Secret Basic :</p><p>Le client utilise son client_id et son client_secret pour s'authentifier auprès du serveur d'autorisation.</p><p>Ces informations d'identification sont incluses dans le header de la requête et encodées en base64 (client_id:client_secret)</p><br/><p>Client Secret Post :</p><p>Comme Client Secret Basic, mais les informations d'identification sont transmises dans le corps de la requête POST au lieu de l'en-tête.</p>"
   },
@@ -79,12 +79,10 @@
     "header_en": "Logout Endpoint",
     "content_en": "<p>L'endpoint de déconnexion (logout endpoint) est le symétrique de l'endpoint d'autorisation (authorization endpoint). Il permet de mettre fin à la session. Il represente l'URL vers laquelle l'utilisateur est redirigé avec une requête de déconnexion. La déconnexion n'est pas abordée dans la spécification principale.</p><p>La cinématique de déconnexion est similaire à celle de l'authentification : l'utilisateur est redirigé vers l'IdP qui réalise alors la déconnexion. Optionnellement, le client peut demander que l'utilisateur lui soit retourné.</p><p>Dans les informations de connexion retournées par l'URI de découverte (Discovery URI), cet endpoint est appelé endpoint de fin de session (end session endpoint) et non endpoint de déconnexion.</p><p>Attention, il est parfois nécessaire d'activer explicitemnet la fonctionnalité de déconnexion dans l'IdP lors de la configuration<p>Il est parfois nécessaire d'activer explicitemnet la fonctionnalité de déconnexion dans l'IdP lors de la configuration</p><p>Tout comme pour l'URL d'autorisation, la spécification n'impose pas de syntaxe à l'URL, qui doit obligatoirement être en https. Voici quelques exemples de logout endpoint :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/oauth2/v2.0/logout</li><li>https://societe.okta.com/oauth2/v1/logout</li></ul><p>Ce paramètre est à récupérer auprès de l'IdP. Il est la plupart du temps donné lors de la configuration du client (application), parfois dans une page regroupant tous les endpoint ou toutes les options.</p><p>Le mécanisme de déconnexion peut aller plus loin, afin que la déconnexion soit propagée à toutes les applications auxquelles l'utilisateur est authentifié (par le même IdP en session SSO s'entend). OpenID Connect définit pour cela deux méthodes : <a href=\"https://openid.net/specs/openid-connect-frontchannel-1_0.html \">OpenID Connect Front-Channel Logout</a> et <a href=\"https://openid.net/specs/openid-connect-backchannel-1_0.html \">OpenID Connect Back-Channel Logout</a>.</p>"
   },
-    "client_oidc_login_preparerequest_token_endpoint_auth_method": {
+  "client_oidc_login_preparerequest_token_endpoint_auth_method": {
     "header_en": "Auth method",
     "content_en": "<p>Les méthodes d'autorisation courantes sont :</p><p>Client Secret Basic :</p><p>Le client utilise son client_id et son client_secret pour s'authentifier auprès du serveur d'autorisation.</p><p>Ces informations d'identification sont incluses dans le header de la requête et encodées en base64 (client_id:client_secret)</p><br/><p>Client Secret Post :</p><p>Comme Client Secret Basic, mais les informations d'identification sont transmises dans le corps de la requête POST au lieu de l'en-tête.</p>"
   },
-  
-  
   "client_oidc_login_preparerequest_authorization_endpoint": {
     "header_en": "Authorization Endpoint",
     "content_en": "<p>L'endpoint d'autorisation (authorization endpoint) est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs pour y être authentifiés. C'est donc le point de départ de la cinématique OpenID Connect.</p><p>On notera qu'il n'est pas facile de traduire le terme endpoint en français. Certains utilisent point de terminaison ou point d'extrémité. Point d'entrée nous paraît un meilleur candidat, mais on préfère finalement ne pas traduire le terme qui est passé dans le langage courant informatique.<p>La spécification n'impose pas de syntaxe à l'URL, qui doit obligatoirement être en https. Voici quelques exemples d'authorization endpoint :</p><ul><li>https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/oauth2/v2.0/authorize</li><li>https://societe.okta.com/oauth2/v1/authorize</li></ul><p>On donne ici la valeur utilisée lors de la dernière tentative d'authentification, ou la valeur déduite de la configuration du client, qu'elle ait été fournie directement ou qu'elle ait été récupérée auprès de l'URL de découverte.</p><p>Vous avez le loisir de modifier cette valeur (qui ne sera pas reportée dans la configuration) et que vous retrouverez si vous refaites une nouvelle tentative d'authentification juste derrière celle-ci.</p>"
@@ -176,7 +174,7 @@
   "client_oidc_login_preparerequest_verify_certificates": {
     "header_en": "Certificate verification",
     "content_en": "<p>Indique si le client doit vérifier la validité des certificats de l'IdP lors des connexions aux différents points d'entrées des API.</p><p>Cette vérification est l'un des points essentiels assurant la sécurité d'OpenID Connect.</p><p>Les erreurs de certificats sont la cause de nombreux dysfonctionnement, en particulier lorsque les autorités sont internes.</p>"
-  },  
+  },
   "oidc_client_callback_idp_state": {
     "header_en": "State retourné par l'IDP",
     "content_en": "<p>Le paramètre <i>state</i> est un identifiant transmis dans la requête d'authentification.</p><p>L'IdP le retourne tel quel dans l'URL de retour d'authentification, afin de vérifier que la réponse correspond bien à une demande réalisée par le client.</p><p>Si le <i>state</i> est inconnu par le client, il est probable qu'un attaquant tente de forcer une authentification, par exemple dans le but de faciliter une attaque de type CRSF.</p>"
@@ -329,7 +327,6 @@
     "header_en": "Auth method",
     "content_en": "<p>Les méthodes d'autorisation courantes sont :</p><p>Client Secret Basic :</p><p>Le client utilise son client_id et son client_secret pour s'authentifier auprès du serveur d'autorisation.</p><p>Ces informations d'identification sont incluses dans le header de la requête et encodées en base64 (client_id:client_secret)</p><br/><p>Client Secret Post :</p><p>Comme Client Secret Basic, mais les informations d'identification sont transmises dans le corps de la requête POST au lieu de l'en-tête.</p>"
   },
-  
   "client_oauth_admin_modifyclient_introspect_at": {
     "header_en": " Introspect access token",
     "content_en": "<p>Après obtention d'un access token on peut introspecter</p>"
@@ -441,5 +438,15 @@
   "oauth_client_preparerequest_prompt": {
     "header_en": "Prompt (interactions avec l'utilisateur)",
     "content_en": "<p>Le paramètre <i>prompt</i> indique à l'IdP les interactions qu'il souhaite qu'il ait avec l'utilisateur, en termes d'authentification et de consentement.</p><p>Plusieurs cas d'usage sont rendus possibles avec <i>prompt</i> : </p><ul><li>identification sans authentification : un portail personnalisation sa page d'accueil peut souhaiter disposer de l'identité du visiteur si elle est disponible, mais ne pas le forcer à réaliser une authentification dans le cas contraire</li><li>une application souhaite confirmer une authentification avant d réaliser une opération sensible</li><li>un utilisateur disposant de plusieurs comptes dans une application peut souhaiter basculer d'un compte à l'autre</li></ul><p>Avec <i>prompt</i> le client indique à l'IdP s'il doit afficher ou non une page d'authentification ou de sélection de consentement, essentiellement dans le cadre d'un fonctionnement en SSO (réauthentification transparente)<.p><p>Il propose les valeurs suivantes : </p><ul><li>none : l'IdP ne doit pas afficher de page d'authentification, même si le visiteur n'a pas encore été authentifié. Dans ce cas, l'IdP doit retourner une information indiquant que cet état de fait</li>login : l'IdP ne doit pas tenir compte du fait que l'utilisateur a été déjà authentifié et doit l'authentifier de nouveau</li><li>consent : l'IdP doit demander de nouveau à l'utilisateur son consentement à la transmission de ses données personnelles à l'application</li><li>select_account : l'IdP doit demander à l'utilisateur de sélectionner le compte avec lequel il souhaite être authentifié à l'application</li></ul><p>La spécification OIDC indique qu'il est possible de donner plusieurs valeurs de <i>prompt</i>, par exemple choisir un nouveau compte et forcer son authentification. Cette possibilité sera prochainement disponible avec Aduneo Identity Federation Test qui n'autorise pour le moment qu'une seule valeur.</p><p>Ce paramètre fait partie des paramètres optionnels d'une requête d'authentification.</p>"
+  },
+  "/oidcadmin/name": {
+    "header_en": "Nom du client",
+    "content_en": "Nom du client dans ClientFedID\n\nNe joue aucun rôle dans la cinématique *OpenID Connect*",
+    "format_en": "lmd"
+  },
+  "/oidcadmin/endpoint_configuration": {
+    "header_en": "Méthode de configuration des points d'entrée de l'OP",
+    "content_en": "Les points d'entrée de l'*OpenID Provider* correspondent aux URL accédés par le client pour récupérer les jetons, informations, clés publiques, etc.\n\nClientFedID propose deux méthodes pour les donner :\n- *Discovery URI* : au travers d'un document de configuration\n- *Local configuration* : par saisie de chaque URL individuellement",
+    "format_en": "lmd"
   }
 }

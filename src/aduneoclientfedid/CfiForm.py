@@ -520,7 +520,7 @@ class CodeGenerator():
   def _row_label(self, label:str='', help_button:bool=True, field_id:str=None):
     
     if help_button and field_id is not None:
-      help_id = self.form.form_id+'_'+field_id
+      help_id = '/'+self.form.form_id+'/'+field_id
       row_label = '<span class="celltxt">{label}</span><span class="cellimg"><img onclick="help(this, \'{help_id}\')" src="/images/help.png"></span>'.format(label=html.escape(label), help_id=html.escape(help_id))
     else:
       row_label = html.escape(label)
