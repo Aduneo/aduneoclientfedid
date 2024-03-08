@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+#TODO : faire un strip sur les saisies de l'utilisateur, en particulier pour les AT. Vérifier qu'un copier/coller d'AT n'ajoute pas d'espaces ou de tabulation
+
 from ..BaseServer import AduneoError
 from ..BaseServer import register_web_module, register_url
 from ..Configuration import Configuration

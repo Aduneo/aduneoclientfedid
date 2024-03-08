@@ -162,10 +162,12 @@ class CfiForm():
     return self
   
   
-  def start_section(self, section_id:str, title:str, help_button:bool=True, level:int=1, displayed_when:str="True"):
+  def start_section(self, section_id:str, title:str, help_button:bool=True, level:int=1, collapsible:bool=False, collapsible_default:bool=False, displayed_when:str="True"):
 
     section = self._add_template_item('start_section', section_id, title, help_button, displayed_when, holds_value=False)
     section['level'] = level
+    section['collapsible'] = collapsible
+    section['collapsible_default'] = collapsible_default
     return self
 
 
@@ -486,18 +488,37 @@ class CodeGenerator():
     display = self._evaluate_display(template_item['displayed_when'])
     self._add_display_javascript(template_item['id'], template_item['displayed_when'], element_type='span')
 
-    self.html += '<span id="{section_id}" style="display: {display};"><h{header}>{title}</h{header}>'.format(
-      section_id = self.form.form_uuid+'_span_'+template_item['id'],
+    section_id = self.form.form_uuid+'_span_'+template_item['id']
+
+    collapse_display = "block"
+    collapse_html = ""
+    if template_item['collapsible']:
+      plus_display = 'none'
+      minus_display = 'block'
+      if template_item['collapsible_default']:
+        collapse_display = 'none'
+        plus_display = 'block'
+        minus_display = 'none'
+      collapse_html = '<img class="plus_button" src="/images/plus.png" title="Expand" style="display: {plus_display}" onclick="expandSection(\'{section_id}\')"><img class="minus_button" src="/images/moins.png" title="Collapse" style="display: {minus_display}" onclick="collapseSection(\'{section_id}\')">'.format(
+        section_id = section_id,
+        plus_display = plus_display,
+        minus_display = minus_display,
+        )
+
+    self.html += '<div id="{section_id}" style="display: {display};"><span style="width: 20px; display: inline-block;">{collapse}</span><span style="display: inline-block;"><h{header}>{title}</h{header}><span class="section_content" style="display: {collapse_display};">'.format(
+      section_id = section_id,
       display = 'block' if display else 'none',
-      title=html.escape(template_item['label']), 
-      header=template_item['level']+1
+      collapse = collapse_html,
+      collapse_display = collapse_display,
+      title = html.escape(template_item['label']), 
+      header = template_item['level']+1
       )
 
 
   def _generate_code_end_section(self, template_item:str):
     self._end_table()
   
-    self.html += '</span>'
+    self.html += '</span></span></div>'
 
   def _generate_code_raw_html(self, template_item:str):
     self.html += template_item['html']

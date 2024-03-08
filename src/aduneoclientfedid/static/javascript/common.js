@@ -75,3 +75,24 @@ function copyTextToClipboard(text) {
   document.execCommand("copy")
   document.body.removeChild(tempArea)
 }
+
+
+function expandSection(sectionId) {
+  section = document.getElementById(sectionId);
+  content = section.getElementsByClassName("section_content")[0]
+  content.style.display = 'block'
+  plus_button = section.getElementsByClassName("plus_button")[0]
+  plus_button.style.display = 'none'
+  minus_button = section.getElementsByClassName("minus_button")[0]
+  minus_button.style.display = 'block'
+}
+
+function collapseSection(sectionId) {
+  section = document.getElementById(sectionId);
+  content = section.getElementsByClassName("section_content")[0]
+  content.style.display = 'none'
+  plus_button = section.getElementsByClassName("plus_button")[0]
+  plus_button.style.display = 'block'
+  minus_button = section.getElementsByClassName("minus_button")[0]
+  minus_button.style.display = 'none'
+}

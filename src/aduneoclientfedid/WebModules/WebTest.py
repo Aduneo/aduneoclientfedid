@@ -33,6 +33,7 @@ class WebTest(BaseHandler):
     self.add_html('<a href="form">Formulaire simple</a><br>')
     self.add_html('<a href="cfiform">Formulaire CFI</a><br>')
     self.add_html('<a href="requesterform">Requêteur HTTP CFI</a><br>')
+    self.add_html('<a href="oidcadmin">Administration OIDC</a><br>')
     self.add_html('<a href="oidcauth">Authentification OIDC</a><br>')
     self.add_html('<a href="oidcauth?id=azureadaduneo">Authentification OIDC pour Azure AD</a><br>')
 
@@ -207,7 +208,7 @@ class WebTest(BaseHandler):
     
     form = CfiForm('oidcauth', form_content, action='/test/form', submit_label='Save') \
       .text('name', label='Name') \
-      .start_section('op_endpoints', title="OP endpoints") \
+      .start_section('op_endpoints', title="OP endpoints", collapsible=True, collapsible_default=False) \
         .closed_list('endpoint_configuration', label='Endpoint configuration', 
           values={'discovery_uri': 'Discovery URI', 'local_configuration': 'Local configuration'},
           default = 'discovery_uri'
@@ -218,7 +219,7 @@ class WebTest(BaseHandler):
         .text('userinfo_endpoint', label='Userinfo endpoint', clipboard_category='userinfo_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
         .text('logout_endpoint', label='Logout endpoint', clipboard_category='logout_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
       .end_section() \
-      .start_section('id_token_validation', title="ID token validation") \
+      .start_section('id_token_validation', title="ID token validation", collapsible=True, collapsible_default=True) \
         .text('issuer', label='Issuer', clipboard_category='issuer') \
         .closed_list('signature_key_configuration', label='Signature key configuration', displayed_when="@[endpoint_configuration] = 'local_configuration'",
           values = {'jwks_uri': 'JWKS URI', 'local_configuration': 'Local configuration'},
