@@ -208,7 +208,7 @@ class Server(BaseServer):
               break
               
           if 'post_logout_redirect_uri' in client:
-            conf_url = urllib.parse.urlparse(rp['post_logout_redirect_uri'])
+            conf_url = urllib.parse.urlparse(client['post_logout_redirect_uri'])
             if url_items.path == conf_url.path:
               # Bingo
               callback_found = True

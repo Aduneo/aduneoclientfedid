@@ -560,6 +560,7 @@ class ConfCrypto():
     
     Versions
       08/08/2024 (mpham) version initiale
+      23/08/2024 (mpham) en OAuth 2, la valeur Discovery URI de l'aiguillage de configuration des endpoints devient Authorization Server Metadata URI
     """
     
     if not self.app_conf.get('idps'):
@@ -573,6 +574,9 @@ class ConfCrypto():
       for key in ['endpoint_configuration', 'discovery_uri', 'authorization_endpoint', 'token_endpoint', 'introspect_endpoint', 'signature_key_configuration', 'jwks_uri', 'signature_key', 'verify_certificates']:
         if v1_client.get(key):
           v2_idp[key] = v1_client[key]
+          
+          if key == 'endpoint_configuration' and v1_client[key] = 'Discovery URI':
+            v2_idp[key] = 'Authorization Server Metadata URI'
       
       v2_client = {'name': 'OAuth2 Client'}
       for key in ['client_id', 'client_secret!', 'scope', 'response_type', 'redirect_uri']:

@@ -89,6 +89,25 @@ class Home(BaseHandler):
             )
           )
 
+      if idp.get('oauth2_clients'):
+        
+        self.add_html("""<div>OAuth 2 Clients</div>""")          
+        for client_id in sorted(idp['oauth2_clients'].keys()):
+          
+          client = idp['oauth2_clients'][client_id]
+          self.add_html("""
+            <div>
+              <span>{name}</span>
+              <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+              <span><a href="/client/oauth2/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
+            </div>
+            """.format(
+              name = html.escape(client.get('name', 'Client')),
+              idp_id = urllib.parse.quote_plus(idp_id),
+              app_id = urllib.parse.quote_plus(client_id),
+            )
+          )
+
       self.add_html("""
               </div>
             </span>
