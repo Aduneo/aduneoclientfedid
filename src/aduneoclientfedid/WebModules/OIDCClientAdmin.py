@@ -33,8 +33,9 @@ class OIDCClientAdmin(BaseHandler):
         - modification combinée IdP + client, quand un IdP n'a qu'une application : modify_single
         - modification différencée IdP et les différents clients qu'il gère       : modify_multi
         
-      Versions:
-        10/08/2024 (mpham) version initiale
+    Versions:
+      10/08/2024 (mpham) version initiale
+      23/08/2024 (mpham) request parameters
     """
 
     idp = {}
@@ -95,6 +96,13 @@ class OIDCClientAdmin(BaseHandler):
       'scope': app_params.get('scope', 'openid'),
       'response_type': app_params.get('response_type', 'code'),
       'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+      'display': app_params.get('display', ''),
+      'prompt': app_params.get('prompt', ''),
+      'max_age': app_params.get('max_age', ''),
+      'ui_locales': app_params.get('ui_locales', ''),
+      'id_token_hint': app_params.get('id_token_hint', ''),
+      'login_hint': app_params.get('login_hint', ''),
+      'acr_values': app_params.get('acr_values', ''),
       'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
       }
     
@@ -147,6 +155,21 @@ class OIDCClientAdmin(BaseHandler):
           ) \
         .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
       .end_section() \
+      .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=False) \
+        .closed_list('display', label='Display', 
+          values={'': '', 'page': 'page', 'popup': 'popup', 'touch': 'touch', 'wap': 'wap'},
+          default = ''
+          ) \
+        .closed_list('prompt', label='Prompt', 
+          values={'': '', 'none': 'none', 'login': 'login', 'consent': 'consent', 'select_account': 'select_account'},
+          default = ''
+          ) \
+        .text('max_age', label='Max Age', clipboard_category='max_age') \
+        .text('ui_locales', label='UI Locales', clipboard_category='ui_locales') \
+        .text('id_token_hint', label='ID Token Hint', clipboard_category='id_token_hint') \
+        .text('login_hint', label='Login Hint', clipboard_category='login_hint') \
+        .text('acr_values', label='ACR Values', clipboard_category='acr_values') \
+      .end_section() \
       .start_section('connection_options', title="Connection options") \
         .check_box('verify_certificates', label='Verify certificates') \
       .end_section() 
@@ -166,11 +189,13 @@ class OIDCClientAdmin(BaseHandler):
     
     Si l'identifiant existe, ajoute un suffixe numérique
     
-    mpham 28/02/2021
-    mpham 24/12/2021 - ajout de redirect_uri
-    mpham 09/12/2022 - ajout de token_endpoint_auth_method
-    mpham 22/02/2023 - suppression des références à fetch_userinfo puisque l'appel à userinfo est désormais manuel
-    10/08/2024 (mpham) version 2 de la configuration
+    Versions:
+      28/02/2021 (mpham)
+      24/12/2021 (mpham) ajout de redirect_uri
+      09/12/2022 (mpham) ajout de token_endpoint_auth_method
+      22/02/2023 (mpham) suppression des références à fetch_userinfo puisque l'appel à userinfo est désormais manuel
+      10/08/2024 (mpham) version 2 de la configuration
+      23/08/2024 (mpham) request parameters
     """
     
     idp_id = self.post_form['idp_id']
@@ -198,7 +223,8 @@ class OIDCClientAdmin(BaseHandler):
       else:
         idp_params[item] = self.post_form[item]
       
-    for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'post_logout_redirect_uri']:
+    for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'post_logout_redirect_uri',
+    'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values']:
       if self.post_form.get(item, '') == '':
         app_params.pop(item, None)
       else:
