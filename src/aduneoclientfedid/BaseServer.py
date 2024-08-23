@@ -237,6 +237,33 @@ class BaseServer(BaseHTTPRequestHandler):
       self.add_content('<script src="{url}"></script>'.format(url=url))
       
 
+  def start_continuous_page_block(self):
+    """ Démarrage un bloc de contenu insécable
+    
+    Le bloc doit être envoyé dans son ensemble, sinon le navigateur va ajouter des éléments parasites.
+    
+    C'est par exemple le cas si on récupère du tampon un tableau (table) en plusieurs fois.
+    A chaque récupération, le navigateur ferme le tableau.
+    
+    Versions:
+        05/08/2024 (mpham) version initiale
+    """
+    if self.continuous_page:
+      from .WebModules.ContinuousPage import ContinuousPageBuffer
+      ContinuousPageBuffer.start_continuous_page_block(self.continuous_page_id)
+
+
+  def end_continuous_page_block(self):
+    """ Ferme un bloc de contenu insécable
+    
+    Versions:
+        05/08/2024 (mpham) version initiale
+    """
+    if self.continuous_page:
+      from .WebModules.ContinuousPage import ContinuousPageBuffer
+      ContinuousPageBuffer.end_continuous_page_block(self.continuous_page_id)
+
+
   def send_redirection(self, url):
   
     """
@@ -575,6 +602,16 @@ class BaseHandler:
     return self.hreq.session_id
     
   
+  @property
+  def is_continuous_page(self):
+    """ Indique si la page est de type continue
+      (affichage progressif d'un bloc de la page)
+    
+    mpham 05/08/2024
+    """
+    return self.hreq.continuous_page
+
+
   def get_query_string_param(self, key, default=None):
     
     """
@@ -633,6 +670,13 @@ class BaseHandler:
     self.hreq.add_javascript_include(url)
 
 
+  def start_continuous_page_block(self):
+    self.hreq.start_continuous_page_block()
+
+  def end_continuous_page_block(self):
+    self.hreq.end_continuous_page_block()
+
+
   def send_template(self, template_name:str, **parameters):
     self.hreq.send_template(template_name, **parameters)
 
@@ -685,7 +729,21 @@ class BaseHandler:
 
 
   def start_result_table(self):
-    self.add_content('<table class="fixed">')
+    """ Commence un tableau de résultat
+    
+    On fait un test sur self.is_continuous_page le temps de la migration de toutes les pages vers le mode continu
+    TODO : retirer les add_content quand toutes les pages seront en mode continu
+    
+    Versions:
+      25/02/2021 (mpham) version initiale
+      05/08/2024 (mpham) adaptation aux pages continues
+    """
+    
+    if self.is_continuous_page:
+      self.start_continuous_page_block()
+      self.add_html('<table class="fixed">')
+    else:
+      self.add_content('<table class="fixed">')
     self.result_in_table = True
   
 
@@ -709,16 +767,26 @@ class BaseHandler:
     return '<span class="celltxt">{label}</span><span class="cellimg"><img onclick="help(this, \'{help_id}\')" src="/images/help.png"></span>'.format(label=html.escape(label), help_id=help_id)
     
 
-  def add_result_row(self, title:str, value:str, help_id:str=None, copy_button=True) -> str:
-    
+  def add_result_row(self, title:str, value:str, help_id:str=None, copy_button=True):
     """
     Ajoute une ligne à un tableau de retour d'authentification
     Tronque la valeur si elle est trop longue (avec bouton d'affichage complet)
     Possibilité de copie de la valeur
+
+    On fait un test sur self.is_continuous_page le temps de la migration de toutes les pages vers le mode continu
+    TODO : retirer les add_content quand toutes les pages seront en mode continu
     
-    mpham 25/02/2021
-          29/09/2022 col identifier is now a uuid be bu truely unique
-          28/02/2023 ajout de l'argument copy_button contrôlant l'affichage du bouton  de copie
+    Args:
+      title: libellé de la ligne (colonne de droite)
+      value: valeur à afficher (colonne de gauche)
+      help_id: identifiant de la rubrique d'aide, None si on ne propose pas d'aide
+      copy_button: affiche un bouton pour copier la valeur dans le presse-papier  
+    
+    Versions:
+      25/02/2021 (mpham) version initiale
+      29/09/2022 (mpham) col identifier is now a uuid be bu truely unique
+      28/02/2023 (mpham) ajout de l'argument copy_button contrôlant l'affichage du bouton  de copie
+      05/08/2024 (mpham) adaptation aux pages continues
     """
 
     col_id = 'col' + str(uuid.uuid4())
@@ -726,37 +794,81 @@ class BaseHandler:
       row_label = html.escape(title)
     else:
       row_label = '<span class="celltxt">{label}</span><span class="cellimg"><img onclick="help(this, \'{help_id}\')" src="/images/help.png"></span>'.format(label=html.escape(title), help_id=help_id)
-    self.add_content('<tr><td>'+row_label)
-    self.add_content('<span id="'+col_id+'_raw" style="display: none;">'+value+'</span>')
-    self.add_content('</td>')
+    if self.is_continuous_page:
+      self.add_html('<tr><td>'+row_label)
+      self.add_html('<span id="'+col_id+'_raw" style="display: none;">'+value+'</span>')
+      self.add_html('</td>')
+    else:
+      self.add_content('<tr><td>'+row_label)
+      self.add_content('<span id="'+col_id+'_raw" style="display: none;">'+value+'</span>')
+      self.add_content('</td>')
     
     if len(value) <= 80:
       # la valeur tient sur une ligne
       html_value = html.escape(value).replace('\n', '<br>').replace(' ', '&nbsp;')
-      self.add_content('<td><span id="'+col_id+'"><span id="'+col_id+'c">'+html_value+'</span>')
-      self.add_content('</td><td style="width: 34px;">')
+      if self.is_continuous_page:
+        self.add_html('<td><span id="'+col_id+'"><span id="'+col_id+'c">'+html_value+'</span>')
+        self.add_html('</td><td style="width: 34px;">')
+      else:
+        self.add_content('<td><span id="'+col_id+'"><span id="'+col_id+'c">'+html_value+'</span>')
+        self.add_content('</td><td style="width: 34px;">')
       if copy_button:
-        self.add_content('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
-      self.add_content('</td>')
+        if self.is_continuous_page:
+          self.add_html('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
+        else:
+          self.add_content('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
+      if self.is_continuous_page:
+        self.add_html('</td>')
+      else:
+        self.add_content('</td>')
     else:
       # la valeur doit être tronquée
       truncated_value = value[0:80]
       html_value = html.escape(value).replace('\n', '<br>').replace(' ', '&nbsp;')
-      self.add_content('<td><span id="'+col_id+'s">'+html.escape(truncated_value)+'...</span>')
-      self.add_content('<span id="'+col_id+'l" style="display: none;"><span id="'+col_id+'c">'+html_value+'</span>')
-      self.add_content('</td><td style="width: 34px;">')
-      self.add_content('<span><img title="Expand" id="'+col_id+'_expand" class="smallButton" src="/images/plus.png" onClick="showLong(\''+col_id+'\')"/></span>')
-      self.add_content('<img title="Collapse" id="'+col_id+'_collapse" class="smallButton" style="display: none;" src="/images/moins.png" onClick="showShort(\''+col_id+'\')"/>')
+      if self.is_continuous_page:
+        self.add_html('<td><span id="'+col_id+'s">'+html.escape(truncated_value)+'...</span>')
+        self.add_html('<span id="'+col_id+'l" style="display: none;"><span id="'+col_id+'c">'+html_value+'</span>')
+        self.add_html('</td><td style="width: 34px;">')
+        self.add_html('<span><img title="Expand" id="'+col_id+'_expand" class="smallButton" src="/images/plus.png" onClick="showLong(\''+col_id+'\')"/></span>')
+        self.add_html('<img title="Collapse" id="'+col_id+'_collapse" class="smallButton" style="display: none;" src="/images/moins.png" onClick="showShort(\''+col_id+'\')"/>')
+      else:
+        self.add_content('<td><span id="'+col_id+'s">'+html.escape(truncated_value)+'...</span>')
+        self.add_content('<span id="'+col_id+'l" style="display: none;"><span id="'+col_id+'c">'+html_value+'</span>')
+        self.add_content('</td><td style="width: 34px;">')
+        self.add_content('<span><img title="Expand" id="'+col_id+'_expand" class="smallButton" src="/images/plus.png" onClick="showLong(\''+col_id+'\')"/></span>')
+        self.add_content('<img title="Collapse" id="'+col_id+'_collapse" class="smallButton" style="display: none;" src="/images/moins.png" onClick="showShort(\''+col_id+'\')"/>')
       if copy_button:
-        self.add_content('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
-      self.add_content('</td>')
-    self.add_content('</tr>')
+        if self.is_continuous_page:
+          self.add_html('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
+        else:
+          self.add_content('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
+      if self.is_continuous_page:
+        self.add_html('</td>')
+      else:
+        self.add_content('</td>')
+    if self.is_continuous_page:
+      self.add_html('</tr>')
+    else:
+      self.add_content('</tr>')
     
 
   def end_result_table(self):
+    """ Ferme un tableau de résultat
+    
+    On fait un test sur self.is_continuous_page le temps de la migration de toutes les pages vers le mode continu
+    TODO : retirer les add_content quand toutes les pages seront en mode continu
+    
+    Versions:
+      25/02/2021 (mpham) version initiale
+      05/08/2024 (mpham) adaptation aux pages continues
+    """
     
     if self.result_in_table:
-      self.add_content('</table>')
+      if self.is_continuous_page:
+        self.add_html('</table>')
+        self.end_continuous_page_block()
+      else:
+        self.add_content('</table>')
       self.result_in_table = True
 
     
@@ -975,30 +1087,47 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
       self.hreq.continuous_page = continuous
       #print('---- IN DECORATOR', self.hreq.continuous_page)
       if continuous:
+        
+        print("--- IN DECO --- headers : ", self.hreq.headers.get('CpId'))
+        
         # Page continue
-        self.hreq.continuous_page_id = str(uuid.uuid4())
-        #print('---- IN DECORATOR', self.hreq.continuous_page_id)
+        continuous_page_id = self.hreq.headers.get('CpId')
+        if continuous_page_id:
+          # on est en ajout de contenu d'une page à ajout progressif, on récupère l'identifiant existant
+          self.hreq.continuous_page_id = continuous_page_id
+
+          self.hreq.send_response(200)
+          self.hreq._send_page_headers()
+          self.hreq.top_sent = True # TODO, regarder comment le supprimer
+          func(*args, **kwargs)
+          
+        else:
+          # initialisation d'une page à ajout progressif, on affiche le template de la page
         
-        from .WebModules.Clipboard import Clipboard
-        content = Clipboard.get_window_definition()
-        content += """
-        <script src="/javascript/requestSender.js"></script>
-        <div id="text_ph"></div>
-        <div id="end_ph"></div>        
-        <script>
-        function getHtmlJsonContinueDelayed() {{
-          getHtmlJsonContinue("GET", "/continuouspage/poll?cp_id={cp_id}");
-        }}
-        //setTimeout(getHtmlJsonContinueDelayed, 1000);
-        getHtmlJsonContinueDelayed()
-        </script>
-        """.format(cp_id=self.hreq.continuous_page_id)
+          self.hreq.continuous_page_id = str(uuid.uuid4())
+          #print('---- IN DECORATOR', self.hreq.continuous_page_id)
+          
+          from .WebModules.Clipboard import Clipboard
+          content = Clipboard.get_window_definition()
+          content += """
+          <script src="/javascript/requestSender.js"></script>
+          <div id="text_ph"></div>
+          <div id="end_ph"></div>        
+          <script>
+          continuousPageId = '{cp_id}';
+          function getHtmlJsonContinueDelayed() {{
+            getHtmlJsonContinue("GET", "/continuouspage/poll?cp_id={cp_id}");
+          }}
+          //setTimeout(getHtmlJsonContinueDelayed, 1000);
+          getHtmlJsonContinueDelayed()
+          </script>
+          """.format(cp_id=self.hreq.continuous_page_id)
         
-        self.hreq.send_response(200)
-        self.hreq._send_page_headers()
-        self.hreq.top_sent = True # TODO, regarder comment le supprimer
-        self.add_content(Template.apply_template(template_content, content=content))
-        func(*args, **kwargs)
+          self.hreq.send_response(200)
+          self.hreq._send_page_headers()
+          self.hreq.top_sent = True # TODO, regarder comment le supprimer
+          self.add_content(Template.apply_template(template_content, content=content))
+          func(*args, **kwargs)
         
       else:
         # Page normale

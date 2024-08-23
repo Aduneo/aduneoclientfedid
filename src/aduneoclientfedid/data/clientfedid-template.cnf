@@ -1,5 +1,6 @@
 {
   "meta": {
+    "version": 2,
     "key": "fedclient.key"
   },
   "server": {
@@ -27,10 +28,6 @@
       "remember_secrets": "off"
     }
   },
-  "oidc_clients": {
-  },
-  "saml_clients": {
-  },
-  "oauth_clients": {
+  "idps": {
   }
 }

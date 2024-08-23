@@ -14,7 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import html
 import json
+import urllib
+import uuid
 
 from ..BaseServer import AduneoError
 from ..BaseServer import BaseHandler
@@ -35,7 +38,10 @@ class WebTest(BaseHandler):
     self.add_html('<a href="requesterform">Requêteur HTTP CFI</a><br>')
     self.add_html('<a href="oidcadmin">Administration OIDC</a><br>')
     self.add_html('<a href="oidcauth">Authentification OIDC</a><br>')
-    self.add_html('<a href="oidcauth?id=azureadaduneo">Authentification OIDC pour Azure AD</a><br>')
+    self.add_html('<a href="oidcauth?id=azureadaduneo">Authentification OIDC pour Entra ID</a><br>')
+    self.add_html('<a href="oidccallback">Callback OIDC</a><br>')
+    self.add_html('<a href="listonchange">Closed list on change</a><br>')
+    self.add_html('<a href="textonload">Text on load</a><br>')
 
 
   @register_page_url(url='cfiform', method='GET', template='page_default.html')
@@ -390,3 +396,172 @@ class WebTest(BaseHandler):
     self.add_html('<a href="form">Retry</a>')
     
     
+  @register_page_url(url='oidccallback', method='GET', template='page_default.html', continuous=True)
+  def oidccallback(self):
+    """ Page illustrant le démarrage d'une page à affichage progressif
+    
+    Cas d'usage : retour d'authentification d'un IdP, on valide le jeton, puis on peut réaliser des opérations
+      qui vont s'ajouter à la page en cours : userinfo, introspection, token exchange, etc.
+
+    La page est mise en mode continu (continuous=True), les différentes URL ajoutant du contenu devront l'être aussi
+      En effet, dans le décorateur register_page_url, la gestion de l'ajout progressif du contenu n'est activée qu'en page continue
+      
+    On précise d'ailleurs la différence entre les deux notions (dans notre contexte propre) :
+      - page continue : page dont une partie peut s'afficher sans attendre que l'ensemble des informations soit disponible.
+          le cas d'usage est la récupération du jeton d'après un code : on souhaite lire le code le plus rapidement possible
+          même si l'appel de l'endpoint token prend du temps
+      - page à ajout progressif : page à laquelle des blocs ajoutent en fin de page au gré des demandes de l'utilisateur
+          le cas d'usage, c'est l'appel à userinfo après récupération d'un jeton d'identité, on souhaite avoir sous les yeux
+          l'ensemble de l'historique des actions dans la même page
+          
+    La terminologie pose cependant des problèmes de confusion car les deux termes sont en fait synonymes dans la vie courante
+    
+    L'URL oidccallback est appelée de manière normale, en web classique :
+      - le décorateur register_page_url décide qu'il faut afficher la page cadre car la requête n'a pas d'en-tête CpId
+          (qui est ajouté dans une variable Javascript lors de l'initialisation de la page)
+      - les inclusion Javascript /javascript/requestSender.js sont réalisées
+      - la variable continuousPageId est initialisée avec un nouvel identifié généré par UUID4
+      - s'il est donné, le modèle de la page est affiché
+      - l'affichage passe alors en mode continu
+      - pour cela le décorateur lance le code Javascript getHtmlJsonContinue("GET", "/continuouspage/poll?cp_id={cp_id}");
+      - le contenu est désormais uniquement transféré depuis le serveur à l'initiative du client :
+      - le serveur génère du HTML et du code Javascript et le stocke dans le tampon ContinuousPageBuffer
+        (au travers des méthodes add_html et add_javascript de BaseServer)
+      - le client se connecte régulièrement au tampon pour en récupérer le contenu et l'afficher
+      
+    Une fois le bloc à afficher terminé, le serveur appelle self.send_page(), qui passe en tampon en fin de flux.
+    Lors de la prochaine récupération, un indicateur de fin est envoyé au client puir qu'il arrête de consulter le tampon.
+    
+    L'ajout d'un nouveau bloc de contenu est déclenché par une action de l'utilisateur (clic sur un bouton de menu)
+    
+    la méthode Javascript fetchContent doit être appelée lors de cette action, avec l'URL générant le contenu du nouveau bloc :
+      - une requête Ajax est envoyée au serveur avec l'URL de génération du contenu
+      - cette URL est configurée (décorateur register_page_url) en page continue
+      - et l'identifiant de page continue est transmis dans l'en-tête CpId
+      - cela indique au décorateur qu'il s'agit d'un ajout d'un bloc (la page n'est donc pas initialisée avec le modèle et le code Javascript)
+      - le mécanisme de consultation du tampon est remis en marche
+      
+    On ajoute de plus un mécanisme de masquage des éléments actionnables obsolètes, qui entrainent confusions et dysfonctionnements.
+    
+    On préconise que ces éléments (boutons de menu) soient regroupés dans un éléments DOM avec un identifiant uniquement
+    (pour en assurer l'unicité, on prendra un UUID4).
+    
+    Lors de l'appel à l'URL de contenu (qui a été déclenché justement par ce menu), l'élément DOM est masqué pour que l'utilisateur
+    ne puisse plus déclencher d'actions.
+    
+    
+    
+    """
+
+    self.add_html('<h3>Callback OIDC</h3>')
+
+    self.start_result_table()
+    self.add_result_row('Code', 'did78ufj4e', 'code')
+    self.end_result_table()
+    self.add_html('<div class="intertable">Fetching token</div>')
+    self.start_result_table()
+    self.add_result_row('Operation', 'fetching token', 'code')
+    self.end_result_table()
+  
+    menu_id = 'id'+str(uuid.uuid4())
+    context_id = 'id du contexte de la page'
+
+    self.add_html('<div id="'+html.escape(menu_id)+'">')
+    self.add_html('<span><a href="retry_url?contextid='+urllib.parse.quote(context_id)+'" class="button">Retry original flow</a></span>')
+    self.add_html('<span onClick="fetchContent(\'GET\',\'addcontent?contextid='+urllib.parse.quote(context_id)+'\', \'\', \''+menu_id+'\')" class="button">add content</span>')
+    self.add_html('<span onClick="fetchContent(\'GET\',\'userinfo?contextid='+urllib.parse.quote(context_id)+'\', \'\', \''+menu_id+'\')" class="button">Userinfo</span>')
+    self.add_html('</div>')
+    
+    self.send_page()
+    
+
+  @register_page_url(url='addcontent', method='GET', continuous=True)
+  def addcontent(self):
+    
+    print("CONTENT", self.hreq.continuous_page_id)
+
+    html_content = """
+      <div>CONTENT</div>
+      <div>Menu</div>
+    """
+    self.add_html(html_content)
+
+    menu_id = 'id'+str(uuid.uuid4())
+    context_id = 'id du contexte de la page'
+
+    self.add_html('<div id="'+html.escape(menu_id)+'">')
+    self.add_html('<span><a href="retry_url?contextid='+urllib.parse.quote(context_id)+'" class="button">Retry original flow</a></span>')
+    self.add_html('<span onClick="fetchContent(\'GET\',\'addcontent?contextid='+urllib.parse.quote(context_id)+'\', \'\', \''+menu_id+'\')" class="button">add content</span>')
+    self.add_html('<span onClick="fetchContent(\'GET\',\'userinfo?contextid='+urllib.parse.quote(context_id)+'\', \'\', \''+menu_id+'\')" class="button">Userinfo</span>')
+    self.add_html('</div>')
+    
+    self.send_page()
+
+
+  @register_page_url(url='userinfo', method='GET', continuous=True)
+  def userinfo(self):
+
+    form_content = {
+      'name': 'Entra ID',
+      'userinfo_endpoint': 'https://idp.com/userinfo',
+    }
+    form = RequesterForm('userinfo', form_content, action='/test/userinfo_sender', request_url='@[userinfo_endpoint]', mode='api') \
+      .text('name', label='Name') \
+      .text('userinfo_endpoint', label='Userinfo endpoint', clipboard_category='userinfo_endpoint')
+      
+    form.set_title('User Info'+('' if form_content['name'] == '' else ': '+form_content['name']))
+
+    self.add_html(form.get_html())
+    self.add_javascript(form.get_javascript())
+    self.send_page()
+
+
+  @register_page_url(url='userinfo_sender', method='POST', continuous=True)
+  def userinfo_sender(self):
+    self.add_html('<pre>'+json.dumps(self.post_form, indent=2))
+    self.send_page()
+
+
+  @register_page_url(url='listonchange', method='GET', template='page_default.html', continuous=True)
+  def listonchange(self):
+
+    form_content = {
+      'name': 'Entra ID',
+      'access_token_list': '',
+      'access_token': '',
+      'introspection_endpoint': 'https://idp.com/userinfo',
+    }
+    form = RequesterForm('listonchange', form_content, action='/test/listonchange', request_url='@[introspection_endpoint]', mode='api') \
+      .closed_list('access_token_list', label='Obtained Access Tokens', 
+        values={'yesdfggs': 'OAuth 2 10:01', 'jfdosqkljf': 'OAuth 2 12:51', 'manual': 'Enter below'},
+        default = 'manual',
+        on_change = "let value = cfiForm.getThisFieldValue(); if (value == 'manual') { value = ''; } cfiForm.setFieldValue('access_token', value);"
+        #on_change="copyATFromListToTextField({formItem}, {inputItem}, 'access_token')"
+        ) \
+      .text('access_token', label='Access Token', displayed_when="@[access_token_list] = 'manual'") \
+      .text('introspection_endpoint', label='Introspection endpoint', clipboard_category='introspection_endpoint')
+      
+    form.set_title('Closed list onchange')
+
+    self.add_html(form.get_html())
+    self.add_javascript(form.get_javascript())
+    self.send_page()
+
+
+  @register_page_url(url='textonload', method='GET', template='page_default.html', continuous=True)
+  def textonload(self):
+
+    form_content = {
+      'redirect_uri': '',
+    }
+    form = RequesterForm('textonload', form_content, action='/test/textonchange', request_url='', mode='new_page') \
+      .text('redirect_uri', label='Redirect URI',
+        on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/oidc/login/callback'); }")
+      
+    form.set_title('Text onload')
+
+    self.add_html(form.get_html())
+    self.add_javascript(form.get_javascript())
+    self.send_page()
+
+

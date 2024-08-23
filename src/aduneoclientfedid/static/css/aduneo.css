@@ -1,3 +1,15 @@
+.homeIdp {
+  font-family: Verdana;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.intertable {
+  font-family: Verdana;
+  font-size: 12px;
+  margin: 8px 2px;
+}
+
 .button {
   background-color: #FFA500;
   border: none;
@@ -38,7 +50,7 @@ div.idpList {
   margin-bottom: 6px;
 }
 
-span.smallButton {
+span.smallButton, a.smallButton {
   font-family: Verdana;
   background-color: #FFA500;
   border: none;

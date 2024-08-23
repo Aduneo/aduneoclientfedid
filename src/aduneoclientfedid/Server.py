@@ -81,6 +81,10 @@ class Server(BaseServer):
 
     
   def do_GET(self):
+    """
+      Versions:
+        09/08/2024 (mpham) version 2 du fichier de configuration
+    """
   
     self.check_session()
     
@@ -109,54 +113,7 @@ class Server(BaseServer):
           self.send_page(str(error), clear_buffer=True)
       else:
         # Regarder s'il ne s'agit pas d'un chemin défini comme redirect_uri OIDC dans la configuration
-        callback_found = False
-        for rp_id in Server.conf['oidc_clients']:   
-          rp = Server.conf['oidc_clients'][rp_id]
-          if 'redirect_uri' in rp:
-            conf_url = urllib.parse.urlparse(rp['redirect_uri'])
-            if url_items.path == conf_url.path:
-              # Bingo
-              callback_found = True
-              self._client_oidc_login_callback()
-              break
-              
-          if 'post_logout_redirect_uri' in rp:
-            conf_url = urllib.parse.urlparse(rp['post_logout_redirect_uri'])
-            if url_items.path == conf_url.path:
-              # Bingo
-              callback_found = True
-              self._client_oidc_logout_callback()
-              break
-
-        if not callback_found:
-          for rp_id in Server.conf['oauth_clients']:   
-            rp = Server.conf['oauth_clients'][rp_id]
-            if 'redirect_uri' in rp:
-              conf_url = urllib.parse.urlparse(rp['redirect_uri'])
-              if url_items.path == conf_url.path:
-                # Bingo
-                callback_found = True
-                self._client_oauth_login_callback()
-                break
-
-        if not callback_found:
-          for sp_id in Server.conf['saml_clients']:   
-            sp = Server.conf['saml_clients'][sp_id]
-            if 'sp_acs_url' in sp:
-              conf_url = urllib.parse.urlparse(sp['sp_acs_url'])
-              if url_items.path == conf_url.path:
-                # Bingo
-                callback_found = True
-                self._client_saml_acs()
-                break
-
-            if 'sp_slo_url' in sp:
-              conf_url = urllib.parse.urlparse(sp['sp_slo_url'])
-              if url_items.path == conf_url.path:
-                # Bingo
-                callback_found = True
-                self._client_saml_slo()
-                break
+        callback_found = self._search_callback_in_configuration()
         
         if not callback_found:
           # Regarder s'il ne s'agit pas d'un chemin défini comme redirect_uri OIDC dans la page de login
@@ -192,24 +149,17 @@ class Server(BaseServer):
         self.send_page(str(error), clear_buffer=True)
     else:
       # Regarder s'il ne s'agit pas d'un chemin défini comme redirect_uri OIDC dans la configuration
-      callback_found = False
-      for sp_id in Server.conf['saml_clients']:   
-        sp = Server.conf['saml_clients'][sp_id]
-        if 'sp_acs_url' in sp:
-          conf_url = urllib.parse.urlparse(sp['sp_acs_url'])
-          if url_items.path == conf_url.path:
-            # Bingo
-            callback_found = True
-            self._client_saml_acs()
-            break
+      callback_found = self._search_callback_in_configuration()
       
-        if 'sp_slo_url' in sp:
-          conf_url = urllib.parse.urlparse(sp['sp_slo_url'])
-          if url_items.path == conf_url.path:
-            # Bingo
-            callback_found = True
-            self._client_saml_slo()
-            break
+      if not callback_found:
+        # Regarder s'il ne s'agit pas d'un chemin défini comme redirect_uri OIDC dans la page de login
+        params = urllib.parse.parse_qs(url_items.query)
+        if 'state' in params:
+          # on a un state, on regarde si on trouve un redirect_uri dans la requête en question
+          #request = self.get_session_value(state)
+          # TODO : continuer !
+          #print(request)
+          pass
       
       if not callback_found:
         self.send_page('404 !', code=404)
@@ -228,8 +178,74 @@ class Server(BaseServer):
     else:
       self.send_page('404 !', code=404)
 
+
+  def _search_callback_in_configuration(self):
+    """ Regarde si l'URL n'est pas référencée dans la configuration
+      
+      Permet de donner n'importe quelle URL pour redirect_uri ou sp_acs_url
+        Appelle la méthode correspondante (retour d'authentification ou de déconnexion) en fonction du contexte
     
-  def get_(self):
+      Returns:
+        True si l'URL a bien été trouvée et la requête traitée
+    
+      Versions:
+        09/08/2024 (mpham) version initiale copiée de do_GET
+    """
+
+    callback_found = False
+    
+    url_items = urllib.parse.urlparse(self.path)
+    for idp in Server.conf['idps'].values():
+      
+      if not callback_found and idp.get('oidc_clients'):
+        for client in idp['oidc_clients'].values():
+          if 'redirect_uri' in client:
+            conf_url = urllib.parse.urlparse(client['redirect_uri'])
+            if url_items.path == conf_url.path:
+              # Bingo
+              callback_found = True
+              self._client_oidc_login_callback()
+              break
+              
+          if 'post_logout_redirect_uri' in client:
+            conf_url = urllib.parse.urlparse(rp['post_logout_redirect_uri'])
+            if url_items.path == conf_url.path:
+              # Bingo
+              callback_found = True
+              self._client_oidc_logout_callback()
+              break
+
+      if not callback_found and idp.get('oauth2_clients'):
+        for client in idp['oauth2_clients'].values():
+          if 'redirect_uri' in client:
+            conf_url = urllib.parse.urlparse(client['redirect_uri'])
+            if url_items.path == conf_url.path:
+              # Bingo
+              callback_found = True
+              self._client_oauth_login_callback()
+              break
+              
+      if not callback_found and idp.get('saml_clients'):
+        for client in idp['saml_clients'].values():
+          if 'sp_acs_url' in client:
+            conf_url = urllib.parse.urlparse(client['sp_acs_url'])
+            if url_items.path == conf_url.path:
+              # Bingo
+              callback_found = True
+              self._client_saml_acs()
+              break
+          if 'sp_slo_url' in client:
+            conf_url = urllib.parse.urlparse(client['sp_slo_url'])
+            if url_items.path == conf_url.path:
+              # Bingo
+              callback_found = True
+              self._client_saml_slo()
+              break
+
+    return callback_found
+    
+    
+  def get_OBS(self):
 
     """
     homepage

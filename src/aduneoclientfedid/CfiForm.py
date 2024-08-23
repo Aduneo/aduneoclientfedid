@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 import html
+import requests
 import uuid
 
 from .BaseServer import AduneoError
@@ -142,11 +143,19 @@ class CfiForm():
     return self
 
 
-  def closed_list(self, field_id:str, label:str='', values:dict={}, default:str='', help_button:bool=True, displayed_when:str="True", readonly:bool=False):
+  def closed_list(self, field_id:str, label:str='', values:dict={}, default:str='', help_button:bool=True, displayed_when:str="True", readonly:bool=False, on_load=None, on_change=None):
+    """
+      Versions:
+        11/08/2024 (mpham) événements on_load et on_change
+    """
 
     closed_list = self._add_template_item('closed_list', field_id, label, help_button, displayed_when, readonly)
     closed_list['values'] = values
     closed_list['default'] = default
+    if on_load:
+      closed_list['on_load'] = on_load
+    if on_change:
+      closed_list['on_change'] = on_change
     return self
 
 
@@ -237,6 +246,10 @@ class CodeGenerator():
 
   
   def generate(self):
+    """
+      Versions:
+        11/08/2024 (mpham) événement onchange
+    """
 
     self.html = '<form id="form-'+self.form.form_uuid+'" method="POST" {action}">'.format(
       action = 'action="'+self.form.action+'"' if self.form.action else ''
@@ -281,12 +294,13 @@ class CodeGenerator():
       label = self.form.submit_label
       if label is None:
         label = 'Send'
-      self.html += f'<span class="middlebutton" onClick="document.getElementById(\'form-{html.escape(self.form.form_uuid)}\').submit();">{label}</span>'
+      #self.html += f'<span class="middlebutton" onClick="document.getElementById(\'form-{html.escape(self.form.form_uuid)}\').submit();">{label}</span>'
+      self.html += f'<span class="middlebutton" onClick="sendToRequester_newPage(\'{html.escape(self.form.form_uuid)}\')">{label}</span>'
     else:
       label = self.form.submit_label
       if label is None:
         label = 'Send request'
-      self.html += f'<span class="middlebutton" onClick="sendToRequester(\'{html.escape(self.form.form_uuid)}\')">{label}</span>'
+      self.html += f'<span class="middlebutton" onClick="sendToRequester_api(\'{html.escape(self.form.form_uuid)}\')">{label}</span>'
     
     #self.html += '<span class="middlebutton" onClick="cancelRequest(\''+html.escape(self.form.form_uuid)+'\', \''+html.escape(context)+'\')">Cancel</span>'
     self.html += '</div>'
@@ -317,12 +331,15 @@ class CodeGenerator():
     self.javascript += "function initForm_"+self.form.form_uuid+"() {"
     for template_item in self.form.template:
       if template_item.get('on_load'):
-        self.javascript += template_item['on_load'].format(formItem="'"+self.form.form_uuid+"'", inputItem="document.getElementById('"+self.form.form_uuid+'_d_'+template_item['id']+"')") + "\n"
+        self.javascript += "cfiForm = new CfiForm('"+self.form.form_uuid+"', '"+template_item['id']+"'); "+template_item['on_load'] + ";";
+        # ORG self.javascript += template_item['on_load'].format(formItem="'"+self.form.form_uuid+"'", inputItem="document.getElementById('"+self.form.form_uuid+'_d_'+template_item['id']+"')") + "\n"
     self.javascript += "}"
     self.javascript += "initForm_"+self.form.form_uuid+"();"
         
-    
-
+    # Ajoute les listener onchange
+    for template_item in self.form.template:
+      if template_item.get('on_change'):
+        self.javascript += "document.getElementById('"+self.form.form_uuid+'_d_'+template_item['id']+"').addEventListener('change', () => { cfiForm = new CfiForm('"+self.form.form_uuid+"', '"+template_item['id']+"'); "+template_item['on_change']+"      });";
   
   def _generate_code_text(self, template_item:str):
 
@@ -679,9 +696,11 @@ class RequesterForm(CfiForm):
       request_parameters: dict avec les paramètres de la requête
         clé : nom du paramètre tel qu'il figurera dans la requête finale
         valeur : chaîne pouvant contenir des références à des valeurs de champs, données par @[field_id]
+        None si la requête n'admet pas de paramètres
     
     Versions:
       30/12/2023 (mpham) version initiale
+      09/08/2024 (mpham) possibilité de ne pas envoyer de paramètres (simple GET sans query string)
     """
     self.request_parameters = request_parameters
     
@@ -690,7 +709,7 @@ class RequesterForm(CfiForm):
     """ Modifie des paramètres HTTP
     
     Les paramètres sont les suivants :
-      form_method: post, get ou redirect (302). redirect n'est possible d'en mode new_page
+      form_method: post, get ou redirect (302). redirect n'est possible qu'en mode new_page
         par défaut post
       body_format: format du corps de la requête finale, possible uniquement en POST et en REDIRECT
         x-www-form-urlencoded: formulaire web classique (défaut)
@@ -724,6 +743,7 @@ class RequesterForm(CfiForm):
     Ces champs sont :
       request_url: URL finale
       request_data: corps de la requête
+      body_format: encodage du corps (x-www-form-urlencoded ou JSON)
       form_method: méthode d'envoi (POST, GET ou REDIRECT)
       auth_method: méthode d'authentification
       auth_login: login
@@ -760,6 +780,10 @@ class RequesterForm(CfiForm):
     
   
   def _generate_code(self):
+    """
+    Versions:
+      09/08/2024 (mpham) les requêtes peuvent ne pas avoir de paramètres
+    """
 
     self._append_requester()
 
@@ -801,6 +825,9 @@ class RequesterForm(CfiForm):
         if template_item['holds_value'] and not template_item['id'].startswith('hr'):
           if template_item['id'] not in listener_fields:
             listener_fields.append(template_item['id'])
+    elif self.request_parameters is None:
+      # Requête sans paramètres
+      pass
     else:
       parameters_listener_fields = self._find_variables_from_expressions(self.request_parameters.values())
       for field_id in parameters_listener_fields:
@@ -847,6 +874,9 @@ class RequesterForm(CfiForm):
           self.javascript += """
       paramValues."""+template_item['id']+""" = getFormValue('"""+self.form_uuid+"""', '"""+template_item['id']+"""');
       """
+    elif self.request_parameters is None:
+      # Requête sans paamètres
+      pass
     else:
       # les paramètres sont été donnés par set_request_parameters()
       for param, value in self.request_parameters.items():
@@ -960,6 +990,86 @@ class RequesterForm(CfiForm):
       raise DesignError("unknown type for expression {expression}".format(expression=expression))
     
     return js
+
+
+  def send_form(page_handler, hr_data:dict, default_secret=None):
+    """ Envoie une requête préparée par un RequesterForm
+    
+      Args:
+        hr_data: le formulaire tel qu'il a été reçu depuis un RequesterForm en mode API
+        default_secret: secret à utiliser s'il n'a pas été saisi dans le formulaire
+        
+      Returns:
+        réponse de requests
+    
+      Versions:
+        09/08/2024 (mpham) : version initiale adaptée de FlowHandler.send_form_http_request
+    """
+    
+    service_endpoint = hr_data.get('hr_request_url')
+    if not service_endpoint:
+      raise AduneoError(self.log_error("RequesterForm sender was called without a service URL in hr_request_url field"))
+      
+    page_handler.log_info(f"Sending HTTP request to {service_endpoint}")
+    
+    # méthode HTTP de la requête à envoyer
+    method = hr_data.get('hr_form_method')
+    if not method:
+      raise AduneoError(page_handler.log_error("HTTP method not found in hr_form_method field"))
+    page_handler.log_info("  HTTP method "+method)
+
+    service_data = hr_data.get('hr_request_data', '')
+      
+    auth_method = hr_data.get('hr_auth_method')
+    if not auth_method:
+      raise AduneoError(page_handler.log_error("Call authentication method not found in request"))
+    
+    auth_login = hr_data.get('hr_auth_login', '')
+    auth_secret = hr_data.get('hr_auth_secret', '')
+    if auth_secret == '':
+      auth_secret = default_secret
+      
+    request_auth = None
+    request_headers = None
+    if auth_method.casefold() == 'basic':
+      request_auth = (auth_login, auth_secret)
+    elif auth_method.casefold() == 'post':
+      login_param = hr_data.get('hr_auth_login_param')
+      if not login_param:
+        raise AduneoError(page_handler.log_error("Form parameter for login not found in hr_auth_login_param field"))
+      service_request[login_param] = auth_login
+      secret_param = hr_data.get('hr_auth_secret_param')
+      if not secret_param:
+        raise AduneoError(page_handler.log_error("Form parameter for secret not found in hr_auth_secret_param field"))
+      service_request[secret_param] = auth_secret
+    elif auth_method.casefold() == 'bearer_token':
+      request_headers = {'Authorization':"Bearer "+auth_login}
+    else:
+      raise AduneoError(page_handler.log_error("authentication method "+auth_method+" not supported"))
+
+    verify_cert = hr_data.get('hr_verify_certificates', 'on') == 'on'
+
+    page_handler.log_info("  Submitting request")
+    try:
+      page_handler.log_info(('  ' * 1)+"Connecting to "+service_endpoint)
+      page_handler.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_cert else "disabled"))
+      if method == 'get':
+        response = requests.get(service_endpoint, headers=request_headers, auth=request_auth, verify=verify_cert)
+      elif method == 'post':
+        response = requests.post(service_endpoint, data=service_request, headers=request_headers, auth=request_auth, verify=verify_cert)
+      else:
+        raise AduneoError(page_handler.log_error("HTTP method "+method+" not supported"))
+    except Exception as error:
+      raise AduneoError(page_handler.log_error(('  ' * 1)+'http service error: '+str(error)))
+    if response.status_code != 200:
+      raise AduneoError(page_handler.log_error('http service error: status code '+str(response.status_code)+", "+response.text))
+      
+    return response
+
+
+
+
+
 
 
     
@@ -1144,7 +1254,7 @@ class RequesterForm(CfiForm):
       
       section_title = 'HTTP request' + (' for '+self.title if self.title else '')
       self.start_section('http_requester', title=section_title, level=2) \
-        .raw_html('<label for="{input_id}">Modify request</label><input type="checkbox" id={input_id} name="modify_request" />'.format(input_id=self.form_uuid+"_modify_request")) \
+        .raw_html('<div class="intertable"><label for="{input_id}">Modify request</label><input type="checkbox" id={input_id} name="modify_request" /></div>'.format(input_id=self.form_uuid+"_modify_request")) \
         .textarea('hr_request_url', label='URL', rows=1, displayed_when=displayed_when_dict['hr_request_url'], clipboard_category='request_url') \
         .closed_list('hr_form_method', label='HTTP Method', displayed_when=displayed_when_dict['hr_form_method'], 
           values=http_methods,

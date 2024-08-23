@@ -1,0 +1,93 @@
+<!-- <script src="appendChild.js"></script> -->
+
+<html>
+<body>
+</body>
+</html>
+
+<!-- Fonctionne
+<script>
+  /**/
+  let scriptEl = document.createElement("script");
+  document.body.appendChild(scriptEl);
+  scriptEl.onload = () => {console.log("loaded"); console.log(witness);};
+  scriptEl.setAttribute("src", "appendChild.js");
+  scriptEl.setAttribute("type", "text/javascript");
+  /**/
+  
+  console.log("in main script");
+  //console.log(witness);
+</script>
+-->
+
+<!-- Fonctionne
+<script>
+
+let includeJavascript = (include) => {
+  return new Promise((resolve, reject) => {
+
+    let scriptEl = document.createElement("script");
+    document.body.appendChild(scriptEl);
+    scriptEl.onload = resolve;
+    scriptEl.setAttribute("src", include);
+    scriptEl.setAttribute("type", "text/javascript");
+  });
+};
+
+
+includeJavascript("appendChild.js").then(() => {
+        console.log('Success, You are a GEEK');
+        console.log(witness);
+    }).
+    catch(function () {
+        console.log('Some error has occurred');
+    }); 
+</script>
+-->
+
+<script>
+
+let includeJavascript = (include) => {
+  return new Promise((resolve, reject) => {
+
+    document.body.appendChild(scriptEl);
+    let scriptEl = document.createElement("script");
+    scriptEl.onload = resolve;
+    scriptEl.setAttribute("src", include);
+    scriptEl.setAttribute("type", "text/javascript");
+  });
+};
+
+
+async function go() {
+  await includeJavascript("appendChild.js")
+  console.log(witness);
+}
+
+go()
+</script>
+
+
+<!-- non
+<script>
+
+
+
+async function includeJavascript(include) {
+  await ((include) => {
+  return new Promise((resolve, reject) => {
+
+    let scriptEl = document.createElement("script");
+    document.body.appendChild(scriptEl);
+    scriptEl.onload = resolve;
+    scriptEl.setAttribute("src", include);
+    scriptEl.setAttribute("type", "text/javascript");
+  });
+})(include);
+}
+
+includeJavascript("appendChild.js")
+  console.log(witness);
+
+</script>
+-->

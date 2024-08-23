@@ -25,40 +25,82 @@ import html
 @register_web_module('/client/oidc/admin')
 class OIDCClientAdmin(BaseHandler):
 
-  @register_page_url(url='modifyclient', method='GET', template='page_default.html')
-  def display(self):
+  @register_page_url(url='modifyclient', method='GET', template='page_default.html', continuous=True)
+  def modify_client_router(self):
+    """ Sélection du mode de modification du client :
+      
+      On a en effet deux interfaces pour modifier un client, en fonction de l'état de la configuration
+        - modification combinée IdP + client, quand un IdP n'a qu'une application : modify_single
+        - modification différencée IdP et les différents clients qu'il gère       : modify_multi
+        
+      Versions:
+        10/08/2024 (mpham) version initiale
+    """
 
-    rp = {}
-    rp_id = self.get_query_string_param('id', '')
-    if rp_id != '':
-      rp = self.conf['oidc_clients'][rp_id]
+    idp = {}
 
-    self.add_javascript_include('/javascript/oidc.js')
+    idp_id = self.get_query_string_param('idpid', '')
+    if idp_id == '':
+      # Création
+      self.modify_single_display()
+    else:
+      # Modification
+      idp = self.conf['idps'].get(idp_id)
+      if not idp:
+        raise AduneoError(f"IdP {idp_id} not found in configuration")
+        
+      oidc_clients = idp.get('oidc_clients', {})  
+      oauth2_clients = idp.get('oidc_oauth2', {})  
+      saml_clients = idp.get('saml_clients', {})  
+        
+      if len(oidc_clients) == 1 and len(oauth2_clients) == 0 and len(saml_clients) == 0:
+        self.modify_single_display()
+      else:
+        self.modify_multi_display()
+      
+
+  def modify_single_display(self):
+
+    idp_params = {}
+    app_params = {}
+
+    idp_id = self.get_query_string_param('idpid', '')
+    app_id = self.get_query_string_param('appid', '')
+    if idp_id == '':
+      # Création
+      idp = {'idp_parameters': {'oidc': {}}, 'oidc_clients': {'client': {}}}
+    if idp_id != '' and app_id != '':
+      idp = self.conf['idps'][idp_id]
+      idp_params = idp['idp_parameters']['oidc']
+      app_params = idp['oidc_clients'][app_id]
 
     form_content = {
-      'rp_id': rp_id,
-      'name': rp.get('name', ''),
-      'endpoint_configuration': rp.get('endpoint_configuration', 'Discovery URI'),
-      'discovery_uri': rp.get('discovery_uri', ''),
-      'authorization_endpoint': rp.get('', ''),
-      'token_endpoint': rp.get('', ''),
-      'userinfo_endpoint': rp.get('userinfo_endpoint', ''),
-      'logout_endpoint': rp.get('logout_endpoint', ''),
-      'issuer': rp.get('issuer', ''),
-      'signature_key_configuration': rp.get('signature_key_configuration', 'jwks_uri'),
-      'jwks_uri': rp.get('jwks_uri', ''),
-      'signature_key': rp.get('signature_key', ''),
-      'redirect_uri': rp.get('redirect_uri', ''),
-      'post_logout_redirect_uri': rp.get('post_logout_redirect_uri', ''),
-      'client_id': rp.get('client_id', ''),
-      'scope': rp.get('scope', 'openid'),
-      'response_type': rp.get('response_type', 'code'),
-      'token_endpoint_auth_method': rp.get('token_endpoint_auth_method', 'client_secret_basic'),
-      'verify_certificates': Configuration.is_on(rp.get('verify_certificates', 'on')),
+      'idp_id': idp_id,
+      'app_id': app_id,
+      'name': idp.get('name', ''),
+      'endpoint_configuration': idp_params.get('endpoint_configuration', 'Discovery URI'),
+      'discovery_uri': idp_params.get('discovery_uri', ''),
+      'authorization_endpoint': idp_params.get('', ''),
+      'token_endpoint': idp_params.get('', ''),
+      'userinfo_endpoint': idp_params.get('userinfo_endpoint', ''),
+      'userinfo_method': idp_params.get('userinfo_method', 'get'),
+      'logout_endpoint': idp_params.get('logout_endpoint', ''),
+      'issuer': idp_params.get('issuer', ''),
+      'signature_key_configuration': idp_params.get('signature_key_configuration', 'jwks_uri'),
+      'jwks_uri': idp_params.get('jwks_uri', ''),
+      'signature_key': idp_params.get('signature_key', ''),
+      'redirect_uri': app_params.get('redirect_uri', ''),
+      'post_logout_redirect_uri': app_params.get('post_logout_redirect_uri', ''),
+      'client_id': app_params.get('client_id', ''),
+      'scope': app_params.get('scope', 'openid'),
+      'response_type': app_params.get('response_type', 'code'),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+      'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
       }
     
-    form = CfiForm('oidcadmin', form_content, submit_label='Save') \
-      .hidden('rp_id') \
+    form = CfiForm('oidcadminsingle', form_content, action='modifyclientsingle', submit_label='Save') \
+      .hidden('idp_id') \
+      .hidden('app_id') \
       .text('name', label='Name') \
       .start_section('op_endpoints', title="OP endpoints") \
         .closed_list('endpoint_configuration', label='Endpoint configuration', 
@@ -68,8 +110,12 @@ class OIDCClientAdmin(BaseHandler):
         .text('discovery_uri', label='Discovery URI', clipboard_category='discovery_uri', displayed_when="@[endpoint_configuration] = 'Discovery URI'") \
         .text('authorization_endpoint', label='Authorization endpoint', clipboard_category='authorization_endpoint', displayed_when="@[endpoint_configuration] = 'Local configuration'") \
         .text('token_endpoint', label='Token endpoint', clipboard_category='token_endpoint', displayed_when="@[endpoint_configuration] = 'Local configuration'") \
-        .text('userinfo_endpoint', label='Userinfo endpoint', clipboard_category='userinfo_endpoint', displayed_when="@[endpoint_configuration] = 'Local configuration'") \
         .text('logout_endpoint', label='Logout endpoint', clipboard_category='logout_endpoint', displayed_when="@[endpoint_configuration] = 'Local configuration'") \
+        .text('userinfo_endpoint', label='Userinfo endpoint', clipboard_category='userinfo_endpoint', displayed_when="@[endpoint_configuration] = 'Local configuration'") \
+        .closed_list('userinfo_method', label='Userinfo Request Method',
+          values = {'get': 'GET', 'post': 'POST'},
+          default = 'get'
+          ) \
       .end_section() \
       .start_section('id_token_validation', title="ID token validation", displayed_when="@[endpoint_configuration] = 'Local configuration'") \
         .text('issuer', label='Issuer', clipboard_category='issuer', displayed_when="@[endpoint_configuration] = 'Local configuration'") \
@@ -82,10 +128,10 @@ class OIDCClientAdmin(BaseHandler):
       .end_section() \
       .start_section('rp_endpoints', title="RP endpoints") \
         .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri',
-          on_load="init_url_with_domain({inputItem}, '/client/oidc/login/callback');"
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/oidc/login/callback'); }" 
           ) \
         .text('post_logout_redirect_uri', label='Post logout redirect URI', clipboard_category='post_logout_redirect_uri',
-          on_load="init_url_with_domain({inputItem}, '/client/oidc/logout/callback');"
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/oidc/logout/callback'); }" \
           ) \
       .end_section() \
       .start_section('openid_connect_configuration', title="OpenID Connect Configuration") \
@@ -106,58 +152,71 @@ class OIDCClientAdmin(BaseHandler):
       .end_section() 
       
     form.set_title('OpenID Connect authentication'+('' if form_content['name'] == '' else ': '+form_content['name']))
-    form.set_option('/clipboard/remember_secrets', True)
+    form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     self.add_html(form.get_html())
     self.add_javascript(form.get_javascript())
-
-
-  @register_url(url='modifyclient', method='POST')
-  def modify(self):
-  
-    """
-    Crée ou modifie un IdP dans la configuration
     
-    S'il existe, ajoute un suffixe numérique
+    self.send_page()
+
+
+  @register_url(url='modifyclientsingle', method='POST')
+  def modify_single_modify(self):
+    """ Crée ou modifie un IdP + App OIDC (mode single) dans la configuration
+    
+    Si l'identifiant existe, ajoute un suffixe numérique
     
     mpham 28/02/2021
     mpham 24/12/2021 - ajout de redirect_uri
     mpham 09/12/2022 - ajout de token_endpoint_auth_method
     mpham 22/02/2023 - suppression des références à fetch_userinfo puisque l'appel à userinfo est désormais manuel
+    10/08/2024 (mpham) version 2 de la configuration
     """
     
+    idp_id = self.post_form['idp_id']
+    app_id = self.post_form['app_id']
+    if idp_id == '':
+      # Création
+      idp_id = self._generate_idpid(self.post_form['name'], self.conf['idps'].keys())
+      app_id = 'client'
+      self.conf['idps'][idp_id] = {'idp_parameters': {'oidc': {}}, 'oidc_clients': {'client': {}}}
     
-    rp_id = self.post_form['rp_id']
-    if rp_id == '':
-      rp_id = self._generate_rpid(self.post_form['name'], self.conf['oidc_clients'].keys())
-      self.conf['oidc_clients'][rp_id] = {}
-    
-    rp = self.conf['oidc_clients'][rp_id]
+    idp = self.conf['idps'][idp_id]
+    idp_params = idp['idp_parameters']['oidc']
+    app_params = idp['oidc_clients'][app_id]
     
     if self.post_form['name'] == '':
-      self.post_form['name'] = rp_id
+      self.post_form['name'] = idp_id
+
+    idp['name'] = self.post_form['name']
+    app_params['name'] = 'OIDC Client'
     
-    for item in ['name', 'redirect_uri', 'endpoint_configuration', 'discovery_uri', 'issuer', 'authorization_endpoint', 'token_endpoint', 
-    'end_session_endpoint', 'userinfo_endpoint', 'signature_key_configuration', 'jwks_uri', 'signature_key', 
-    'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'post_logout_redirect_uri']:
+    for item in ['endpoint_configuration', 'discovery_uri', 'issuer', 'authorization_endpoint', 'token_endpoint', 
+    'end_session_endpoint', 'userinfo_endpoint', 'userinfo_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
       if self.post_form.get(item, '') == '':
-        rp.pop(item, None)
+        idp_params.pop(item, None)
       else:
-        rp[item] = self.post_form[item]
+        idp_params[item] = self.post_form[item]
+      
+    for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'post_logout_redirect_uri']:
+      if self.post_form.get(item, '') == '':
+        app_params.pop(item, None)
+      else:
+        app_params[item] = self.post_form[item]
       
     for secret in ['client_secret']:
       if self.post_form.get(secret, '') != '':
-        rp[secret+'!'] = self.post_form[secret]
+        app_params[secret+'!'] = self.post_form[secret]
         
     for item in ['verify_certificates']:
       if item in self.post_form:
-        rp[item] = 'on'
+        idp_params[item] = 'on'
       else:
-        rp[item] = 'off'
+        idp_params[item] = 'off'
 
     Configuration.write_configuration(self.conf)
     
-    self.send_redirection('/')
+    self.send_redirection(f"/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}")
 
 
   @register_url(url='removeclient', method='GET')
@@ -177,7 +236,7 @@ class OIDCClientAdmin(BaseHandler):
     self.send_redirection('/')
 
 
-  def _generate_rpid(self, name, existing_names):
+  def _generate_idpid(self, name, existing_names):
     
     """
     Génère un identifiant à partir d'un nom

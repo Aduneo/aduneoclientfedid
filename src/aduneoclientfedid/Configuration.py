@@ -199,9 +199,10 @@ class Configuration():
       port: port d'écoute du serveur, utilisé lors de l'initialisation du fichier de configuration au premier démarrage (n'est plus utilisé ensuite)
     
     Versions:
-      26/02/2021 (mpham) : version initiale
-      29/12/2022 (mpham) : dissociation des dossiers conf (retiré du module) et data (qui reste dans le module)
-      25/01/2023 (mpham) : initialisation du host et du port d'écoute lors de l'initialisation du fichier de configuration à partir de clientfedid-template.cnf
+      26/02/2021 (mpham) version initiale
+      29/12/2022 (mpham) dissociation des dossiers conf (retiré du module) et data (qui reste dans le module)
+      25/01/2023 (mpham) initialisation du host et du port d'écoute lors de l'initialisation du fichier de configuration à partir de clientfedid-template.cnf
+      08/08/2024 (mpham) version 2 de la configuration
     """
 
     if not os.path.isdir(Configuration.conf_dir):
@@ -222,8 +223,12 @@ class Configuration():
 
     crypto = ConfCrypto()
     crypto.read(conf_filepath)
-    
-    if create_from_template:
+
+    if not crypto.app_conf['meta'].get('version'):
+      # on est en version 1, il faut convertir le fichier en version 2
+      crypto.convert_1to2()
+      crypto.write()
+    elif create_from_template:
       if listen_host:
         crypto.app_conf['server']['host'] = listen_host
       if listen_port:
@@ -361,18 +366,15 @@ class Configuration():
 
     return True
 
-    
-    
-    
-class ConfCrypto:
-  
+class ConfCrypto():
+
   def __init__(self):
     
     self.app_conf = None
     self.file_conf = None
     self.crypto = None # ne pas y accéder directement, à récupérer par _get_crypto()
     self.modification = False
-    
+
 
   def read(self, conf_filepath):
     
@@ -470,7 +472,7 @@ class ConfCrypto:
       
     os.replace(temp_filepath, conf_filepath)
     
-  
+    
   def _get_crypto(self) -> CryptoTools:
     """ Retourne un objet de chiffrement
     
@@ -496,4 +498,163 @@ class ConfCrypto:
       self.crypto = CryptoTools(key_file_path)
       
     return self.crypto
+
+
+  def convert_1to2(self):
+    """ Convertit un fichier de configuration de la version 1 à la version 2
+    
+    Versions
+      08/08/2024 (mpham) version initiale
+    """
+    
+    self.app_conf['meta']['version'] = 2
+    if self.app_conf.get('oidc_clients'):
+      self._convert_1to2_oidc()
+    if self.app_conf.get('oauth_clients'):
+      self._convert_1to2_oauth2()
+    if self.app_conf.get('saml_clients'):
+      self._convert_1to2_saml()
+    
   
+  def _convert_1to2_oidc(self):
+    """ Convertit les clients OIDC v1 en des ensembles IdP + client v2
+    
+    Versions
+      08/08/2024 (mpham) version initiale
+    """
+    
+    if not self.app_conf.get('idps'):
+      self.app_conf['idps'] = {}
+      
+    for v1_client_id in self.app_conf['oidc_clients']:
+      
+      v1_client = self.app_conf['oidc_clients'][v1_client_id]
+      
+      v2_idp = {}
+      for key in ['endpoint_configuration', 'discovery_uri', 'authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'signature_key_configuration', 'jwks_uri', 'signature_key', 'verify_certificates']:
+        if v1_client.get(key):
+          v2_idp[key] = v1_client[key]
+      
+      v2_client = {'name': 'OIDC Client'}
+      for key in ['client_id', 'client_secret!', 'scope', 'response_type', 'redirect_uri', 'fetch_userinfo']:
+        if v1_client.get(key):
+          v2_client[key] = v1_client[key]
+      
+      v2_idp_id = self._check_unicity(v1_client_id, self.app_conf['idps'].keys())
+      
+      self.app_conf['idps'][v2_idp_id] = {
+        'name': v1_client['name'],
+        'idp_parameters': {
+          'oidc': v2_idp,
+        },
+        'oidc_clients': {
+          'client': v2_client
+        }
+      }
+      
+    del self.app_conf['oidc_clients']
+      
+    
+  def _convert_1to2_oauth2(self):
+    """ Convertit les clients OAuth 2 v1 en des ensembles IdP + client v2
+    
+    Versions
+      08/08/2024 (mpham) version initiale
+    """
+    
+    if not self.app_conf.get('idps'):
+      self.app_conf['idps'] = {}
+      
+    for v1_client_id in self.app_conf['oauth_clients']:
+      
+      v1_client = self.app_conf['oauth_clients'][v1_client_id]
+      
+      v2_idp = {}
+      for key in ['endpoint_configuration', 'discovery_uri', 'authorization_endpoint', 'token_endpoint', 'introspect_endpoint', 'signature_key_configuration', 'jwks_uri', 'signature_key', 'verify_certificates']:
+        if v1_client.get(key):
+          v2_idp[key] = v1_client[key]
+      
+      v2_client = {'name': 'OAuth2 Client'}
+      for key in ['client_id', 'client_secret!', 'scope', 'response_type', 'redirect_uri']:
+        if v1_client.get(key):
+          v2_client[key] = v1_client[key]
+      
+      v2_idp_id = self._check_unicity(v1_client_id, self.app_conf['idps'].keys())
+      
+      self.app_conf['idps'][v2_idp_id] = {
+        'name': v1_client['name'],
+        'idp_parameters': {
+          'oauth2': v2_idp,
+        },
+        'oauth2_clients': {
+          'client': v2_client
+        }
+      }
+      
+      if v1_client.get('rs_client_id'):
+        self.app_conf['idps'][v2_idp_id]['oauth2_apis'] = {}
+        self.app_conf['idps'][v2_idp_id]['oauth2_apis']['api'] = {
+          'rs_client_id': v1_client['rs_client_id'],
+          'rs_client_secret!': v1_client['rs_client_secret!']
+        }
+      
+    del self.app_conf['oauth_clients']
+
+
+  def _convert_1to2_saml(self):
+    """ Convertit les clients SAML v1 en des ensembles IdP + client v2
+    
+    Versions
+      08/08/2024 (mpham) version initiale
+    """
+    
+    if not self.app_conf.get('idps'):
+      self.app_conf['idps'] = {}
+      
+    for v1_client_id in self.app_conf['saml_clients']:
+      
+      v1_client = self.app_conf['saml_clients'][v1_client_id]
+      
+      v2_idp = {'name': 'SAML SP'}
+      for key in ['idp_entity_id', 'idp_certificate', 'idp_sso_url', 'idp_slo_url', 'verify_certificates']:
+        if v1_client.get(key):
+          v2_idp[key] = v1_client[key]
+      
+      v2_client = {}
+      for key in ['sp_entity_id', 'sp_acs_url', 'authentication_binding', 'logout_binding', 'sign_auth_request', 'sign_logout_request', 'sp_key_configuration', 'nameid_policy', 'sp_private_key', 'sp_certificate', 'sp_slo_url']:
+        if v1_client.get(key):
+          v2_client[key] = v1_client[key]
+      
+      v2_idp_id = self._check_unicity(v1_client_id, self.app_conf['idps'].keys())
+      
+      self.app_conf['idps'][v2_idp_id] = {
+        'name': v1_client['name'],
+        'idp_parameters': {
+          'saml': v2_idp,
+        },
+        'saml_clients': {
+          'client': v2_client
+        }
+      }
+      
+    del self.app_conf['saml_clients']
+      
+    
+  def _check_unicity(self, id:str, existing:list) -> str:
+    """ Vérifie qu'un identifiant est bien unique et n'existe pas déjà dans un liste
+    
+    si ce n'est pas le cas, retourne un identifiant non présent dans la liste, construit à partir
+      de l'identifiant à vérifier auquel on ajoute _ et un numéro
+
+    Versions
+      08/08/2024 (mpham) version initiale
+    """
+
+    unique_id = id
+    
+    sequence = 1
+    while unique_id in existing:
+      sequence += 1
+      unique_id = f"{id}_{sequence}"
+    
+    return unique_id

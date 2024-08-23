@@ -87,13 +87,73 @@ function getHtmlJson(method, thisurl, data, menu_id=null) {
 }
 
 
-let intervalId = null;
-function getHtmlJsonContinue(method, thisurl, data, menu_id=null) {
-  _getHtmlJson(method, thisurl, data, menu_id, true);
+
+
+
+let includeJavascript = (include) => {
+  return new Promise((resolve, reject) => {
+
+    let scriptEl = document.createElement("script");
+    document.body.appendChild(scriptEl);
+    scriptEl.onload = resolve;
+    scriptEl.src = include;
+    scriptEl.type = "text/javascript";
+  });
 }
 
 
-function _getHtmlJson(method, thisurl, data, menu_id=null, continueRequest=false) {
+let intervalId = null;
+let firstBlock = true;
+function getHtmlJsonContinue(method, thisurl, data, menu_id=null, notificationId=null) {
+  _getHtmlJson(method, thisurl, data, menu_id, true, notificationId);
+}
+// pour le pas charger plusieurs fois un include Javascript
+let javascriptIncludes = [];
+
+/*
+    - notificationId : identifiant DOM de la notification "sending" que l'on masque dès que le résultat arrive ou en cas d'erreur
+*/
+function _getHtmlJson(method, thisurl, data, menu_id=null, continueRequest=false, notificationId=null) {
+
+  let addElements = async (xhttp) => {
+
+    if (xhttp.readyState == 4 && xhttp.status == 200) {
+      console.log('poll');
+      console.log(xhttp.response.html);
+
+      if (notificationId) {
+        document.getElementById(notificationId).style.display = 'none';
+      }
+
+      for (include of xhttp.response.javascript_include) {
+        if (!javascriptIncludes.includes(include)) {
+          await includeJavascript(include);
+          javascriptIncludes.push(include);
+        }
+      }
+  
+      if (xhttp.response.html != '') {
+        document.getElementById('text_ph').insertAdjacentHTML('beforeend', xhttp.response.html);
+        if (!firstBlock) {
+          document.getElementById('end_ph').scrollIntoView();
+        }
+      }
+      
+      //console.log(xhttp.response.javascript)
+      window.eval(xhttp.response.javascript);
+
+      if (continueRequest) {
+        if (xhttp.response.stop === true) {
+          if (intervalId) { clearInterval(intervalId); intervalId = null; }
+          firstBlock = false;
+        } else {
+          if (intervalId === null) {
+            intervalId = setInterval(_getHtmlJson, 500, method, thisurl, data, null, true, null);
+          }
+        }
+      }
+    }
+  }
 
   if (menu_id) {
     document.getElementById(menu_id).style.display = 'none'
@@ -104,37 +164,7 @@ function _getHtmlJson(method, thisurl, data, menu_id=null, continueRequest=false
   //document.getElementById('end_ph').insertAdjacentHTML('beforebegin', '<div id="text_ph"></div>');
 
   let xhttp = new XMLHttpRequest();
-  xhttp.onload = function() {
-    if (this.readyState == 4 && this.status == 200) {
-      //console.log(xhttp.response)
-      //document.getElementById('text_ph').innerHTML += xhttp.response.html;
-
-      xhttp.response.javascript_include.forEach(include => {
-        let scriptEl = document.createElement("script");
-        scriptEl.setAttribute("src", include);
-        scriptEl.setAttribute("type", "text/javascript");
-        document.body.appendChild(scriptEl);
-      })
-  
-      document.getElementById('text_ph').insertAdjacentHTML('beforeend', xhttp.response.html);
-      if (xhttp.response.html != '') {
-        document.getElementById('end_ph').scrollIntoView();
-      }
-      
-      //xhttp.response.javascript_include.forEach(include => { window.eval('<script src="'+include+'"></script>)'); })
-      window.eval(xhttp.response.javascript)
-      if (continueRequest) {
-        if (xhttp.response.stop === true) {
-          if (intervalId) { clearInterval(intervalId); intervalId = null; }
-        } else {
-          if (intervalId === null) {
-            console.log('START')
-            intervalId = setInterval(_getHtmlJson, 3000, method, thisurl, data, menu_id, true);
-          }
-        }
-      }
-    }
-  };
+  xhttp.onload = () => { addElements(xhttp); };
   xhttp.onerror = function(e) {
     console.log(e)
     if (intervalId) { clearInterval(intervalId); intervalId = null; }
@@ -270,10 +300,30 @@ function copyFieldValue(imgElement) {
 }
 
 // Nouvelles fonctions
-
-function sendToRequester(formUUID) {
+function sendToRequester_newPage(formUUID) {
 
   request_form = document.getElementById('form-'+formUUID);
+
+  // on active tous les éléments du formulaire
+  data = {};
+  request_form.querySelectorAll('.'+formUUID).forEach(el => {
+    el.disabled = false;
+  });
+
+  document.getElementById(formUUID+'_button_bar').style.display = 'none';
+  document.getElementById(formUUID+'_send_notification').style.display = 'block';
+
+  fillClipboard(request_form)
+
+  request_form.submit();
+}
+
+
+function sendToRequester_api(formUUID) {
+
+  request_form = document.getElementById('form-'+formUUID);
+
+  /* ce qu'il y avait avant, mais je ne pense pas que ce soit pertinent. Je laisse en commentaire au cas où
 
   // on commence par activer les champs du requêteur
   request_form.querySelectorAll('.'+formUUID).forEach(el => {
@@ -283,6 +333,22 @@ function sendToRequester(formUUID) {
   });
 
   request_form.submit();
+  
+  */
+  
+  // on récupère tous les éléments du formulaire - peut-être uniquement ceux qui sont actifs ?
+  data = {};
+  request_form.querySelectorAll('.'+formUUID).forEach(el => {
+    data[el.name] = el.value;
+    el.disabled = true;
+  });
+
+  // TODO : généraliser la notification d'envoi de la requête
+  document.getElementById(formUUID+'_send_notification').style.display = 'block';
+
+  fillClipboard(request_form)
+
+  fetchContent('POST', request_form.action, data, formUUID+'_button_bar', formUUID+'_send_notification');
 }
 
 
@@ -355,8 +421,10 @@ function updateFormData(formUUID, requesterFieldValues, paramValues) {
     // on met maintenant à jour les données de la requête finale
     if (formMethod == 'get') {
       request_url = getFormValue(formUUID, 'hr_request_url');
-      request_url += (request_url.includes('?') ? '&' : '?');
-      request_url += new URLSearchParams(Object.entries(paramValues)).toString();
+      if (paramValues.length > 0) {
+        request_url += (request_url.includes('?') ? '&' : '?');
+        request_url += new URLSearchParams(Object.entries(paramValues)).toString();
+      }
       setFormValue(formUUID, 'hr_request_url', request_url);
     } else {
       if (bodyFormat == 'x-www-form-urlencoded') {
@@ -386,6 +454,92 @@ function setFormValue(formUUID, field_id, value) {
   }
 }
 
+/*
+  dans une page continue, va chercher du contenu pour l'ajouter à la suite de la page courante
+  
+  Cette fonction est appelée dans un panel de menu dans une page continue à ajout progressif de contenu :
+  - le polling de récupération de contenu a été arrêté
+  - le menu est masqué (du moins si l'identifiant de la div le contenant a été donné)
+  - la page servant le contenu est invoquée
+  - le contenu en tant que tel est récupéré par les mécanismes de page continue (polling du buffer ContiunousPage)
+  
+  En cas d'erreur, une alerte est affichée et le menu est réaffiché
+ 
+  Exemple d'appel :
+    self.add_html('<span onClick="fetchContent(\'GET\',\'userinfo?contextid='+urllib.parse.quote(context_id)+'\', \'\', \''+self.hreq.continuous_page_id+'\', \''+menu_id+'\')" class="button">Userinfo</span>')
+ 
+  Args:
+    - method : méthode de la requête (GET ou POST)
+    - thisurl : URL où récupérer le Content-Type
+    - data : données à envoyer dans le corps du message
+    - menuId : identifiant DOM du menu depuis lequel a été invoquée la récupération, afin de pouvoir masquer le menu (facultatif)
+    - notificationId : identifiant DOM de la notification "sending" que l'on masque dès que le résultat arrive ou en cas d'erreur
+  
+*/
+function fetchContent(method, thisurl, data, menuId=null, notificationId=null) {
+  
+  let xhttp = new XMLHttpRequest();
+  xhttp.onload = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      //console.log(xhttp.response)
+    }
+  };
+  xhttp.onerror = function(e) {
+    alert(e)
+    if (menuId) {
+      document.getElementById(menuId).style.display = 'block';
+    }
+    if (notificationId) {
+      document.getElementById(notificationId).style.display = 'none';
+    }
+  }
+  xhttp.open(method, thisurl);
+  xhttp.setRequestHeader('CpId', continuousPageId)
+  if (method === 'GET') {
+    xhttp.send();
+  } else {
+    let formData = new FormData();
+    for (const [key, value] of Object.entries(data)) {
+      formData.append(key, value);
+    }
+    xhttp.setRequestHeader('Content-Type','application/x-www-form-urlencoded')
+    xhttp.send(new URLSearchParams(formData));
+  }
+  
+  getHtmlJsonContinue("GET", "/continuouspage/poll?cp_id="+continuousPageId, data, menuId, notificationId);
+}
 
+
+
+
+function CfiForm(formId, thisFieldId) {
+  this.formId = formId;
+  this.thisFieldId = thisFieldId;
+}
+
+
+CfiForm.prototype.getThisField = function () {
+  return document.getElementById(this.formId+'_d_'+this.thisFieldId);
+};
+
+
+CfiForm.prototype.getThisFieldValue = function () {
+  return this.getThisField().value;
+};
+
+
+CfiForm.prototype.setThisFieldValue = function (value) {
+  this.getThisField().value = value;
+};
+
+
+CfiForm.prototype.getField = function (fieldId) {
+  return document.getElementById(this.formId+'_d_'+fieldId);
+};
+
+
+CfiForm.prototype.setFieldValue = function (fieldId, value) {
+  return this.getField(fieldId).value = value;
+};
 
 

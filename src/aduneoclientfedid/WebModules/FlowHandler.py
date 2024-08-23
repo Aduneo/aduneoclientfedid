@@ -18,6 +18,7 @@ from ..BaseServer import AduneoError
 from ..BaseServer import register_web_module, register_url
 from ..BaseServer import BaseHandler
 from ..Configuration import Configuration
+from ..Context import Context
 import html
 import json
 import requests
@@ -42,12 +43,23 @@ class FlowHandler(BaseHandler):
     """ Constructeur
     
     Args:
-      hreg: instance courante de HTTPRequestHandler
+      hreq: instance courante de HTTPRequestHandler
     
     Versions:
-      23/12/2022 (mpham) : version initiale
+      23/12/2022 (mpham) version initiale
+      08/08/2024 (mpham) l'objet de contexte est directement instancié ici
     """
+
     super().__init__(hreq)
+    
+    self.context = None
+    if hreq.command == 'GET':
+      context_id = self.get_query_string_param('contextid')
+    elif hreq.command == 'POST':
+      context_id = self.post_form.get('contextid')
+
+    if context_id:
+      self.context = self.get_session_value(context_id)
 
   
   @register_url(url='cancelrequest', method='GET')
@@ -484,8 +496,74 @@ class FlowHandler(BaseHandler):
     return response
 
 
-  def _add_footer_menu(self, context):
+  def add_menu(self):
     """ Affiche un menu en fin de cinématique pour
+        - relancer une même cinématique
+        - manipuler les jetons (introspection, user info, échanges), en fonction des jetons trouvés dans la session
+        
+    Args:
+      context: contexte de la cinématique en cours, récupérée de la session
+      
+    Versions:
+      08/08/2024 (mpham) : version initiale
+    """
+
+    if not self.context:
+      self.add_html('<span><a href="/" class="button">Menu</a></span>')
+    else:
+
+      dom_id = 'id'+str(uuid.uuid4())
+
+      context_id = self.context['context_id']
+      
+      userinfo = False
+      introspection = False
+      refresh = False
+      token_exchange = False
+      oauth_exchange = False
+      
+      for id_token in self.context['id_tokens'].values():
+        userinfo = True
+        token_exchange = True
+        if 'access_token' in id_token:
+          introspection = True
+        if 'refresh_token' in id_token:
+          refresh = True
+      
+      for access_token in self.context['access_tokens'].values():
+        introspection = True
+        token_exchange = True
+        if 'refresh_token' in access_token:
+          refresh = True
+
+      if len(self.context['access_tokens']) > 0:
+        oauth_exchange = True
+      
+      retry_url = {
+        'OIDC': '/client/oidc/login/preparerequest',
+        'OAuth2': '/client/oauth/login/preparerequest',
+        'SAML': '/client/saml/login/preparerequest',
+        }.get(self.context['initial_flow']['flow_type'])
+
+      self.add_html('<div id="'+html.escape(dom_id)+'">')
+      if retry_url:
+        self.add_html('<span><a href="'+retry_url+'?contextid='+urllib.parse.quote_plus(context_id)+'&idpid='+urllib.parse.quote_plus(self.context['initial_flow']['idp_id'])+'&appid='+urllib.parse.quote_plus(self.context['initial_flow']['app_id'])+'" class="button">Retry original flow</a></span>')
+      self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oidc/flows/newauth?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">New auth</span>')
+      if userinfo:
+        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oidc/userinfo/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Userinfo</span>')
+      if introspection:
+        self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/introspection_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Introspect AT</span>')
+      if refresh:
+        self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/refreshtoken_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Refresh AT</span>')
+      if token_exchange:
+        self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Exchange Token</span>')
+      if oauth_exchange:
+        self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/saml/login/oauthexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+urllib.parse.quote_plus(dom_id)+'\')" class="button">Exchange SAML -> OAuth</span>')
+      self.add_html('</div>')
+
+
+  def _add_footer_menu(self, context):
+    """ DEPRECATED Affiche un menu en fin de cinématique pour
         - relancer une même cinématique
         - manipuler les jetons (introspection, user info, échanges), en fonction des jetons trouvés dans la session
         
@@ -526,16 +604,16 @@ class FlowHandler(BaseHandler):
 
       self.add_content('<div id="'+html.escape(dom_id)+'">')
       if retry_url:
-        self.add_content('<span><a href="'+retry_url+'?contextid='+urllib.parse.quote(context_id)+'&id='+urllib.parse.quote(context['initial_flow']['app_id'])+'" class="button">Retry original flow</a></span>')
+        self.add_content('<span><a href="'+retry_url+'?contextid='+urllib.parse.quote_plus(context_id)+'&id='+urllib.parse.quote_plus(context['initial_flow']['app_id'])+'" class="button">Retry original flow</a></span>')
       if id_token and op_access_token:
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oidc/login/userinfo_spa?contextid='+urllib.parse.quote(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Userinfo</span>')
+        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oidc/login/userinfo_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Userinfo</span>')
       if id_token:
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote(context_id)+'&token_type=id_token\', \'\', \''+dom_id+'\')" class="button">Exchange ID Token</span>')
+        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'&token_type=id_token\', \'\', \''+dom_id+'\')" class="button">Exchange ID Token</span>')
       if access_token:
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/introspection_spa?contextid='+urllib.parse.quote(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Introspect AT</span>')
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote(context_id)+'&token_type=access_token\', \'\', \''+dom_id+'\')" class="button">Exchange AT</span>')
+        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/introspection_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Introspect AT</span>')
+        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'&token_type=access_token\', \'\', \''+dom_id+'\')" class="button">Exchange AT</span>')
       if refresh_token:
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/refreshtoken_spa?contextid='+urllib.parse.quote(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Refresh AT</span>')
+        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/refreshtoken_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Refresh AT</span>')
       if saml_assertion:
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/saml/login/oauthexchange_spa?contextid='+urllib.parse.quote(context_id)+'\', \'\', \''+urllib.parse.quote(dom_id)+'\')" class="button">Exchange SAML -> OAuth</span>')
+        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/saml/login/oauthexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+urllib.parse.quote_plus(dom_id)+'\')" class="button">Exchange SAML -> OAuth</span>')
       self.add_content('</div>')
