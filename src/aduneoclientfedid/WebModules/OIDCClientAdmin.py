@@ -155,7 +155,7 @@ class OIDCClientAdmin(BaseHandler):
           ) \
         .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
       .end_section() \
-      .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=False) \
+      .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=True) \
         .closed_list('display', label='Display', 
           values={'': '', 'page': 'page', 'popup': 'popup', 'touch': 'touch', 'wap': 'wap'},
           default = ''
