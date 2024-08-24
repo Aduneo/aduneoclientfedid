@@ -118,8 +118,6 @@ function _getHtmlJson(method, thisurl, data, menu_id=null, continueRequest=false
   let addElements = async (xhttp) => {
 
     if (xhttp.readyState == 4 && xhttp.status == 200) {
-      console.log('poll');
-      console.log(xhttp.response.html);
 
       if (notificationId) {
         document.getElementById(notificationId).style.display = 'none';

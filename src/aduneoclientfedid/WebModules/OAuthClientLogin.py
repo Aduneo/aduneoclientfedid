@@ -17,7 +17,8 @@ limitations under the License.
 #TODO : faire un strip sur les saisies de l'utilisateur, en particulier pour les AT. Vérifier qu'un copier/coller d'AT n'ajoute pas d'espaces ou de tabulation
 
 from ..BaseServer import AduneoError
-from ..BaseServer import register_web_module, register_url
+from ..BaseServer import register_web_module, register_url, register_page_url
+from ..CfiForm import RequesterForm
 from ..Configuration import Configuration
 from ..Help import Help
 from .Clipboard import Clipboard
@@ -72,9 +73,199 @@ import urllib.parse
 
 @register_web_module('/client/oauth/login')
 class OAuthClientLogin(FlowHandler):
- 
-  @register_url(url='preparerequest', method='GET')
+
+  @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=True)
   def prepare_request(self):
+    """
+      Prépare la requête d'autorisation OAuth 2
+
+    Versions:
+      23/08/2024 (mpham) version initiale copiée d'OIDC
+    """
+
+    self.log_info('--- Start OAuth 2 flow ---')
+
+    idp_id = self.get_query_string_param('idpid')
+    app_id = self.get_query_string_param('appid')
+
+    fetch_configuration_document = False
+
+    if self.context is None:
+      if idp_id is None or app_id is None:
+        self.send_redirection('/')
+        return
+      else:
+        # Nouvelle requête
+        idp = self.conf['idps'][idp_id]
+        idp_params = idp['idp_parameters']['oauth2']
+        idp_params['name'] = idp['name']
+        app_params = idp['oauth2_clients'][app_id]
+
+        self.context = Context()
+        self.context['initial_flow']['idp_id'] = idp_id
+        self.context['initial_flow']['app_id'] = app_id
+        self.context['initial_flow']['flow_type'] = 'OAuth2'
+        self.context['initial_flow']['idp_params'] = idp_params
+        self.context['initial_flow']['app_params'] = app_params
+        self.set_session_value(self.context['context_id'], self.context)
+
+        if idp_params.get('endpoint_configuration', 'Local configuration').casefold() == 'authorization server metadata uri':
+          fetch_configuration_document = True
+
+    else:
+      # Rejeu de requête (conservée dans la session)
+      idp_id = self.context['initial_flow']['idp_id']
+      app_id = self.context['initial_flow']['app_id']
+      idp_params = self.context['initial_flow']['idp_params']
+      app_params = self.context['initial_flow']['app_params']
+    
+    self.log_info(('  ' * 1) + f"for client {app_params['name']} of IdP {idp_params['name']}")
+    self.add_html(f"<h1>IdP {idp_params['name']} OAuth2 Client {app_params['name']}</h1>")
+
+    if fetch_configuration_document:
+      self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=idp_params['metadata_uri']))
+      try:
+        self.log_info('Starting metadata retrieval')
+        self.log_info('metadata_uri: '+idp_params['metadata_uri'])
+        verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
+        self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+        r = requests.get(idp_params['metadata_uri'], verify=verify_certificates)
+        self.log_info(r.text)
+        meta_data = r.json()
+        idp_params.update(meta_data)
+        self.add_html("""<div class="intertable">Success</div>""")
+      except Exception as error:
+        self.log_error(traceback.format_exc())
+        self.add_html(f"""<div class="intertable">Failed: {error}</div>""")
+        self.send_page()
+        return
+      if r.status_code != 200:
+        self.log_error('Server responded with code '+str(r.status_code))
+        self.add_html(f"""<div class="intertable">Failed. Server responded with code {status_code}</div>""")
+        self.send_page()
+        return
+
+    
+    state = str(uuid.uuid4())
+    nonce = str(uuid.uuid4())
+
+    # pour récupérer le contexte depuis le state (puisque c'est la seule information exploitable retournée par l'IdP)
+    self.set_session_value(state, self.context['context_id'])
+
+    form_content = {
+      'contextid': self.context['context_id'],
+      'redirect_uri': app_params.get('redirect_uri', ''),
+      'authorization_endpoint': idp_params.get('authorization_endpoint', ''),
+      'token_endpoint': idp_params.get('token_endpoint', ''),
+      'introspection_endpoint': idp_params.get('introspection_endpoint', ''),
+      'introspection_method': idp_params.get('introspection_method', 'get'),
+      'signature_key_configuration': idp_params.get('signature_key_configuration', 'jwks_uri'),
+      'jwks_uri': idp_params.get('jwks_uri', ''),
+      'signature_key': idp_params.get('signature_key', ''),
+      'client_id': app_params.get('client_id', ''),
+      'scope': app_params.get('scope', ''),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+      'state': state,
+      'nonce': nonce,
+    }
+    
+    form = RequesterForm('oauth2auth', form_content, action='/client/oauth2/login/sendrequest', mode='new_page', request_url='@[authorization_endpoint]') \
+      .hidden('contextid') \
+      .start_section('clientfedid_params', title="ClientFedID Parameters") \
+        .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri') \
+      .end_section() \
+      .start_section('as_endpoints', title="AS Endpoints", collapsible=True, collapsible_default=False) \
+        .text('authorization_endpoint', label='Authorization Endpoint', clipboard_category='authorization_endpoint') \
+        .text('token_endpoint', label='Token Endpoint', clipboard_category='token_endpoint') \
+        .text('introspection_endpoint', label='Introspection Endpoint', clipboard_category='introspection_endpoint') \
+        .closed_list('introspection_method', label='Introspection Request Method', 
+          values={'get': 'GET', 'post': 'POST'},
+          default = 'get'
+          ) \
+      .end_section() \
+      .start_section('client_params', title="Client Parameters", collapsible=True, collapsible_default=False) \
+        .text('client_id', label='Client ID', clipboard_category='client_id') \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+        .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
+        .closed_list('response_type', label='Reponse type', 
+          values={'code': 'code'},
+          default = 'code'
+          ) \
+        .closed_list('token_endpoint_auth_method', label='Token endpoint auth method', 
+          values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
+          default = 'client_secret_basic'
+          ) \
+      .end_section() \
+      .start_section('security_params', title="Security", collapsible=True, collapsible_default=False) \
+        .text('state', label='State', clipboard_category='nonce') \
+        .text('nonce', label='Nonce', clipboard_category='nonce') \
+      .end_section() \
+
+    form.set_request_parameters({
+        'client_id': '@[client_id]',
+        'redirect_uri': '@[redirect_uri]',
+        'scope': '@[scope]',
+        'response_type': '@[response_type]',
+        'state': '@[state]',
+        'nonce': '@[nonce]',
+      })
+    form.modify_http_parameters({
+      'form_method': 'redirect',
+      'body_format': 'x-www-form-urlencoded',
+      'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
+      })
+    form.modify_visible_requester_fields({
+      'request_url': True,
+      'request_data': True,
+      'body_format': False,
+      'form_method': False,
+      'auth_method': False,
+      'verify_certificates': True,
+      })
+
+
+    self.add_html(form.get_html())
+    self.add_javascript(form.get_javascript())
+
+    self.send_page()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+  @register_url(url='preparerequest_old', method='GET')
+  def prepare_request_old(self):
 
     self.log_info('--- Start OAuth 2 flow ---')
 

@@ -100,7 +100,6 @@ class OAuthClientAdmin(BaseHandler):
       'introspection_endpoint': idp_params.get('introspection_endpoint', ''),
       'introspection_method': idp_params.get('introspection_method', 'get'),
       'revocation_endpoint': idp_params.get('revocation_endpoint', ''),
-      'issuer': idp_params.get('issuer', ''),
       'signature_key_configuration': idp_params.get('signature_key_configuration', 'jwks_uri'),
       'jwks_uri': idp_params.get('jwks_uri', ''),
       'signature_key': idp_params.get('signature_key', ''),
@@ -181,7 +180,7 @@ class OAuthClientAdmin(BaseHandler):
       self.conf['idps'][idp_id] = {'idp_parameters': {'oauth2': {}}, 'oauth2_clients': {'client': {}}}
     
     idp = self.conf['idps'][idp_id]
-    idp_params = idp['idp_parameters']['oidc']
+    idp_params = idp['idp_parameters']['oauth2']
     app_params = idp['oauth2_clients'][app_id]
     
     if self.post_form['name'] == '':
@@ -190,7 +189,7 @@ class OAuthClientAdmin(BaseHandler):
     idp['name'] = self.post_form['name']
     app_params['name'] = 'OAuth2 Client'
     
-    for item in ['endpoint_configuration', 'discovery_uri', 'issuer', 'authorization_endpoint', 'token_endpoint', 
+    for item in ['endpoint_configuration', 'metadata_uri', 'authorization_endpoint', 'token_endpoint', 
     'revocation_endpoint', 'introspection_endpoint', 'introspection_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
       if self.post_form.get(item, '') == '':
         idp_params.pop(item, None)
@@ -216,98 +215,6 @@ class OAuthClientAdmin(BaseHandler):
     Configuration.write_configuration(self.conf)
     
     self.send_redirection(f"/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}")
-
-
-
-
-
-
-
-
-
-
-  
-  @register_url(url='modifyclient_old', method='GET')
-  def display(self):
-    
-    """
-    Ajout/modification d'un client OIDC
-    
-    Versions
-      12/02/2021 - 27/02/2021 - 28/12/2021 (mpham) : version initiale
-      13/04/2021 (mpham)
-      23/12/2022 (mpham) : méthode d'authentification à l'endpoint token
-    """
-    
-    rp = {}
-    rp_id = self.get_query_string_param('id', '')
-    if rp_id:
-      rp = self.conf['oauth_clients'][rp_id]
-    
-    redirect_uri = rp.get('redirect_uri', '')
-
-    self.send_template('OAuthClientAdmin.html',
-      rp_id = rp_id,
-      name = rp.get('name', ''),
-      redirect_uri = redirect_uri,
-      endpoint_configuration = rp.get('endpoint_configuration', 'Local configuration'),
-      authorization_endpoint = rp.get('authorization_endpoint', ''),
-      token_endpoint = rp.get('token_endpoint', ''),
-      introspection_endpoint = rp.get('introspection_endpoint', ''),
-      discovery_uri = rp.get('discovery_uri', ''),
-      client_id = rp.get('client_id', ''),
-      scope = rp.get('scope', ''),
-      response_type = rp.get('response_type', 'code'),
-      token_endpoint_auth_method = rp.get('token_endpoint_auth_method', 'POST'),
-      introspect_at = Configuration.is_on(rp.get('introspect_at', 'off')),
-      rs_client_id = rp.get('rs_client_id', ''),
-      verify_certificates = Configuration.is_on(rp.get('verify_certificates', 'on')),
-      )
-
-
-  @register_url(url='modifyclient', method='POST')
-  def modify(self):
-  
-    """
-    Crée ou modifie un IdP dans la configuration
-    
-    S'il existe, ajoute un suffixe numérique
-    
-    Versions
-      01/11/2022 (mpham) : version initiale
-      23/12/2022 (mpham) : méthode d'authentification à l'endpoint token
-    """
-    
-    rp_id = self.post_form['rp_id']
-    if rp_id == '':
-      rp_id = self._generate_rpid(self.post_form['name'], self.conf['oauth_clients'].keys())
-      self.conf['oauth_clients'][rp_id] = {}
-    
-    rp = self.conf['oauth_clients'][rp_id]
-    
-    if self.post_form['name'] == '':
-      self.post_form['name'] = rp_id
-    
-    for item in ['name', 'redirect_uri', 'endpoint_configuration', 'authorization_endpoint', 'token_endpoint', 'introspection_endpoint', 'discovery_uri', 
-      'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'rs_client_id']:
-      if self.post_form[item] == '':
-        rp.pop(item, None)
-      else:
-        rp[item] = self.post_form[item]
-
-    for secret in ['client_secret!', 'rs_client_secret!']:
-      if self.post_form[secret] != '':
-        rp[secret] = self.post_form[secret]
-
-    for item in ['introspect_at', 'verify_certificates']:
-      if item in self.post_form:
-        rp[item] = 'on'
-      else:
-        rp[item] = 'off'
-
-    Configuration.write_configuration(self.conf)
-    
-    self.send_redirection('/')
 
 
   @register_url(url='removeclient', method='GET')

@@ -195,14 +195,14 @@ class OIDCClientAdmin(BaseHandler):
       09/12/2022 (mpham) ajout de token_endpoint_auth_method
       22/02/2023 (mpham) suppression des références à fetch_userinfo puisque l'appel à userinfo est désormais manuel
       10/08/2024 (mpham) version 2 de la configuration
-      23/08/2024 (mpham) request parameters
+      23/08/2024 (mpham) request parameters et strip des données du formulaire
     """
     
     idp_id = self.post_form['idp_id']
     app_id = self.post_form['app_id']
     if idp_id == '':
       # Création
-      idp_id = self._generate_idpid(self.post_form['name'], self.conf['idps'].keys())
+      idp_id = self._generate_idpid(self.post_form['name'].strip(), self.conf['idps'].keys())
       app_id = 'client'
       self.conf['idps'][idp_id] = {'idp_parameters': {'oidc': {}}, 'oidc_clients': {'client': {}}}
     
@@ -213,7 +213,7 @@ class OIDCClientAdmin(BaseHandler):
     if self.post_form['name'] == '':
       self.post_form['name'] = idp_id
 
-    idp['name'] = self.post_form['name']
+    idp['name'] = self.post_form['name'].strip()
     app_params['name'] = 'OIDC Client'
     
     for item in ['endpoint_configuration', 'discovery_uri', 'issuer', 'authorization_endpoint', 'token_endpoint', 
@@ -221,14 +221,14 @@ class OIDCClientAdmin(BaseHandler):
       if self.post_form.get(item, '') == '':
         idp_params.pop(item, None)
       else:
-        idp_params[item] = self.post_form[item]
+        idp_params[item] = self.post_form[item].strip()
       
     for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'post_logout_redirect_uri',
     'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values']:
       if self.post_form.get(item, '') == '':
         app_params.pop(item, None)
       else:
-        app_params[item] = self.post_form[item]
+        app_params[item] = self.post_form[item].strip()
       
     for secret in ['client_secret']:
       if self.post_form.get(secret, '') != '':

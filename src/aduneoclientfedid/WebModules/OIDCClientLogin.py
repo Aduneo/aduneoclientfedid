@@ -272,6 +272,7 @@ class OIDCClientLogin(FlowHandler):
       09/12/2022 (mpham) ajout de token_endpoint_auth_method
       22/02/2023 (mpham) on retire les références à fetch_userinfo car l'appel à userinfo est maintenant manuel
       08/08/2024 (mpham) nouvelle organisation du contexte
+      23/08/2024 (mpham) strip des données du formulaire
     """
     
     self.log_info('Redirection to IdP requested')
@@ -285,11 +286,11 @@ class OIDCClientLogin(FlowHandler):
       # Mise à jour de la requête initiale
       initial_idp_params = self.context['initial_flow']['idp_params']
       for item in ['authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'userinfo_method', 'issuer', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
-        initial_idp_params[item] = self.post_form.get(item, '')
+        initial_idp_params[item] = self.post_form.get(item, '').strip()
 
       initial_app_params = self.context['initial_flow']['app_params']
       for item in ['redirect_uri', 'client_id', 'scope', 'token_endpoint_auth_method', 'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values']:
-        initial_app_params[item] = self.post_form.get(item, '')
+        initial_app_params[item] = self.post_form.get(item, '').strip()
         
       if self.post_form.get('client_secret', '') != '':
         initial_app_params['client_secret'] = self.post_form.get('client_secret', '')
@@ -301,12 +302,12 @@ class OIDCClientLogin(FlowHandler):
 
       # Copie de la requête initiale vers la requête courante
       self.context['current_flow'] = copy.deepcopy(self.context['initial_flow'])
-      self.context['current_flow']['state'] = self.post_form['state']
-      self.context['current_flow']['nonce'] = self.post_form['nonce']
+      self.context['current_flow']['state'] = self.post_form['state'].strip()
+      self.context['current_flow']['nonce'] = self.post_form['nonce'].strip()
 
       # Redirection vers l'IdP
 
-      authentication_request = self.post_form['hr_request_url']+'?'+self.post_form['hr_request_data']
+      authentication_request = self.post_form['hr_request_url'].strip()+'?'+self.post_form['hr_request_data'].strip()
       self.log_info('Redirecting to:')
       self.log_info(authentication_request)
       self.send_redirection(authentication_request)

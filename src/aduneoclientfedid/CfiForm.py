@@ -783,6 +783,7 @@ class RequesterForm(CfiForm):
     """
     Versions:
       09/08/2024 (mpham) les requêtes peuvent ne pas avoir de paramètres
+      24/08/2024 (mpham) mise à disposition de cfiForm dans le request data generator
     """
 
     self._append_requester()
@@ -887,7 +888,6 @@ class RequesterForm(CfiForm):
       # on a fourni du code Javascript pour retraiter les données
       self.javascript += """
         paramValues = transformData_"""+self.form_uuid+"""(paramValues);
-      }
       """
       
     self.javascript += """
@@ -899,6 +899,7 @@ class RequesterForm(CfiForm):
       # on a fourni du code Javascript pour retraiter les données
       self.javascript += """
     function transformData_"""+self.form_uuid+"""(paramValues) {
+      cfiForm = new CfiForm('"""+self.form_uuid+"""', null);
       """+self.data_generator+"""
       }
       """
