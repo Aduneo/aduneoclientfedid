@@ -416,7 +416,6 @@ class OIDCClientLogin(FlowHandler):
         self.log_info("Connecting to "+token_endpoint)
         verify_certificates = Configuration.is_on(app_params.get('verify_certificates', 'on'))
         self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-        # Remarque : ici on est en authentification client_secret_post alors que la méthode par défaut, c'est client_secret_basic (https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication)
         r = requests.post(token_endpoint, data=data, auth=auth, verify=verify_certificates)
       except Exception as error:
         self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
@@ -585,7 +584,7 @@ class OIDCClientLogin(FlowHandler):
 
       try:
         jwt = JWT(id_token)
-        jwt.is_signature_valid(token_key)
+        jwt.is_signature_valid(token_key, raise_exception=True)
         self.log_info('Signature verification OK')
         self.add_result_row('Signature verification', 'OK', copy_button=False)
       except Exception as error:
@@ -607,7 +606,7 @@ class OIDCClientLogin(FlowHandler):
             token_key = json_key
           
             try:
-              jwt.is_signature_valid(token_key)
+              jwt.is_signature_valid(token_key, raise_exception=True)
               self.log_info('Signature verification OK')
               self.add_result_row('Signature verification', 'OK', copy_button=False)
             except Exception as error:

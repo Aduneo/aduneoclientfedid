@@ -27,6 +27,7 @@ import uuid
 import random
 import string
 import requests
+import time
 import urllib.parse
 
 from ..BaseServer import AduneoError
@@ -35,8 +36,11 @@ from ..CfiForm import RequesterForm
 from ..Configuration import Configuration
 from ..Context import Context
 from ..Help import Help
+from ..JWT import JWT
 from .Clipboard import Clipboard
 from .FlowHandler import FlowHandler
+
+# TODO : implémentation RFC 8707 (paramètre resource, mais attention, il peut être multivalué - il faut faire évoluer CfiForm)
 
 """
   Un contexte de chaque cinématique est conservé dans la session.
@@ -166,6 +170,7 @@ class OAuthClientLogin(FlowHandler):
       'token_endpoint': idp_params.get('token_endpoint', ''),
       'introspection_endpoint': idp_params.get('introspection_endpoint', ''),
       'introspection_method': idp_params.get('introspection_method', 'get'),
+      'issuer': idp_params.get('issuer', ''),
       'signature_key_configuration': idp_params.get('signature_key_configuration', 'jwks_uri'),
       'jwks_uri': idp_params.get('jwks_uri', ''),
       'signature_key': idp_params.get('signature_key', ''),
@@ -215,6 +220,15 @@ class OAuthClientLogin(FlowHandler):
           values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
           default = 'client_secret_basic'
           ) \
+      .end_section() \
+      .start_section('token_validation', title="Token Validation (if JWT)", collapsible=True, collapsible_default=True) \
+        .text('issuer', label='Issuer', clipboard_category='issuer') \
+        .closed_list('signature_key_configuration', label='Signature key configuration',
+          values = {'jwks_uri': 'JWKS URI', 'local_configuration': 'Local configuration'},
+          default = 'jwks_uri'
+          ) \
+        .text('jwks_uri', label='JWKS URI', displayed_when="@[signature_key_configuration] = 'jwks_uri'") \
+        .text('signature_key', label='Signature key', displayed_when="@[signature_key_configuration] = 'local_configuration'") \
       .end_section() \
       .start_section('security_params', title="Security", collapsible=True, collapsible_default=False) \
         .text('state', label='State', clipboard_category='nonce') \
@@ -283,7 +297,7 @@ class OAuthClientLogin(FlowHandler):
 
       # Mise à jour de la requête initiale
       initial_idp_params = self.context['initial_flow']['idp_params']
-      for item in ['authorization_endpoint', 'token_endpoint', 'introspection_endpoint', 'introspection_method']:
+      for item in ['authorization_endpoint', 'token_endpoint', 'introspection_endpoint', 'introspection_method', 'issuer', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
         initial_idp_params[item] = self.post_form.get(item, '').strip()
 
       initial_app_params = self.context['initial_flow']['app_params']
@@ -329,6 +343,326 @@ class OAuthClientLogin(FlowHandler):
 
   @register_page_url(url='callback', method='GET', template='page_default.html', continuous=True)
   def callback(self):
+    """
+      Callback provenant du navigateur (appel XHR dans le Javascript)
+        La query string a pour origine l'AS ; elle ne fait que transiter par le Javascript du navigateur pour pouvoir ajouter facilement des requêtes dans la même page
+        
+      Regarde le flow correspondant au state retourné pour faire un simple routage vers
+      - callback_flow_code_spa (Authorization Code et Authorization Code with PKCE)
+      
+    mpham 14/09/2022
+    """
+  
+    self.add_javascript_include('/javascript/resultTable.js')
+    self.add_javascript_include('/javascript/clipboard.js')
+    try:
+
+      self.log_info('Checking authorization')
+
+      # récupération de state pour obtention des paramètres dans la session
+      idp_state = self.get_query_string_param('state')
+      if not idp_state:
+        raise AduneoError(f"Can't retrieve request context from state because state in not present in callback query string {self.hreq.path}")
+      self.log_info('for state: '+idp_state)
+
+      context_id = self.get_session_value(idp_state)
+      if not context_id:
+        raise AduneoError(f"Can't retrieve request context from state because context id not found in session for state {idp_state}")
+
+      self.context = self.get_session_value(context_id)
+      if not self.context:
+        raise AduneoError(f"Can't retrieve request context because context id {context_id} not found in session")
+      
+      # extraction des informations utiles de la session
+      idp_id = self.context['current_flow']['idp_id']
+      app_id = self.context['current_flow']['app_id']
+      idp_params = self.context['current_flow']['idp_params']
+      app_params = self.context['current_flow']['app_params']
+
+      error = self.get_query_string_param('error')
+      if error is not None:
+        description = ''
+        error_description = self.get_query_string_param('error_description')
+        if error_description is not None:
+          description = ', '+error_description
+        raise AduneoError(self.log_error('IdP returned an error: '+error+description))
+
+      self.add_html(f"<h3>OAuth 2 callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
+
+      self.start_result_table()
+      self.add_result_row('State returned by IdP', idp_state, 'idp_state')
+
+      code = self.get_query_string_param('code')
+      if not code:
+        raise AduneoError("Authorization code not found in query string")
+
+      token_endpoint = idp_params.get('token_endpoint', '')
+      if not token_endpoint:
+        raise AduneoError("Token endpoint missing from configuration")
+      client_id = app_params['client_id']
+      redirect_uri = app_params['redirect_uri']
+
+      self.log_info('Start retrieving token for code '+code)
+      self.log_info(('  ' * 1)+'from '+token_endpoint)
+      self.add_result_row('Token endpoint', token_endpoint, 'token_endpoint')
+      
+      # Construction de la requête de récupération du jeton
+      api_call_data = {
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': redirect_uri,
+        'client_id': client_id,
+      }
+      if app_params['oauth_flow'] == 'authorization_code_pkce':
+        api_call_data['code_verifier'] = app_params['pkce_code_verifier']
+
+      token_endpoint_auth_method = app_params['token_endpoint_auth_method'].casefold()
+      auth = None
+      if app_params['oauth_flow'] == 'authorization_code':
+      
+        if 'client_secret' in app_params:
+          client_secret = app_params['client_secret']
+        else:
+          # il faut aller chercher le mot de passe dans la configuration
+          conf_idp = self.conf['idps'][idp_id]
+          conf_app = conf_idp['oauth2_clients'][app_id]
+          client_secret = conf_app['client_secret!']
+      
+        if token_endpoint_auth_method == 'client_secret_basic':
+          auth = (app_params['client_id'], client_secret)
+        elif token_endpoint_auth_method == 'client_secret_post':
+          api_call_data['client_secret'] = client_secret
+        else:
+          raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be Basic or POST')
+
+      self.log_info(('  ' * 1)+'Token request data: '+str(api_call_data))
+      self.add_result_row('Token request data', json.dumps(api_call_data, indent=2), 'token_request_data')
+      self.end_result_table()
+      self.add_html('<div class="intertable">Fetching token...</div>')
+      self.log_info("Start fetching token")
+      try:
+        self.log_info(('  ' * 1)+"sending request to "+token_endpoint)
+        verify_certificates = Configuration.is_on(app_params.get('verify_certificates', 'on'))
+        self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+        r = requests.post(token_endpoint, api_call_data, auth=auth, verify=verify_certificates)
+      except Exception as error:
+        self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
+        raise AduneoError(self.log_error(('  ' * 1)+'token retrieval error: '+str(error)))
+      if r.status_code == 200:
+        self.add_html('<div class="intertable">Success</div>')
+      else:
+        self.add_html('<div class="intertable">Error, status code '+str(r.status_code)+'</div>')
+        raise AduneoError(self.log_error('token retrieval error: status code '+str(r.status_code)+", "+r.text))
+      
+      response = r.json()
+      self.log_info('AS response:')
+      self.log_info(json.dumps(response, indent=2))
+      self.start_result_table()
+      self.add_result_row('Raw AS response', json.dumps(response, indent=2), 'as_raw_response')
+      
+      if 'access_token' not in response:
+        raise AduneoError(self.log_error('access token not found in response'))
+      
+      access_token = response['access_token']
+      self.add_result_row('Access Token', access_token, 'access_token')
+      refresh_token = response.get('refresh_token')
+      if refresh_token:
+        self.add_result_row('Refresh token', refresh_token, 'refresh_token')
+
+      # Si les jetons sont JWT, on récupère les clés de signature pour vérification
+      signature_key_needed = False
+      if JWT.is_jwt(access_token):
+        signature_key_needed = True
+      if refresh_token:
+        if JWT.is_jwt(refresh_token):
+          signature_key_needed = True
+
+      access_token_jwk = None
+      refresh_token_jwk = None
+      if signature_key_needed:
+        if idp_params['signature_key_configuration'] == 'Local configuration':
+        
+          # Clé de signature donnée dans la configuration
+          self.log_info('Signature JWK:')
+          self.log_info(idp_params['signature_key'])
+          access_token_jwk = json.loads(idp_params['signature_key'])
+          refresh_token_jwk = access_token_jwk
+
+        else:
+        
+          # Clé à récupérer auprès de l'IdP
+          self.log_info("Starting IdP keys retrieval")
+          self.add_result_row('JWKS endpoint', idp_params['jwks_uri'], 'jwks_endpoint')
+          self.end_result_table()
+          self.add_html('<div class="intertable">Fetching public keys...</div>')
+          try:
+            verify_certificates = Configuration.is_on(app_params.get('verify_certificates', 'on'))
+            self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+            r = requests.get(idp_params['jwks_uri'], verify=verify_certificates)
+          except Exception as error:
+            self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
+            raise AduneoError(self.log_error(('  ' * 2)+'IdP keys retrieval error: '+str(error)))
+          if r.status_code == 200:
+            self.add_html('<div class="intertable">Success</div>')
+          else:
+            self.add_html('<div class="intertable">Error, status code '+str(r.status_code)+'</div>')
+            raise AduneoError(self.log_error('IdP keys retrieval error: status code '+str(r.status_code)))
+
+          keyset = r.json()
+          self.log_info("IdP response:")
+          self.log_info(json.dumps(keyset, indent=2))
+          self.start_result_table()
+          self.add_result_row('Keyset', json.dumps(keyset, indent=2), 'keyset')
+          
+          # On en extrait les JWK qui correspondent aux jetons
+          self.add_result_row('Retrieved keys', '', 'retrieved_keys', copy_button=False)
+      
+      if JWT.is_jwt(access_token):
+        # l'AT est un JWT, on l'affiche
+        self.add_result_row('Access Token Type', 'JWT')
+        jwt = JWT(access_token)
+        self.add_result_row('Access Token Header', json.dumps(jwt.header, indent=2), 'access_token_header')
+        self.log_info("Access token header:")
+        self.log_info(json.dumps(jwt.header, indent=2))
+
+        self.add_result_row('Access Token Payload', json.dumps(jwt.payload, indent=2), 'access_token_payload')
+        self.log_info("Access token payload:")
+        self.log_info(json.dumps(jwt.payload, indent=2))
+        
+        # On vérifie la signature du JWT
+        alg = jwt.header.get('alg')
+        if not alg:
+          self.add_result_row('AT Signature Validation', 'JWT without algorithm in header')
+          self.log_info("  Can't verify Access Token signature : JWT without algorithm in header")
+        else:
+          if idp_params['signature_key_configuration'] == 'jwks_uri':
+            for jwk in keyset['keys']:
+                self.add_result_row(jwk['kid'], json.dumps(jwk, indent=2))
+                if jwk['kid'] == jwt.header.get('kid'):
+                  access_token_jwk = jwk
+
+          if not access_token_jwk:
+            self.add_result_row('AT Signature Validation', 'Signature key not found')
+            self.log_info("  Can't verify AT signature : signature key not found")
+          else:
+            self.log_info('Signature JWK:')
+            self.log_info(json.dumps(access_token_jwk, indent=2))
+            self.add_result_row('Signature JWK', json.dumps(access_token_jwk, indent=2), 'signature_jwk')
+            
+            try:
+              jwt.is_signature_valid(access_token_jwk)
+              self.log_info('Access Token signature verification OK')
+              self.add_result_row('AT Signature verification', 'OK', copy_button=False)
+            except Exception as error:
+              self.add_result_row('AT Signature verification', 'Failed', copy_button=False)
+              raise AduneoError(self.log_error('Signature verification failed'))
+        
+      else:
+        self.add_result_row('Access Token Type', 'opaque')
+      
+      if refresh_token:
+        if JWT.is_jwt(refresh_token):
+          # le RT est un JWT, on l'affiche
+          self.add_result_row('Refresh Token Type', 'JWT')
+          jwt = JWT(refresh_token)
+          self.add_result_row('Refresh Token Header', json.dumps(jwt.header, indent=2), 'refresh_token_header')
+          self.log_info("Refresh token header:")
+          self.log_info(json.dumps(jwt.header, indent=2))
+
+          self.add_result_row('Refresh Token Payload', json.dumps(jwt.payload, indent=2), 'refresh_token_payload')
+          self.log_info("Refresh token payload:")
+          self.log_info(json.dumps(jwt.payload, indent=2))
+          
+          # On vérifie la signature du JWT
+          alg = jwt.header.get('alg')
+          if not alg:
+            self.add_result_row('RT Signature Validation', 'JWT without algorithm in header')
+            self.log_info("  Can't verify Refresh Token signature : JWT without algorithm in header")
+          else:
+            if idp_params['signature_key_configuration'] == 'jwks_uri':
+              for jwk in keyset['keys']:
+                  self.add_result_row(jwk['kid'], json.dumps(jwk, indent=2))
+                  if jwk['kid'] == jwt.header.get('kid'):
+                    refresh_token_jwk = jwk
+
+            if not refresh_token_jwk:
+              self.add_result_row('RT Signature Validation', 'Signature key not found')
+              self.log_info("  Can't verify Refresh Token signature : signature key not found")
+            else:
+              self.log_info('Signature JWK:')
+              self.log_info(json.dumps(refresh_token_jwk, indent=2))
+              self.add_result_row('Signature JWK', json.dumps(refresh_token_jwk, indent=2), 'signature_jwk')
+              
+              try:
+                jwt.is_signature_valid(refresh_token_jwk)
+                self.log_info('Refresh Token signature verification OK')
+                self.add_result_row('RT Signature verification', 'OK', copy_button=False)
+              except Exception as error:
+                self.add_result_row('RT Signature verification', 'Failed', copy_button=False)
+                raise AduneoError(self.log_error('Signature verification failed'))
+          
+        else:
+          self.add_result_row('Refresh Token Type', 'opaque')
+      
+      
+      
+      # Nonce verification
+      idp_nonce = response.get('nonce')
+      if idp_nonce:
+        session_nonce = request['nonce']
+        if session_nonce == idp_nonce:
+          self.log_info("Nonce verification OK: "+session_nonce)
+          self.add_result_row('Nonce verification', 'OK: '+session_nonce, 'nonce_verification')
+        else:
+          self.log_error(('  ' * 1)+"Nonce verification failed")
+          self.log_error(('  ' * 2)+"client nonce: "+session_nonce)
+          self.log_error(('  ' * 2)+"IdP nonce   :"+idp_nonce)
+          self.add_result_row('Nonce verification', "Failed\n  client nonce: "+session_nonce+"\n  IdP nonce: "+idp_nonce, 'nonce_verification')
+          raise AduneoError('nonce verification failed')
+
+      else:
+        self.log_info('No nonce in response')
+
+      self.end_result_table()
+
+      # Enregistrement des jetons dans la session pour manipulation ultérieure
+      #   Les jetons sont indexés par timestamp d'obtention
+      token_name = 'Authz OAuth2 '+app_params['name']+' - '+time.strftime("%H:%M:%S", time.localtime())
+      token = {'name': token_name, 'type': 'access_token', 'access_token': access_token}
+      if refresh_token:
+        token['refresh_token'] = refresh_token
+      self.context['access_tokens'][str(time.time())] = token
+
+    except AduneoError as error:
+      if self.is_result_in_table():
+        self.end_result_table()
+      self.add_html('<h4>Authorization failed: '+html.escape(str(error))+'</h4>')
+      if error.explanation_code:
+        self.add_html(Explanation.get(error.explanation_code))
+    except Exception as error:
+      if self.is_result_in_table():
+        self.end_result_table()
+      self.log_error(('  ' * 1)+traceback.format_exc())
+      self.add_html('<h4>Authorization failed: '+html.escape(str(error))+'</h4>')
+
+    self.log_info('--- End OAuth 2 flow ---')
+
+    self.add_menu() 
+
+    self.send_page()
+
+
+
+
+
+
+
+
+
+
+
+  @register_page_url(url='callback_temp', method='GET', template='page_default.html', continuous=True)
+  def callback_temp(self):
     """ Retour d'authentification depuis l'IdP
     
       Versions:
@@ -340,7 +674,7 @@ class OAuthClientLogin(FlowHandler):
     self.start_result_table()
     try:
     
-      self.log_info('Authentication callback')
+      self.log_info('Autorization callback')
       
       error = self.get_query_string_param('error')
       if error is not None:
@@ -851,7 +1185,7 @@ class OAuthClientLogin(FlowHandler):
 
 
   @register_url(method='GET')
-  def callback(self):
+  def callback_old(self):
     """
       Retour de redirection de l'Authorization Server (AS), après l'authentification initiale de l'utilisateur
       

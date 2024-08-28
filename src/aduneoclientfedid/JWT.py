@@ -13,7 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import base64
+import json
+
 from .BaseServer import AduneoError
+
 
 jwt_libraries = []
 try:
@@ -24,7 +28,7 @@ except:
 
 
 class JWT():
-  """ Classe d'encapsulation des JWT
+  """ Classe d'encapsulation des JWT (RFC 7519)
   
   Permet de s'appuyer sur diverses manières de représenter un JWT et surtout de vérifier les signatures / déchiffrer les JWE
   
@@ -33,24 +37,100 @@ class JWT():
   - aduneo
   
   Versions:
-    22/12/2023 (mpham) : version initiale
+    22/12/2023 (mpham) version initiale
+    28/08/2024 (mpham) méthode statique is_jwt
   """
+
+  def is_jwt(token:str) -> bool:
+    """ Détermine si la chaîne ressemble à un JWT
+    
+    Args:
+      token: chaîne de caractères à tester
+      
+    Versions:
+      28/08/2024 (mpham) version initiale
+    """
+
+    result = False
+
+    try:
+      jwt = JWT(token)
+      result = True
+    except Exception as e:
+      print(e)
+      pass
+    
+    return result
+    
 
   def __init__(self, token:str):
     """ Constructeur
     
     Vérifie que les prérequis sont bien requis pour les opérations (vérification de signature en particulier)
     
+    Les membres suivants sont initialisés :
+      self.header
+      self.payload
+      self.b64_signature
+    
     Args:
       token: jeton en représentation JWT (par exemple eyJ[...]SJ9.eyJ[...]In0.Oj4[...]lMw)
 
     Versions:
       22/12/2023 (mpham) version initiale
+      28/08/2024 (mpham) analyse du JWT
     """
-    
+
     from .Server import Server # pour éviter les références circulaires
     self.conf = Server.conf
+
+    # analyse du jeton
+    dot_pos = token.find('.')
+    if dot_pos == -1:
+      raise AduneoError(f"token {token} is not a JWT, dot separator not found")
+
+    b64_header = token[:dot_pos]
+    try:
+      json_header = base64.urlsafe_b64decode(b64_header + '=' * (4 - len(b64_header) % 4))
+    except:
+      raise AduneoError(f"token {token} is not a JWT, header {b64_header} not Base 64 URL encoded")
     
+    try:
+      self.header = json.loads(json_header)
+    except:
+      raise AduneoError(f"token {token} is not a JWT, header {json_header} not JSON encoded")
+      
+    rest = token[dot_pos+1:]
+    second_dot_pos = rest.find('.')
+    if second_dot_pos == -1:
+      raise AduneoError(f"token {token} is not a JWT, second dot separator not found")
+
+    part_2 = rest[:second_dot_pos]
+    rest = rest[second_dot_pos+1:]
+    
+    third_dot_pos = rest.find('.')
+    if third_dot_pos == -1:
+      # JWS
+      
+      b64_payload = part_2
+      
+      try:
+        json_payload = base64.urlsafe_b64decode(b64_payload + '=' * (4 - len(b64_payload) % 4))
+      except:
+        raise AduneoError(f"token {token} is not a JWT, payload {b64_payload} not Base 64 URL encoded")
+
+      try:
+        self.payload = json.loads(json_payload)
+      except:
+        raise AduneoError(f"token {token} is not a JWT, payload {json_payload} not JSON encoded")
+      
+      self.b64_signature = rest
+      
+    else:
+      # JWE
+      raise AduneoError(f"token {token} is JWE, not supported yet")
+
+    # Chargement de la librairie
     self.library = self.conf.get('preferences/jwt/library', 'jwcrypto')
     if self.library.casefold() == 'jwcrypto':
       if 'jwcrypto' not in jwt_libraries:
