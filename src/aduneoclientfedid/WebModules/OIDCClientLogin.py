@@ -333,7 +333,6 @@ class OIDCClientLogin(FlowHandler):
 
     self.add_javascript_include('/javascript/resultTable.js')
     self.add_javascript_include('/javascript/clipboard.js')
-    self.start_result_table()
     try:
     
       self.log_info('Authentication callback')
@@ -351,7 +350,6 @@ class OIDCClientLogin(FlowHandler):
       if not idp_state:
         raise AduneoError(f"Can't retrieve request context from state because state in not present in callback query string {self.hreq.path}")
       self.log_info('for state: '+idp_state)
-      self.add_result_row('State returned by IdP', idp_state, 'idp_state')
 
       context_id = self.get_session_value(idp_state)
       if not context_id:
@@ -369,6 +367,11 @@ class OIDCClientLogin(FlowHandler):
       token_endpoint = idp_params['token_endpoint']
       client_id = app_params['client_id']
       redirect_uri = app_params['redirect_uri']
+
+      self.add_html(f"<h3>OAuth 2 callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
+
+      self.start_result_table()
+      self.add_result_row('State returned by IdP', idp_state, 'idp_state')
       
       if 'client_secret' in app_params:
         client_secret = app_params['client_secret']

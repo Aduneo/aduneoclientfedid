@@ -13,18 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-
-#TODO : faire un strip sur les saisies de l'utilisateur, en particulier pour les AT. Vérifier qu'un copier/coller d'AT n'ajoute pas d'espaces ou de tabulation
-
-from ..BaseServer import AduneoError
-from ..BaseServer import register_web_module, register_url, register_page_url
-from ..CfiForm import RequesterForm
-from ..Configuration import Configuration
-from ..Help import Help
-from .Clipboard import Clipboard
-from .FlowHandler import FlowHandler
 import base64
-import urllib
+import copy
 import hashlib
 import datetime
 import html
@@ -38,6 +28,15 @@ import random
 import string
 import requests
 import urllib.parse
+
+from ..BaseServer import AduneoError
+from ..BaseServer import register_web_module, register_url, register_page_url
+from ..CfiForm import RequesterForm
+from ..Configuration import Configuration
+from ..Context import Context
+from ..Help import Help
+from .Clipboard import Clipboard
+from .FlowHandler import FlowHandler
 
 """
   Un contexte de chaque cinématique est conservé dans la session.
@@ -71,7 +70,7 @@ import urllib.parse
 """
 
 
-@register_web_module('/client/oauth/login')
+@register_web_module('/client/oauth2/login')
 class OAuthClientLogin(FlowHandler):
 
   @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=True)
@@ -147,10 +146,18 @@ class OAuthClientLogin(FlowHandler):
 
     
     state = str(uuid.uuid4())
-    nonce = str(uuid.uuid4())
 
     # pour récupérer le contexte depuis le state (puisque c'est la seule information exploitable retournée par l'IdP)
     self.set_session_value(state, self.context['context_id'])
+
+    # Paramètres pour PKCE
+    self.log_info(('  ' * 1)+'Code challenge generation in case Authorization code with PKCE flow is used')
+    pkce_code_verifier = ''.join(random.choice(string.ascii_letters+string.digits) for i in range(50))   # La RFC recommande de produire une suite de 32 octets encodés en base64url-encoded
+    self.log_info(('  ' * 2)+'Code verifier: '+pkce_code_verifier)
+    sha = hashlib.sha256()
+    sha.update(pkce_code_verifier.encode('utf-8'))
+    pkce_code_challenge = base64.urlsafe_b64encode(sha.digest()).decode('utf-8').replace('=', '')        
+    self.log_info(('  ' * 2)+'Code challenge: '+pkce_code_challenge)
 
     form_content = {
       'contextid': self.context['context_id'],
@@ -162,11 +169,14 @@ class OAuthClientLogin(FlowHandler):
       'signature_key_configuration': idp_params.get('signature_key_configuration', 'jwks_uri'),
       'jwks_uri': idp_params.get('jwks_uri', ''),
       'signature_key': idp_params.get('signature_key', ''),
+      'oauth_flow': app_params.get('oauth_flow', 'authorization_code'),
+      'pkce_method': app_params.get('pkce_method', 'S256'),
+      'pkce_code_verifier': pkce_code_verifier,
+      'pkce_code_challenge': pkce_code_challenge,
       'client_id': app_params.get('client_id', ''),
       'scope': app_params.get('scope', ''),
       'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
       'state': state,
-      'nonce': nonce,
     }
     
     form = RequesterForm('oauth2auth', form_content, action='/client/oauth2/login/sendrequest', mode='new_page', request_url='@[authorization_endpoint]') \
@@ -184,6 +194,16 @@ class OAuthClientLogin(FlowHandler):
           ) \
       .end_section() \
       .start_section('client_params', title="Client Parameters", collapsible=True, collapsible_default=False) \
+        .closed_list('oauth_flow', label='OAuth Flow', 
+          values={'authorization_code': 'Authorization Code', 'authorization_code_pkce': 'Authorization Code with PKCE', 'resource_owner_password_predentials': 'Resource Owner Password Credentials', 'client_credentials': 'Client Credentials'},
+          default = 'authorization_code'
+          ) \
+        .closed_list('pkce_method', label='PKCE Code Challenge Method', displayed_when="@[oauth_flow] = 'authorization_code_pkce'",
+          values={'plain': 'plain', 'S256': 'S256'},
+          default = 'S256'
+          ) \
+        .text('pkce_code_verifier', label='PKCE Code Verifier', displayed_when="@[oauth_flow] = 'authorization_code_pkce'") \
+        .text('pkce_code_challenge', label='PKCE Code Challenge', displayed_when="@[oauth_flow] = 'authorization_code_pkce' and @[pkce_method] = 'S256'") \
         .text('client_id', label='Client ID', clipboard_category='client_id') \
         .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
         .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
@@ -198,7 +218,6 @@ class OAuthClientLogin(FlowHandler):
       .end_section() \
       .start_section('security_params', title="Security", collapsible=True, collapsible_default=False) \
         .text('state', label='State', clipboard_category='nonce') \
-        .text('nonce', label='Nonce', clipboard_category='nonce') \
       .end_section() \
 
     form.set_request_parameters({
@@ -207,8 +226,10 @@ class OAuthClientLogin(FlowHandler):
         'scope': '@[scope]',
         'response_type': '@[response_type]',
         'state': '@[state]',
-        'nonce': '@[nonce]',
-      })
+        'pkce_method': '@[pkce_method]',
+        'pkce_code_challenge': '@[pkce_code_challenge]',
+      }, 
+      modifying_fields = ['oauth_flow', 'pkce_code_verifier'])
     form.modify_http_parameters({
       'form_method': 'redirect',
       'body_format': 'x-www-form-urlencoded',
@@ -222,7 +243,17 @@ class OAuthClientLogin(FlowHandler):
       'auth_method': False,
       'verify_certificates': True,
       })
-
+    form.set_data_generator_code("""
+      if (cfiForm.getField('oauth_flow').value == 'authorization_code_pkce') {
+        if (cfiForm.getField('pkce_method').value == 'plain') {
+          paramValues['pkce_code_challenge'] = cfiForm.getField('pkce_code_verifier').value;
+        }
+      } else {
+        delete paramValues['pkce_method'];
+        delete paramValues['pkce_code_challenge'];
+      }
+      return paramValues;
+    """)
 
     self.add_html(form.get_html())
     self.add_javascript(form.get_javascript())
@@ -230,6 +261,401 @@ class OAuthClientLogin(FlowHandler):
     self.send_page()
 
 
+  @register_url(url='sendrequest', method='POST')
+  def send_request(self):
+    
+    """
+    Récupère les informations saisies dans /oauth2/client/preparerequest pour les mettre dans la session
+      (avec le state comme clé)
+    Redirige vers l'IdP grâce à la requête générée dans /oauth2/client/preparerequest
+    
+    Versions:
+      23/08/2024 (mpham) version initiale copiée de OIDC
+    """
+    
+    self.log_info('Redirection to IdP requested')
+
+    try:
+    
+      if not self.context:
+        self.log_error("""context_id not found in form data {data}""".format(data=self.post_form))
+        raise AduneoError("Context not found in request")
+
+      # Mise à jour de la requête initiale
+      initial_idp_params = self.context['initial_flow']['idp_params']
+      for item in ['authorization_endpoint', 'token_endpoint', 'introspection_endpoint', 'introspection_method']:
+        initial_idp_params[item] = self.post_form.get(item, '').strip()
+
+      initial_app_params = self.context['initial_flow']['app_params']
+      for item in ['redirect_uri', 'oauth_flow', 'pkce_method', 'client_id', 'scope', 'token_endpoint_auth_method']:
+        initial_app_params[item] = self.post_form.get(item, '').strip()
+        
+      if self.post_form.get('client_secret', '') != '':
+        initial_app_params['client_secret'] = self.post_form.get('client_secret', '')
+
+      if 'hr_verify_certificates' in self.post_form:
+        initial_idp_params['verify_certificates'] = 'on'
+      else:
+        initial_idp_params['verify_certificates'] = 'off'
+
+      # Copie de la requête initiale vers la requête courante
+      self.context['current_flow'] = copy.deepcopy(self.context['initial_flow'])
+      self.context['current_flow']['state'] = self.post_form['state'].strip()
+
+      # Si on est en Resource Owner Password Credentials ou en Client Credentials, on fait une requête directe
+      oauth_flow = self.post_form['oauth_flow']
+      if oauth_flow == 'resource_owner_password_predentials':
+        # TODO
+        raise Exception("Resource Owner Password Credentials Flow not yet implemented")
+      elif oauth_flow == 'client_credentials':
+        # TODO
+        raise Exception("Client Credentials Flow not yet implemented")
+      else:
+
+        # Redirection vers l'IdP
+
+        authentication_request = self.post_form['hr_request_url'].strip()+'?'+self.post_form['hr_request_data'].strip()
+        self.log_info('Redirecting to:')
+        self.log_info(authentication_request)
+        self.send_redirection(authentication_request)
+
+    except Exception as error:
+      if not isinstance(error, AduneoError):
+        self.log_error(traceback.format_exc())
+      self.log_error("""Can't send the request to the IdP, technical error {error}""".format(error=error))
+      self.add_html("""<div>Can't send the request to the IdP, technical error {error}</div>""".format(error=error))
+      self.send_page()
+
+
+  @register_page_url(url='callback', method='GET', template='page_default.html', continuous=True)
+  def callback(self):
+    """ Retour d'authentification depuis l'IdP
+    
+      Versions:
+        23/08/2024 (mpham) version ini
+    """
+
+    self.add_javascript_include('/javascript/resultTable.js')
+    self.add_javascript_include('/javascript/clipboard.js')
+    self.start_result_table()
+    try:
+    
+      self.log_info('Authentication callback')
+      
+      error = self.get_query_string_param('error')
+      if error is not None:
+        description = ''
+        error_description = self.get_query_string_param('error_description')
+        if error_description is not None:
+          description = ', '+error_description
+        raise AduneoError(self.log_error('IdP returned an error: '+error+description))
+
+      # récupération de state pour obtention des paramètres dans la session
+      idp_state = self.get_query_string_param('state')
+      if not idp_state:
+        raise AduneoError(f"Can't retrieve request context from state because state in not present in callback query string {self.hreq.path}")
+      self.log_info('for state: '+idp_state)
+      self.add_result_row('State returned by IdP', idp_state, 'idp_state')
+
+      context_id = self.get_session_value(idp_state)
+      if not context_id:
+        raise AduneoError(f"Can't retrieve request context from state because context id not found in session for state {idp_state}")
+
+      self.context = self.get_session_value(context_id)
+      if not self.context:
+        raise AduneoError(f"Can't retrieve request context because context id {context_id} not found in session")
+      
+      # extraction des informations utiles de la session
+      idp_id = self.context['current_flow']['idp_id']
+      app_id = self.context['current_flow']['app_id']
+      idp_params = self.context['current_flow']['idp_params']
+      app_params = self.context['current_flow']['app_params']
+      token_endpoint = idp_params['token_endpoint']
+      client_id = app_params['client_id']
+      redirect_uri = app_params['redirect_uri']
+      
+      if 'client_secret' in app_params:
+        client_secret = app_params['client_secret']
+      else:
+        # il faut aller chercher le mot de passe dans la configuration
+        conf_idp = self.conf['idps'][idp_id]
+        conf_app = conf_idp['oidc_clients'][app_id]
+        client_secret = conf_app['client_secret!']
+
+      token_endpoint_auth_method = app_params['token_endpoint_auth_method'].casefold()
+
+      # Vérification de state (plus besoin puisqu'on utilise le state pour récupérer les informations dans la session)
+      #session_state = request['state']
+      #idp_state = url_params['state'][0]
+      #if session_state != idp_state:
+      #   print('ERROR')
+
+      grant_type = "authorization_code";
+      code = self.get_query_string_param('code')
+      self.add_result_row('Code returned by IdP', code, 'idp_code')
+      
+      data = {
+        'grant_type':grant_type,
+        'code':code,
+        'redirect_uri':redirect_uri,
+        'client_id':client_id
+        }
+      
+      auth = None
+      if token_endpoint_auth_method == 'client_secret_basic':
+        auth = (client_id, client_secret)
+      elif token_endpoint_auth_method == 'client_secret_post':
+        data['client_secret'] = client_secret
+      else:
+        raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be client_secret_basic or client_secret_post')
+      
+      self.add_result_row('Token endpoint', token_endpoint, 'token_endpoint')
+      self.end_result_table()
+      self.add_html('<div class="intertable">Fetching token...</div>')
+      self.log_info("Start fetching token")
+      try:
+        self.log_info("Connecting to "+token_endpoint)
+        verify_certificates = Configuration.is_on(app_params.get('verify_certificates', 'on'))
+        self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+        # Remarque : ici on est en authentification client_secret_post alors que la méthode par défaut, c'est client_secret_basic (https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication)
+        r = requests.post(token_endpoint, data=data, auth=auth, verify=verify_certificates)
+      except Exception as error:
+        self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
+        raise AduneoError(self.log_error(('  ' * 1)+'token retrieval error: '+str(error)))
+      if r.status_code == 200:
+        self.add_html('<div class="intertable">Success</div>')
+      else:
+        self.add_html('<div class="intertable">Error, status code '+str(r.status_code)+'</div>')
+        raise AduneoError(self.log_error('token retrieval error: status code '+str(r.status_code)+", "+r.text))
+
+      response = r.json()
+      self.log_info("IdP response:")
+      self.log_info(json.dumps(response, indent=2))
+      id_token = response['id_token']
+      self.start_result_table()
+      self.add_result_row('JWT ID Token', id_token, 'jwt_id_token')
+      
+      self.log_info("Decoding ID token")
+      token_items = id_token.split('.')
+      encoded_token_header = token_items[0]
+      token_header_string = base64.urlsafe_b64decode(encoded_token_header + '=' * (4 - len(encoded_token_header) % 4))
+      encoded_token_payload = token_items[1]
+      token_payload = base64.urlsafe_b64decode(encoded_token_payload + '=' * (4 - len(encoded_token_payload) % 4))
+
+      token_header = json.loads(token_header_string)
+      self.add_result_row('ID Token header', json.dumps(token_header, indent=2), 'id_token_header')
+      self.log_info("ID token header:")
+      self.log_info(json.dumps(token_header, indent=2))
+
+      json_token = json.loads(token_payload)
+      self.add_result_row('ID Token claims set', json.dumps(json_token, indent=2), 'id_token_claims_set')
+      self.add_result_row('ID Token sub', json_token['sub'], 'id_token_sub')
+      self.log_info("ID token payload:")
+      self.log_info(json.dumps(json_token, indent=2))
+
+      # Vérification de nonce
+      session_nonce = self.context['current_flow']['nonce']
+      idp_nonce = json_token['nonce']
+      if session_nonce == idp_nonce:
+        self.log_info("Nonce verification OK: "+session_nonce)
+        self.add_result_row('Nonce verification', 'OK: '+session_nonce, 'nonce_verification')
+      else:
+        self.log_error(('  ' * 1)+"Nonce verification failed")
+        self.log_error(('  ' * 2)+"client nonce: "+session_nonce)
+        self.log_error(('  ' * 2)+"IdP nonce   :"+idp_nonce)
+        self.add_result_row('Nonce verification', "Failed\n  client nonce: "+session_nonce+"\n  IdP nonce: "+idp_nonce, 'nonce_verification')
+        raise AduneoError('nonce verification failed')
+
+      # Vérification de validité du jeton
+      self.log_info("Starting token validation")
+      
+      # On vérifie que le jeton est toujours valide (la date est au format Unix)
+      tokenExpiryTimestamp = json_token['exp']
+      tokenExpiryTime = datetime.datetime.utcfromtimestamp(tokenExpiryTimestamp)
+      if tokenExpiryTime >= datetime.datetime.utcnow():
+        self.log_info("Token expiration verification OK:")
+        self.log_info("Token expiration: "+str(tokenExpiryTime)+' UTC')
+        self.log_info("Now             : "+str(datetime.datetime.utcnow())+' UTC')
+        self.add_result_row('Expiration verification', 'OK:'+str(tokenExpiryTime)+' UTC (now is '+str(datetime.datetime.utcnow())+' UTC)', 'expiration_verification')
+      else:
+        self.log_error(('  ' * 1)+"Token expiration verification failed:")
+        self.log_error(('  ' * 2)+"Token expiration: "+str(tokenExpiryTime)+' UTC')
+        self.log_error(('  ' * 2)+"Now             : "+str(datetime.datetime.utcnow())+' UTC')
+        self.add_result_row('Expiration verification', 'Failed:'+str(tokenExpiryTime)+' UTC (now is '+str(datetime.datetime.utcnow())+' UTC)', 'expiration_verification')
+        raise AduneoError('token expiration verification failed')
+      
+      # On vérifie l'origine du jeton 
+      token_issuer = json_token['iss']
+      if 'issuer' not in idp_params:
+        raise AduneoError("Issuer missing in authentication configuration", explanation_code='oidc_missing_issuer')
+      if token_issuer == idp_params['issuer']:
+        self.log_info("Token issuer verification OK: "+token_issuer)
+        self.add_result_row('Issuer verification', 'OK: '+token_issuer, 'issuer_verification')
+      else:
+        self.log_error(('  ' * 1)+"Expiration verification failed:")
+        self.log_error(('  ' * 2)+"Token issuer   : "+token_issuer)
+        self.log_error(('  ' * 2)+"Metadata issuer: "+idp_params['issuer'])
+        self.add_result_row('Issuer verification', "Failed\n  token issuer: "+token_issuer+"\n  metadata issuer:"+meta_data['issuer'], 'issuer_verification')
+        raise AduneoError('token issuer verification failed')
+      
+      # On vérifie l'audience du jeton, qui doit être le client ID
+      token_audience = json_token['aud']
+      comp_token_audience = token_audience
+      if isinstance(comp_token_audience, str):
+        # les spécifications indiquent que l'audience est un tableau en général, mais autorisent les chaînes simples
+        comp_token_audience = [comp_token_audience]
+      
+      if client_id in token_audience:
+        self.log_info("Token audience verification OK: "+str(token_audience))
+        self.add_result_row('Audience verification', 'OK: '+str(token_audience), 'audience_verification')
+      else:
+        self.log_error(('  ' * 1)+"Audience verification failed:")
+        self.log_error(('  ' * 2)+"Token audience: "+str(token_audience))
+        self.log_error(('  ' * 2)+"ClientID      : "+client_id)
+        self.add_result_row('Audience verification', 'Failed ('+client_id+' != '+str(token_audience), 'audience_verification')
+        raise AduneoError('token audience verification failed')
+      
+      # Vérification de signature, on commence par regarde l'algorithme
+      token_key = None
+      keyset = None
+      alg = token_header.get('alg')
+      self.log_info('Signature verification')
+      self.log_info('Signature algorithm in token header : '+alg)
+      if alg is None:
+        raise AduneoError('Signature algorithm not found in header '+json.dumps(token_header))
+      elif alg.startswith('HS'):
+        # Signature symétrique HMAC
+        self.log_info('HMAC signature, the secret is client_secret')
+        encoded_secret = base64.urlsafe_b64encode(str.encode(client_secret)).decode()
+        key = {"alg":alg,"kty":"oct","use":"sig","kid":"1","k":encoded_secret}
+        token_key = key
+
+      else:
+        # Signature asymétrique
+        self.log_info('Asymmetric signature, fetching public key')
+      
+        # On regarde si on doit aller chercher les clés avec l'endpoint JWKS ou si la clé a été donnée localement
+        if idp_params['signature_key_configuration'] == 'Local configuration':
+          self.log_info('Signature JWK:')
+          self.log_info(idp_params['signature_key'])
+          token_jwk = json.loads(idp_params['signature_key'])
+        else:
+        
+          # On extrait l'identifiant de la clé depuis l'id token
+          idp_kid = token_header['kid']
+          self.log_info('Signature key kid: '+idp_kid)
+          self.add_result_row('Signature key kid', idp_kid, 'signature_key_kid')
+          
+          # on va chercher la liste des clés
+          self.log_info("Starting IdP keys retrieval")
+          self.add_result_row('JWKS endpoint', idp_params['jwks_uri'], 'jwks_endpoint')
+          self.end_result_table()
+          self.add_html('<div class="intertable">Fetching public keys...</div>')
+          try:
+            verify_certificates = Configuration.is_on(app_params.get('verify_certificates', 'on'))
+            self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+            r = requests.get(idp_params['jwks_uri'], verify=verify_certificates)
+          except Exception as error:
+            self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
+            raise AduneoError(self.log_error(('  ' * 2)+'IdP keys retrieval error: '+str(error)))
+          if r.status_code == 200:
+            self.add_html('<div class="intertable">Success</div>')
+          else:
+            self.add_html('<div class="intertable">Error, status code '+str(r.status_code)+'</div>')
+            raise AduneoError(self.log_error('IdP keys retrieval error: status code '+str(r.status_code)))
+
+          keyset = r.json()
+          self.log_info("IdP response:")
+          self.log_info(json.dumps(keyset, indent=2))
+          self.start_result_table()
+          self.add_result_row('Keyset', json.dumps(keyset, indent=2), 'keyset')
+          
+          # On en extrait la JWK qui correspond au token
+          self.add_result_row('Retrieved keys', '', 'retrieved_keys', copy_button=False)
+          token_jwk = None
+          for jwk in keyset['keys']:
+              self.add_result_row(jwk['kid'], json.dumps(jwk, indent=2))
+              if jwk['kid'] == idp_kid:
+                token_jwk = jwk
+                
+          self.log_info('Signature JWK:')
+          self.log_info(json.dumps(token_jwk, indent=2))
+          
+        self.add_result_row('Signature JWK', json.dumps(token_jwk, indent=2), 'signature_jwk')
+        token_key = token_jwk
+
+      try:
+        jwt = JWT(id_token)
+        jwt.is_signature_valid(token_key)
+        self.log_info('Signature verification OK')
+        self.add_result_row('Signature verification', 'OK', copy_button=False)
+      except Exception as error:
+      
+        default_case = True
+        # Si on est en HS256, peut-être que le serveur a utilisé une clé autre que celle du client_secret (cas Keycloak)
+        if alg == 'HS256':
+          if idp_params['signature_key_configuration'] != 'Local configuration':
+            self.log_info('HS256 signature, client_secret not working. The server might have used another key. Put this key in configuration')
+          else:
+            default_case = False
+            self.log_info('HS256 signature, client_secret not working, trying key from configuration')
+            
+            configuration_key = idp_params['signature_key']
+            self.log_info('Configuration key:')
+            self.log_info(configuration_key)
+            json_key = json.loads(configuration_key)
+          
+            token_key = json_key
+          
+            try:
+              jwt.is_signature_valid(token_key)
+              self.log_info('Signature verification OK')
+              self.add_result_row('Signature verification', 'OK', copy_button=False)
+            except Exception as error:
+              default_case = True
+          
+        if default_case:
+          # Cas normal de la signature non vérifiée
+          self.add_result_row('Signature verification', 'Failed', copy_button=False)
+          raise AduneoError(self.log_error('Signature verification failed'))
+
+      op_access_token = response.get('access_token')
+      if op_access_token:
+        # Jeton d'accès pour authentification auprès de l'OP (userinfo en particulier)
+        self.add_result_row('OP access token', op_access_token, 'op_access_token')
+        self.log_info('OP access token: '+op_access_token)
+
+      self.end_result_table()
+      self.add_html('<h3>Authentication succcessful</h3>')
+      
+      # Enregistrement des jetons dans la session pour manipulation ultérieure
+      #   Les jetons sont indexés par timestamp d'obtention
+      token_name = 'Authn OIDC '+app_params['name']+' - '+time.strftime("%H:%M:%S", time.localtime())
+      token = {'name': token_name, 'type': 'id_token', 'id_token': id_token}
+      if op_access_token:
+        token['access_token'] = op_access_token
+      self.context['id_tokens'][str(time.time())] = token
+
+      # on considère qu'on est bien loggé
+      self.logon('oidc_client_'+idp_id+'/'+app_id, id_token)
+
+    except AduneoError as error:
+      if self.is_result_in_table():
+        self.end_result_table()
+      self.add_html('<h4>Authentication failed: '+html.escape(str(error))+'</h4>')
+      if error.explanation_code:
+        self.add_html(Explanation.get(error.explanation_code))
+    except Exception as error:
+      if self.is_result_in_table():
+        self.end_result_table()
+      self.log_error(('  ' * 1)+traceback.format_exc())
+      self.add_html('<h4>Authentication failed: '+html.escape(str(error))+'</h4>')
+
+    self.log_info('--- End OpenID Connect flow ---')
+
+    self.add_menu() 
+
+    self.send_page()
 
 
 
@@ -376,8 +802,8 @@ class OAuthClientLogin(FlowHandler):
       )
 
 
-  @register_url(url='sendrequest', method='POST')
-  def send_request(self):
+  @register_url(url='sendrequest_old', method='POST')
+  def send_request_old(self):
     """
     Récupère les informations saisies dans /client/oauth/login/preparerequest pour les mettre dans la session
       (avec le state comme clé)

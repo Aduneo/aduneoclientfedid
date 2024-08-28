@@ -103,6 +103,8 @@ class OAuthClientAdmin(BaseHandler):
       'signature_key_configuration': idp_params.get('signature_key_configuration', 'jwks_uri'),
       'jwks_uri': idp_params.get('jwks_uri', ''),
       'signature_key': idp_params.get('signature_key', ''),
+      'oauth_flow': app_params.get('oauth_flow', 'Authorization Code'),
+      'pkce_method': app_params.get('pkce_method', 'S256'),
       'redirect_uri': app_params.get('redirect_uri', ''),
       'client_id': app_params.get('client_id', ''),
       'scope': app_params.get('scope', ''),
@@ -132,10 +134,18 @@ class OAuthClientAdmin(BaseHandler):
       .end_section() \
       .start_section('client_endpoints', title="Client Endpoints") \
         .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri',
-          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/oidc/login/callback'); }" 
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/oauth2/login/callback'); }" 
           ) \
       .end_section() \
       .start_section('oauth2_configuration', title="OAuth 2 Configuration") \
+        .closed_list('oauth_flow', label='OAuth Flow', 
+          values={'authorization_code': 'Authorization Code', 'authorization_code_pkce': 'Authorization Code with PKCE', 'resource_owner_password_predentials': 'Resource Owner Password Credentials'},
+          default = 'authorization_code'
+          ) \
+        .closed_list('pkce_method', label='PKCE Code Challenge Method', displayed_when="@[oauth_flow] = 'authorization_code_pkce'",
+          values={'plain': 'plain', 'S256': 'S256'},
+          default = 'S256'
+          ) \
         .text('client_id', label='Client ID', clipboard_category='client_id') \
         .text('scope', label='Scope', clipboard_category='scope') \
         .closed_list('response_type', label='Reponse Type', 
@@ -194,13 +204,13 @@ class OAuthClientAdmin(BaseHandler):
       if self.post_form.get(item, '') == '':
         idp_params.pop(item, None)
       else:
-        idp_params[item] = self.post_form[item]
+        idp_params[item] = self.post_form[item].strip()
       
-    for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method']:
+    for item in ['redirect_uri', 'client_id', 'oauth_flow', 'pkce_method', 'scope', 'response_type', 'token_endpoint_auth_method']:
       if self.post_form.get(item, '') == '':
         app_params.pop(item, None)
       else:
-        app_params[item] = self.post_form[item]
+        app_params[item] = self.post_form[item].strip()
       
     for secret in ['client_secret']:
       if self.post_form.get(secret, '') != '':
@@ -234,7 +244,7 @@ class OAuthClientAdmin(BaseHandler):
     self.send_redirection('/')
 
 
-  def _generate_rpid(self, name, existing_names):
+  def _generate_idpid(self, name, existing_names):
     
     """
     Génère un identifiant à partir d'un nom
@@ -253,7 +263,7 @@ class OAuthClientAdmin(BaseHandler):
     while not ok:
       id = ''.join(c for c in base.casefold() if c.isalnum())
       if id == '':
-        id = 'oauth_rp'
+        id = 'oauth_as'
       if rank > 0:
         id = id+str(rank)
       
