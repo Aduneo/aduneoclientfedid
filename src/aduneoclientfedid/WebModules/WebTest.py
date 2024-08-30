@@ -42,6 +42,7 @@ class WebTest(BaseHandler):
     self.add_html('<a href="oidccallback">Callback OIDC</a><br>')
     self.add_html('<a href="listonchange">Closed list on change</a><br>')
     self.add_html('<a href="textonload">Text on load</a><br>')
+    self.add_html('<a href="datagenerator">Request Data Generator</a><br>')
 
 
   @register_page_url(url='cfiform', method='GET', template='page_default.html')
@@ -171,6 +172,7 @@ class WebTest(BaseHandler):
       'verify_certificates': True,
       })
     form.set_option('/clipboard/remember_secrets', True)
+    form.set_option('/requester/auth_method_options', ['none', 'basic', 'form'])
       
 
     self.add_html(form.get_html())
@@ -564,4 +566,88 @@ class WebTest(BaseHandler):
     self.add_javascript(form.get_javascript())
     self.send_page()
 
+
+  @register_page_url(url='datagenerator', method='GET', template='page_default.html', continuous=True)
+  def datagenerator(self):
+
+    form_content = {
+      'redirect_uri': 'https://localhost/callback',
+      'authorization_endpoint': 'https://idp.com',
+      'oauth_flow': 'authorization_code_pkce',
+      'pkce_method': 'S256',
+      'pkce_code_verifier': 'pkce_code_verifier',
+      'pkce_code_challenge': 'pkce_code_challenge',
+      'client_id': 'ClientFedID',
+      'scope': 'mail',
+      'state': 'state',
+    }
+    
+    form = RequesterForm('oauth2auth', form_content, mode='new_page', request_url='@[authorization_endpoint]') \
+      .start_section('clientfedid_params', title="ClientFedID Parameters") \
+        .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri') \
+      .end_section() \
+      .start_section('as_endpoints', title="AS Endpoints", collapsible=True, collapsible_default=False) \
+        .text('authorization_endpoint', label='Authorization Endpoint', clipboard_category='authorization_endpoint') \
+      .end_section() \
+      .start_section('client_params', title="Client Parameters", collapsible=True, collapsible_default=False) \
+        .closed_list('oauth_flow', label='OAuth Flow', 
+          values={'authorization_code': 'Authorization Code', 'authorization_code_pkce': 'Authorization Code with PKCE', 'resource_owner_password_predentials': 'Resource Owner Password Credentials', 'client_credentials': 'Client Credentials'},
+          default = 'authorization_code'
+          ) \
+        .closed_list('pkce_method', label='PKCE Code Challenge Method', displayed_when="@[oauth_flow] = 'authorization_code_pkce'",
+          values={'plain': 'plain', 'S256': 'S256'},
+          default = 'S256'
+          ) \
+        .text('pkce_code_verifier', label='PKCE Code Verifier', displayed_when="@[oauth_flow] = 'authorization_code_pkce'") \
+        .text('pkce_code_challenge', label='PKCE Code Challenge', displayed_when="@[oauth_flow] = 'authorization_code_pkce' and @[pkce_method] = 'S256'") \
+        .text('client_id', label='Client ID', clipboard_category='client_id') \
+        .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
+        .closed_list('response_type', label='Reponse type', 
+          values={'code': 'code'},
+          default = 'code'
+          ) \
+      .end_section() \
+      .start_section('security_params', title="Security", collapsible=True, collapsible_default=False) \
+        .text('state', label='State', clipboard_category='nonce') \
+      .end_section() \
+
+    form.set_request_parameters({
+        'client_id': '@[client_id]',
+        'redirect_uri': '@[redirect_uri]',
+        'scope': '@[scope]',
+        'response_type': '@[response_type]',
+        'state': '@[state]',
+        'pkce_method': '@[pkce_method]',
+        'pkce_code_challenge': '@[pkce_code_challenge]',
+      }, 
+      modifying_fields = ['oauth_flow', 'pkce_code_verifier'])
+    form.modify_http_parameters({
+      'form_method': 'redirect',
+      'body_format': 'x-www-form-urlencoded',
+      'verify_certificates': True,
+      })
+    form.modify_visible_requester_fields({
+      'request_url': True,
+      'request_data': True,
+      'body_format': False,
+      'form_method': False,
+      'auth_method': False,
+      'verify_certificates': True,
+      })
+    form.set_data_generator_code("""
+      if (cfiForm.getField('oauth_flow').value == 'authorization_code_pkce') {
+        if (cfiForm.getField('pkce_method').value == 'plain') {
+          paramValues['pkce_code_challenge'] = cfiForm.getField('pkce_code_verifier').value;
+        }
+      } else {
+        delete paramValues['pkce_method'];
+        delete paramValues['pkce_code_challenge'];
+      }
+      console.log(cfiForm.getField('oauth_flow').value);
+      return paramValues;
+    """)
+
+    self.add_html(form.get_html())
+    self.add_javascript(form.get_javascript())
+    self.send_page()
 

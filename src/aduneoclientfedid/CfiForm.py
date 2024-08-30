@@ -85,6 +85,7 @@ class CfiForm():
     
     Versions:
       27/12/2023 (mpham) version initiale
+      30/08/2024 (mpham) options /requester/auth_method_options
     """
   
     self.form_id = form_id
@@ -110,6 +111,7 @@ class CfiForm():
     # Options : /clipboard/remember_secrets uniquement
     self.options = {
       '/clipboard/remember_secrets': False,
+      '/requester/auth_method_options': None,
     }
     
   
@@ -648,6 +650,8 @@ class RequesterForm(CfiForm):
       
     Versions:
       28/12/2023 (mpham) version initiale, adaptée de FlowHandler.display_form_http_request
+      24/08/2024 (mpham) ajout des modifying_fields : champs qui ne font pas partie de la requête finale mais dont le changement
+                           en entraîne une modification
     """
     
     super().__init__(form_id, content, action, mode, submit_label)
@@ -657,6 +661,7 @@ class RequesterForm(CfiForm):
       if self.mode == 'new_page':
         self.action = '/client/httprequester/sendrequest'
     self.request_parameters = {}
+    self.modifying_fields = None
     self.http_parameters = {
       'request_url': request_url,
       'form_method': 'post',
@@ -682,7 +687,7 @@ class RequesterForm(CfiForm):
     self._requester_appened = False
 
 
-  def set_request_parameters(self, request_parameters:dict):
+  def set_request_parameters(self, request_parameters:dict, modifying_fields:list=None):
     """ Donne les paramètres composant la requête finale
     
     Ces paramètres contiennent la plupart du temps des références à des valeurs du formulaire.
@@ -697,12 +702,16 @@ class RequesterForm(CfiForm):
         clé : nom du paramètre tel qu'il figurera dans la requête finale
         valeur : chaîne pouvant contenir des références à des valeurs de champs, données par @[field_id]
         None si la requête n'admet pas de paramètres
+      modifying_fields: list des champs dont la modification déclenche une modification de la requête finale à envoyer
+        (qui s'affiche dans le requêteur). Ne mettre que les champs qui ne font pas partie de la requête finale.
     
     Versions:
       30/12/2023 (mpham) version initiale
       09/08/2024 (mpham) possibilité de ne pas envoyer de paramètres (simple GET sans query string)
+      25/08/2024 (mpham) ajout des modifying_fields
     """
     self.request_parameters = request_parameters
+    self.modifying_fields = modifying_fields
     
 
   def modify_http_parameters(self, http_parameters:dict):
@@ -767,9 +776,18 @@ class RequesterForm(CfiForm):
     Pour cela, il doit être fourni le code Javascript de génération, qui retourne (dans return) les données.
       Dans ce code, les valeurs sont récupérées par la fonction getFormValue qui prend en argument l'identifiant de l'<input> sans le dom
     
+    Le tableau asociatif paramValues contient les valeurs des champs définis par set_request_parameters. Ce tableau peut être modifiée et retourné.
+    
+    Les champs de formulaire sont récupérables par cfiForm.getField('scope')
+      Pour avoir la valeur du champ, on fait cfiForm.getField('scope').value
+    
     Par exemple :
-      data = {'scope': getFormValue(domId, 'scope')};
+      data = {'scope': cfiForm.getField('scope').value};
       return data;
+      
+    En utilisant paramValues :
+      delete paramValues['scope'];
+      return paramValues;
       
     Ces informations sont mises dans le corps en POST et REDIRECT, et en query string en GET.
     
@@ -784,6 +802,7 @@ class RequesterForm(CfiForm):
     Versions:
       09/08/2024 (mpham) les requêtes peuvent ne pas avoir de paramètres
       24/08/2024 (mpham) mise à disposition de cfiForm dans le request data generator
+      24/08/2024 (mpham) ajout des modifying_fields indiquant les champs qui déclenchent une modification de la requête
     """
 
     self._append_requester()
@@ -815,9 +834,11 @@ class RequesterForm(CfiForm):
     #   sinon on prend tous les champs du formulaire puisque la requête finale est alors construite avec tous les champs
     
     listener_fields = []
+    if self.modifying_fields:
+      listener_fields = self.modifying_fields
 
     # ajout des champs du formulaire modifiant le requêteur
-    listener_fields = self._find_variables_from_expressions(self.http_parameters.values())
+    listener_fields.extend(self._find_variables_from_expressions(self.http_parameters.values()))
     
     # ajout des champs du formulaire utilisés pour construire les données de la requête
     if self.request_parameters == {}:
@@ -1067,166 +1088,14 @@ class RequesterForm(CfiForm):
       
     return response
 
-
-
-
-
-
-
-    
-    
-    #print(self.javascript)
-    
-  def dummy():
-    # Formulaire technique
-    self.html += "<h3>HTTP request for "+table['title']+"</h3>"
-
-    if not http_parameters:
-      http_parameters = {}
-    default_http_parameters = {
-        'auth_method': 'None',
-        'auth_login': '',
-        'url_label': None,
-        'url_clipboard_category': None,
-        }
-    for item in default_http_parameters:
-      if item not in http_parameters:
-        http_parameters[item] = default_http_parameters[item]
-
-    if self.sender_url:
-      self.html += '<input id="'+html.escape(dom_id)+'_sender_url" type="hidden" value="'+html.escape(self.sender_url)+'" />'
-      self.html += '<input id="'+html.escape(dom_id)+'_context" type="hidden" value="'+html.escape(context)+'" />'
-    
-    self.html += '<table class="fixed">'
-
-    clipboard = ''
-    if http_parameters:
-      clipboard_category = http_parameters.get('url_clipboard_category')
-      if clipboard_category:
-        clipboard = ' data-clipboardcategory="'+html.escape(clipboard_category)+'"'
-    self.html += '<tr><td>'+self.row_label('Request URL' if http_parameters['url_label'] == None else http_parameters['url_label'], 'request_url')+'</td><td><input id="'+html.escape(dom_id)+'_d_url" value="'+html.escape(url)+'" defaultValue="'+html.escape(url)+'" class="intable" type="text"'+clipboard+'></td>'
-    self.html += '<td>'
-    if clipboard != '':
-      self.html += '<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>'
-    self.html += '</td>'
-    self.html += '</td></tr>' # TODO : il n'y a pas un </td> en trop ?
-    
-    methods = [m.strip().upper() for m in method.split(',')]
-    for m in methods:
-      if m not in ['GET','POST']:
-        raise AduneoError(self.log_error("HTTP method "+m+" not supported"))
-    if len(methods) == 1:
-      # une seule méthode, on passe en champ masqué
-      self.html += '<input id="'+html.escape(dom_id)+'_method" type="hidden" value="'+html.escape(method)+'" />'
-    else:
-      # l'utilisateur peut choisir la méthode
-      self.html += '<tr><td>HTTP method</td><td><select id="'+html.escape(dom_id)+'_method" class="intable" onchange="f_'+dom_id+'_update()">'
-      for m in methods:
-        self.html += '<option value="'+html.escape(m)+'">'+html.escape(m)+'</option>'
-      self.html += '</td></tr>'
-    
-    self.html += '<tr id="'+html.escape(dom_id)+'_tr_request_data"><td>'+self.row_label('Request data', 'request_data')+'</td><td><textarea id="'+html.escape(dom_id)+'_d_data" rows="4" class="intable"></textarea></td><td></td></tr>'
-
-    # HTTP authentification is only displayed when calling an API
-    if self.sender_url:
-      self.html += '<tr><td>'+self.row_label('Call authentication', 'http_authentication')+'</td><td><select id="'+html.escape(dom_id)+'_d_auth_method" defaultValue="'+html.escape(http_parameters['auth_method'])+'" class="intable" onchange="changeRequestHTTPAuth(\''+html.escape(dom_id)+'\')">'
-      for value in ('None', 'Basic', 'POST', 'Bearer token'):
-        selected = ''
-        if value.casefold() == http_parameters['auth_method'].casefold():
-          selected = ' selected'
-        self.html += '<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>'
-      self.html += '</td><td></td></tr>'
-      
-      login_visible = (http_parameters['auth_method'].casefold() in ['basic', 'post', 'bearer token'])
-      login_visible_style = 'table-row' if login_visible else 'none'
-      self.html += '<tr id="'+html.escape(dom_id)+'_tr_auth_login" style="display: '+login_visible_style+';"><td>'+self.row_label('HTTP login', 'http_login')+'</td><td><input id="'+html.escape(dom_id)+'_d_auth_login" value="'+html.escape(http_parameters['auth_login'])+'" defaultValue="'+html.escape(http_parameters['auth_login'])+'" class="intable" type="text" data-clipboardcategory="client_id"></td>'
-      self.html += '<td><span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span></td></tr>'
-      secret_visible = (http_parameters['auth_method'].casefold() in ['basic', 'post'])
-      secret_visible_style = 'table-row' if secret_visible else 'none'
-      remember_secrets = Configuration.is_parameter_on(self.conf, '/preferences/clipboard/remember_secrets', False)
-      clipboard = ' data-clipboardcategory="client_secret"' if remember_secrets else ''
-      self.html += '<tr id="'+html.escape(dom_id)+'_tr_auth_secret" style="display: '+secret_visible_style+';"><td>'+self.row_label('Secret', 'http_secret')+'</td><td><input id="'+html.escape(dom_id)+'_d_auth_secret" defaultValue="" class="intable" type="password"'+clipboard+'></td>'
-      self.html += '<td>'
-      if clipboard != '':
-        self.html += '<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>'
-      self.html += '</td><tr>'
-      verify_cert_checked = " checked" if verify_certificates else ''
-      verify_cert_default_checked = " defaultChecked" if verify_certificates else ''
-      self.html += '<tr id="'+html.escape(dom_id)+'_tr_verify_cert"><td>'+self.row_label('Verify certificate', 'verify_certificate')+'</td><td><input id="'+html.escape(dom_id)+'_d_verify_cert" type="checkbox" '+verify_cert_checked+'></td><td></td></tr>'
-
-    self.html += '</table>'
-    
-    self.html += '</form>'
-
-    self.html += '<div id="'+html.escape(dom_id)+'_button_bar">'
-    self.html += '<span class="middlebutton" onClick="reinitRequest(\''+html.escape(dom_id)+'\')">Reinit request</span>'
-    if self.sender_url:
-      self.html += '<span class="middlebutton" onClick="sendRequest(\''+html.escape(dom_id)+'\')">Send request</span>'
-    self.html += '<span class="middlebutton" onClick="cancelRequest(\''+html.escape(dom_id)+'\', \''+html.escape(context)+'\')">Cancel</span>'
-    self.html += '</div>'
-    self.html += '<div id="'+html.escape(dom_id)+'_send_notification" style="display: none;">'
-    self.html += '<h3>Sending request...</h3>'
-    self.html += '</div>'
-    
-    self.javascript += """
-      function f_"""+dom_id+"""_fetch_data(domId) {"""+data_generator+"""}
-
-      function f_"""+dom_id+"""_update() {
-        let method = document.getElementById('"""+dom_id+"""_method').value
-        
-        if (method == 'GET') {
-          document.getElementById('"""+dom_id+"""_tr_request_data').style.display = 'none';
-          f_"""+dom_id+"""_update_get()
-        } else if (method == 'POST') {
-          document.getElementById('"""+dom_id+"""_tr_request_data').style.display = 'table-row';
-          f_"""+dom_id+"""_update_post()
-        }
-      }
-
-      function f_"""+dom_id+"""_update_get() {
-        let data = f_"""+dom_id+"""_fetch_data('"""+dom_id+"""');
-        
-        queryString = ""
-        if (data) {
-          for (const [key, value] of Object.entries(data)) {
-            if (queryString != "") { queryString += "&" }
-            queryString += encodeURI(key) + "=" + encodeURI(value);
-          }
-        }
-        if (queryString != "") {
-          let url = document.getElementById('"""+dom_id+"""_d_url').defaultValue;
-          if (url.includes('?')) {
-            url += '&' + queryString;
-          } else {
-            url += '?' + queryString;
-          }
-          document.getElementById('"""+dom_id+"""_d_url').value = url;
-        }
-      }
-
-      function f_"""+dom_id+"""_update_post() {
-        let data = f_"""+dom_id+"""_fetch_data('"""+dom_id+"""');
-        if (data === null) { data = {} }
-        if (document.getElementById('"""+dom_id+"""_d_auth_method').value == 'POST') {
-          data['client_id'] = document.getElementById('"""+dom_id+"""_d_auth_login').value
-          data['client_secret'] = '********'
-        }
-        
-        document.getElementById('"""+dom_id+"""_d_data').value = JSON.stringify(data, null, 2);
-      }
-
-      f_"""+dom_id+"""_update();
-    """
-      
-    self.javascript += "document.getElementById('"+dom_id+"_d_auth_login').addEventListener('keyup', f_"+dom_id+"_update);"
-    for field in table['fields']:
-      if field['type'] == 'edit_text':
-        self.javascript += "document.getElementById('"+dom_id+"_d_"+field['name']+"').addEventListener('keyup', f_"+dom_id+"_update);"
-      elif field['type'].startswith('edit_'):
-        self.javascript += "document.getElementById('"+dom_id+"_d_"+field['name']+"').addEventListener('change', f_"+dom_id+"_update);"    
-    
     
   def _append_requester(self):
+    """ Ajoute le requester HTTP
+    
+      Versions:
+        00/12/2023 (mpham) version initiale
+        30/08/2024 (mpham) liste des méthodes d'authentification dans l'option /requester/auth_method_options
+    """
     
     if not self._requester_appened:
 
@@ -1252,6 +1121,11 @@ class RequesterForm(CfiForm):
       for field, visibility in self.visible_requester_fields.items():
         if not visibility:
           displayed_when_dict['hr_'+field] = "False"
+
+      auth_method_options = self.options['/requester/auth_method_options']
+      if not auth_method_options:
+        auth_method_options = ['none', 'basic', 'form', 'bearer_token']
+      auth_method_select = {value: {'none': 'None', 'basic': 'Basic', 'form': 'Form', 'bearer_token': 'Bearer Token'}[value] for value in auth_method_options}
       
       section_title = 'HTTP request' + (' for '+self.title if self.title else '')
       self.start_section('http_requester', title=section_title, level=2) \
@@ -1267,7 +1141,7 @@ class RequesterForm(CfiForm):
           ) \
         .textarea('hr_request_data', label='Request data', displayed_when=displayed_when_dict['hr_request_data']) \
         .closed_list('hr_auth_method', label='HTTP authentication', displayed_when=displayed_when_dict['hr_auth_method'], 
-          values={'none': 'None', 'basic': 'Basic', 'form': 'Form', 'bearer_token': 'Bearer token'},
+          values = auth_method_select,
           default = 'None'
           ) \
         .text('hr_auth_login', label='HTTP login', clipboard_category='client_id', displayed_when=displayed_when_dict['hr_auth_login']) \
