@@ -329,6 +329,7 @@ class OIDCClientLogin(FlowHandler):
         22/12/2023 (mpham) utilisation de JWT pour la vérification de signature afin de pouvoir choisir la bibliothèque de validation
         05/08/2024 (mpham) adaptation aux pages continues
         09/08/2024 (mpham) nouvelle gestion du contexte
+        04/09/2024 (mpham) récupération du jeton de raraichissement du jeton d'accès
     """
 
     self.add_javascript_include('/javascript/resultTable.js')
@@ -368,7 +369,7 @@ class OIDCClientLogin(FlowHandler):
       client_id = app_params['client_id']
       redirect_uri = app_params['redirect_uri']
 
-      self.add_html(f"<h3>OAuth 2 callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
+      self.add_html(f"<h3>OIDC callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
 
       self.start_result_table()
       self.add_result_row('State returned by IdP', idp_state, 'idp_state')
@@ -623,6 +624,12 @@ class OIDCClientLogin(FlowHandler):
         self.add_result_row('OP access token', op_access_token, 'op_access_token')
         self.log_info('OP access token: '+op_access_token)
 
+      op_refresh_token = response.get('refresh_token')
+      if op_refresh_token:
+        # Jeton de rafraichissement du jeton d'accès pour authentification auprès de l'OP (userinfo en particulier)
+        self.add_result_row('OP refresh token', op_refresh_token, 'op_refresh_token')
+        self.log_info('OP refresh token: '+op_refresh_token)
+
       self.end_result_table()
       self.add_html('<h3>Authentication succcessful</h3>')
       
@@ -632,6 +639,8 @@ class OIDCClientLogin(FlowHandler):
       token = {'name': token_name, 'type': 'id_token', 'id_token': id_token}
       if op_access_token:
         token['access_token'] = op_access_token
+      if op_refresh_token:
+        token['refresh_token'] = op_refresh_token
       self.context['id_tokens'][str(time.time())] = token
 
       # on considère qu'on est bien loggé
