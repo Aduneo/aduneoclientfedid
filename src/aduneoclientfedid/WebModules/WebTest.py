@@ -155,7 +155,7 @@ class WebTest(BaseHandler):
       })
     form.modify_http_parameters({
       'request_url': '@[discovery_uri]',
-      'form_method': 'post',
+      'form_method': 'get',
       'body_format': 'x-www-form-urlencoded',
       'auth_method': 'form',
       'auth_login': '@[client_id]',

@@ -415,11 +415,10 @@ function updateFormData(formUUID, requesterFieldValues, paramValues) {
     }
     
   
-    
     // on met maintenant à jour les données de la requête finale
     if (formMethod == 'get') {
       request_url = getFormValue(formUUID, 'hr_request_url');
-      if (paramValues.length > 0) {
+      if (Object.keys(paramValues).length > 0) {
         request_url += (request_url.includes('?') ? '&' : '?');
         request_url += new URLSearchParams(Object.entries(paramValues)).toString();
       }
