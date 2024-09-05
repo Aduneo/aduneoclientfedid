@@ -16,6 +16,7 @@ limitations under the License.
 import html
 import json
 import traceback
+import urllib.parse
 
 from ..BaseServer import AduneoError
 from ..BaseServer import register_web_module, register_url, register_page_url
@@ -102,6 +103,7 @@ class OIDCUserinfo(FlowHandler):
         'auth_method': True,
         'verify_certificates': True,
         })
+      form.set_option('/requester/cancel_button', '/client/flows/cancelrequest?contextid='+urllib.parse.quote(self.context.context_id))
 
       self.add_html(form.get_html())
       self.add_javascript(form.get_javascript())

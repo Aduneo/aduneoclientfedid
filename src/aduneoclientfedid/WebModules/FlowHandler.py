@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 from ..BaseServer import AduneoError
-from ..BaseServer import register_web_module, register_url
+from ..BaseServer import register_web_module, register_page_url
 from ..BaseServer import BaseHandler
 from ..Configuration import Configuration
 from ..Context import Context
@@ -62,24 +62,17 @@ class FlowHandler(BaseHandler):
       self.context = self.get_session_value(context_id)
 
   
-  @register_url(url='cancelrequest', method='GET')
+  @register_page_url(url='cancelrequest', method='GET', continuous=True)
   def cancel_request(self):
     """ Annule une requête affichée par display_form_http_request
     
     Versions:
-      23/12/2022 (mpham) : version initiale
+      23/12/2022 (mpham) version initiale
+      05/09/2024 (mpham) adaptation aux pages continues et à CfiForm
     """
-
-    # récupération de contextid pour obtention des paramètres dans la session
-    context_id = self.get_query_string_param('contextid')
-    
-    context = self.get_session_value(context_id)
-    if (context is None):
-      raise AduneoError(self.log_error('context not found in session'))
-      
-    self._add_footer_menu(context)
-    
-    self.send_page_raw()
+    self.add_html("""<div>Action cancelled</div>""")
+    self.add_menu()
+    self.send_page()
   
   
   def display_http_request(self, method:str, url:str, data:dict = None, auth_method:str = 'None', auth_login:str = None, sender_url:str = None, context:str = None, dom_id=None):

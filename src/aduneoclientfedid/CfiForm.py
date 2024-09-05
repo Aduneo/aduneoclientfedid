@@ -111,6 +111,7 @@ class CfiForm():
     # Options : /clipboard/remember_secrets uniquement
     self.options = {
       '/clipboard/remember_secrets': False,
+      '/requester/cancel_button': None,
       '/requester/auth_method_options': None,
     }
     
@@ -303,6 +304,8 @@ class CodeGenerator():
       if label is None:
         label = 'Send request'
       self.html += f'<span class="middlebutton" onClick="sendToRequester_api(\'{html.escape(self.form.form_uuid)}\')">{label}</span>'
+      if self.form.options['/requester/cancel_button']:
+        self.html += f'<span class="middlebutton" onClick="cancelRequester_api(\'{html.escape(self.form.form_uuid)}\', \'{self.form.options["/requester/cancel_button"]}\')">Cancel</span>'
     
     #self.html += '<span class="middlebutton" onClick="cancelRequest(\''+html.escape(self.form.form_uuid)+'\', \''+html.escape(context)+'\')">Cancel</span>'
     self.html += '</div>'

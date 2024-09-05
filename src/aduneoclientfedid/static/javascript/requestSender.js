@@ -350,6 +350,21 @@ function sendToRequester_api(formUUID) {
 }
 
 
+function cancelRequester_api(formUUID, cancelURL) {
+
+  request_form = document.getElementById('form-'+formUUID);
+
+  // on récupère tous les éléments du formulaire - peut-être uniquement ceux qui sont actifs ?
+  data = {};
+  request_form.querySelectorAll('.'+formUUID).forEach(el => {
+    data[el.name] = el.value;
+    el.disabled = true;
+  });
+
+  fetchContent('GET', cancelURL, null, formUUID+'_button_bar');
+}
+
+
 /*
   Active/désactive les champs du formulaire (en haut) et de requêteur (en bas) en fonction de la case "Modify request"
 */

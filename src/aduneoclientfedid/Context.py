@@ -137,6 +137,11 @@ class Context(dict):
     
 
   @property
+  def context_id(self) -> str:
+    return self['context_id']
+
+  
+  @property
   def idp_id(self) -> dict:
     return self['idp_id']
 

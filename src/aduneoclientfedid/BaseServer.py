@@ -1110,8 +1110,6 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
       #print('---- IN DECORATOR', self.hreq.continuous_page)
       if continuous:
         
-        print("--- IN DECO --- headers : ", self.hreq.headers.get('CpId'))
-        
         # Page continue
         continuous_page_id = self.hreq.headers.get('CpId')
         if continuous_page_id:
