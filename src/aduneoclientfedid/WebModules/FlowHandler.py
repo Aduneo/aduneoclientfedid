@@ -541,18 +541,18 @@ class FlowHandler(BaseHandler):
       
       retry_url = {
         'OIDC': '/client/oidc/login/preparerequest',
-        'OAuth2': '/client/oauth/login/preparerequest',
+        'OAuth2': '/client/oauth2/login/preparerequest',
         'SAML': '/client/saml/login/preparerequest',
-        }.get(self.context['initial_flow']['flow_type'])
+        }.get(self.context['flow_type'])
 
       self.add_html('<div id="'+html.escape(dom_id)+'">')
       if retry_url:
-        self.add_html('<span><a href="'+retry_url+'?contextid='+urllib.parse.quote_plus(context_id)+'&idpid='+urllib.parse.quote_plus(self.context['initial_flow']['idp_id'])+'&appid='+urllib.parse.quote_plus(self.context['initial_flow']['app_id'])+'" class="button">Retry original flow</a></span>')
+        self.add_html('<span><a href="'+retry_url+'?contextid='+urllib.parse.quote_plus(context_id)+'&idpid='+urllib.parse.quote_plus(self.context.idp_id)+'&appid='+urllib.parse.quote_plus(self.context.app_id)+'" class="button">Retry original flow</a></span>')
       self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oidc/flows/newauth?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">New auth</span>')
       if userinfo:
         self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oidc/userinfo/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Userinfo</span>')
       if introspection:
-        self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/introspection_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Introspect AT</span>')
+        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/introspection/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Introspect AT</span>')
       if refresh:
         self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/refreshtoken_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Refresh AT</span>')
       if token_exchange:

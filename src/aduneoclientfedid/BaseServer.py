@@ -767,7 +767,7 @@ class BaseHandler:
     return '<span class="celltxt">{label}</span><span class="cellimg"><img onclick="help(this, \'{help_id}\')" src="/images/help.png"></span>'.format(label=html.escape(label), help_id=help_id)
     
 
-  def add_result_row(self, title:str, value:str, help_id:str=None, copy_button=True):
+  def add_result_row(self, title:str, value:str, help_id:str=None, copy_button=True, expanded=False):
     """
     Ajoute une ligne à un tableau de retour d'authentification
     Tronque la valeur si elle est trop longue (avec bouton d'affichage complet)
@@ -781,12 +781,14 @@ class BaseHandler:
       value: valeur à afficher (colonne de gauche)
       help_id: identifiant de la rubrique d'aide, None si on ne propose pas d'aide
       copy_button: affiche un bouton pour copier la valeur dans le presse-papier  
+      expanded: indique si le texte est trop long s'il faut en afficher que le début (défaut) ou en entier
     
     Versions:
       25/02/2021 (mpham) version initiale
       29/09/2022 (mpham) col identifier is now a uuid be bu truely unique
       28/02/2023 (mpham) ajout de l'argument copy_button contrôlant l'affichage du bouton  de copie
       05/08/2024 (mpham) adaptation aux pages continues
+      05/09/2024 (mpham) ajout de l'argument expanded
     """
 
     col_id = 'col' + str(uuid.uuid4())
@@ -823,20 +825,31 @@ class BaseHandler:
         self.add_content('</td>')
     else:
       # la valeur doit être tronquée
-      truncated_value = value[0:80]
       html_value = html.escape(value).replace('\n', '<br>').replace(' ', '&nbsp;')
-      if self.is_continuous_page:
-        self.add_html('<td><span id="'+col_id+'s">'+html.escape(truncated_value)+'...</span>')
-        self.add_html('<span id="'+col_id+'l" style="display: none;"><span id="'+col_id+'c">'+html_value+'</span>')
-        self.add_html('</td><td style="width: 34px;">')
-        self.add_html('<span><img title="Expand" id="'+col_id+'_expand" class="smallButton" src="/images/plus.png" onClick="showLong(\''+col_id+'\')"/></span>')
-        self.add_html('<img title="Collapse" id="'+col_id+'_collapse" class="smallButton" style="display: none;" src="/images/moins.png" onClick="showShort(\''+col_id+'\')"/>')
+      truncated_value = html.escape(value[0:80]+'...')
+      if expanded:
+        display_truncated = 'none'
+        display_all = 'inline'
+        display_minus = 'inline'
+        display_plus = 'none'
       else:
-        self.add_content('<td><span id="'+col_id+'s">'+html.escape(truncated_value)+'...</span>')
-        self.add_content('<span id="'+col_id+'l" style="display: none;"><span id="'+col_id+'c">'+html_value+'</span>')
+        display_truncated = 'inline'
+        display_all = 'none'
+        display_minus = 'none'
+        display_plus = 'inline'
+      
+      if self.is_continuous_page:
+        self.add_html('<td><span id="'+col_id+'s" style="display: '+display_truncated+';">'+truncated_value+'</span>')
+        self.add_html('<span id="'+col_id+'l" style="display: '+display_all+';"><span id="'+col_id+'c">'+html_value+'</span>')
+        self.add_html('</td><td style="width: 34px;">')
+        self.add_html('<span><img title="Expand" id="'+col_id+'_expand" class="smallButton"  style="display: '+display_plus+';" src="/images/plus.png" onClick="showLong(\''+col_id+'\')"/></span>')
+        self.add_html('<img title="Collapse" id="'+col_id+'_collapse" class="smallButton" style="display: '+display_minus+';" src="/images/moins.png" onClick="showShort(\''+col_id+'\')"/>')
+      else:
+        self.add_content('<td><span id="'+col_id+'s" style="display: '+display_truncated+';">'+truncated+'</span>')
+        self.add_content('<span id="'+col_id+'l" style="display: '+display_all+';"><span id="'+col_id+'c">'+html_value+'</span>')
         self.add_content('</td><td style="width: 34px;">')
-        self.add_content('<span><img title="Expand" id="'+col_id+'_expand" class="smallButton" src="/images/plus.png" onClick="showLong(\''+col_id+'\')"/></span>')
-        self.add_content('<img title="Collapse" id="'+col_id+'_collapse" class="smallButton" style="display: none;" src="/images/moins.png" onClick="showShort(\''+col_id+'\')"/>')
+        self.add_content('<span><img title="Expand" id="'+col_id+'_expand" class="smallButton"  style="display: '+display_plus+';" src="/images/plus.png" onClick="showLong(\''+col_id+'\')"/></span>')
+        self.add_content('<img title="Collapse" id="'+col_id+'_collapse" class="smallButton" style="display: '+display_minus+';" src="/images/moins.png" onClick="showShort(\''+col_id+'\')"/>')
       if copy_button:
         if self.is_continuous_page:
           self.add_html('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
@@ -870,6 +883,15 @@ class BaseHandler:
       else:
         self.add_content('</table>')
       self.result_in_table = True
+
+
+  def escape_string_to_javascript(self, string:str) -> str:
+    """ Ajoute des caractères d'échappement pour génération de chaînes dans du code Javascript
+    
+    Versions:
+      mpham (05/09/2024) version initiale
+    """
+    return string.replace("'", r"\'").replace('"', r'\"').replace("\\", "\\\\")
 
     
 class AduneoError(Exception):

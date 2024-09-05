@@ -897,7 +897,7 @@ class RequesterForm(CfiForm):
       paramValues."""+template_item['id']+""" = getFormValue('"""+self.form_uuid+"""', '"""+template_item['id']+"""');
       """
     elif self.request_parameters is None:
-      # Requête sans paamètres
+      # Requête sans paramètres
       pass
     else:
       # les paramètres sont été donnés par set_request_parameters()
@@ -1025,7 +1025,8 @@ class RequesterForm(CfiForm):
         réponse de requests
     
       Versions:
-        09/08/2024 (mpham) : version initiale adaptée de FlowHandler.send_form_http_request
+        09/08/2024 (mpham) version initiale adaptée de FlowHandler.send_form_http_request
+        05/09/2024 (mpham) POST ne fonctionnait pas
     """
     
     service_endpoint = hr_data.get('hr_request_url')
@@ -1052,18 +1053,18 @@ class RequesterForm(CfiForm):
       auth_secret = default_secret
       
     request_auth = None
-    request_headers = None
+    request_headers = {}
     if auth_method.casefold() == 'basic':
       request_auth = (auth_login, auth_secret)
     elif auth_method.casefold() == 'post':
       login_param = hr_data.get('hr_auth_login_param')
       if not login_param:
         raise AduneoError(page_handler.log_error("Form parameter for login not found in hr_auth_login_param field"))
-      service_request[login_param] = auth_login
+      service_data[login_param] = auth_login
       secret_param = hr_data.get('hr_auth_secret_param')
       if not secret_param:
         raise AduneoError(page_handler.log_error("Form parameter for secret not found in hr_auth_secret_param field"))
-      service_request[secret_param] = auth_secret
+      service_data[secret_param] = auth_secret
     elif auth_method.casefold() == 'bearer_token':
       request_headers = {'Authorization':"Bearer "+auth_login}
     else:
@@ -1075,10 +1076,20 @@ class RequesterForm(CfiForm):
     try:
       page_handler.log_info(('  ' * 1)+"Connecting to "+service_endpoint)
       page_handler.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_cert else "disabled"))
+      page_handler.log_info(f"{'  ' * 1}Authentication {auth_method} with login {auth_login}")
       if method == 'get':
         response = requests.get(service_endpoint, headers=request_headers, auth=request_auth, verify=verify_cert)
       elif method == 'post':
-        response = requests.post(service_endpoint, data=service_request, headers=request_headers, auth=request_auth, verify=verify_cert)
+        page_handler.log_info(f"{'  ' * 1}Body: {service_data}")
+        body_format = hr_data.get('hr_body_format', 'x-www-form-urlencoded')
+        if  body_format == 'x-www-form-urlencoded':
+          request_headers['Content-Type'] = 'application/x-www-form-urlencoded'
+          response = requests.post(service_endpoint, data=service_data, headers=request_headers, auth=request_auth, verify=verify_cert)
+        elif body_format == 'json':
+          request_headers['Content-Type'] = 'application/json'
+          response = requests.post(service_endpoint, json=service_data, headers=request_headers, auth=request_auth, verify=verify_cert)
+        else:
+          raise AduneoError(f"body format {body_format} not supported")
       else:
         raise AduneoError(page_handler.log_error("HTTP method "+method+" not supported"))
     except Exception as error:

@@ -281,7 +281,7 @@ class OIDCClientAdmin(BaseHandler):
     while not ok:
       id = ''.join(c for c in base.casefold() if c.isalnum())
       if id == '':
-        id = 'oidc_rp'
+        id = 'oidc_op'
       if rank > 0:
         id = id+str(rank)
       

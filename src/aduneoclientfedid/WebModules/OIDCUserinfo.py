@@ -13,13 +13,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import base64
-import datetime
 import html
 import json
-import requests
 import traceback
-import uuid
 
 from ..BaseServer import AduneoError
 from ..BaseServer import register_web_module, register_url, register_page_url
@@ -60,8 +56,8 @@ class OIDCUserinfo(FlowHandler):
 
       self.log_info(('  ' * 1)+'for context: '+self.context['context_id'])
 
-      idp_params = self.context['current_flow']['idp_params']
-      app_params = self.context['current_flow']['app_params']
+      idp_params = self.context.idp_params
+      app_params = self.context.last_app_params
 
       access_tokens = {}
       default_access_token = None
@@ -76,7 +72,7 @@ class OIDCUserinfo(FlowHandler):
         'contextid': self.context['context_id'],
         'userinfo_endpoint': idp_params.get('userinfo_endpoint', ''),
         'access_token': default_access_token,
-        'userinfo_method': idp_params.get('userinfo_endpoint', 'get'),
+        'userinfo_method': idp_params.get('userinfo_method', 'get'),
       }
       form = RequesterForm('userinfo', form_content, action='/client/oidc/userinfo/sendrequest', request_url='@[userinfo_endpoint]', mode='api') \
         .hidden('contextid') \
@@ -135,14 +131,14 @@ class OIDCUserinfo(FlowHandler):
     if self.context:
     
       # Mise à jour de la requête en cours
-      current_idp_params = self.context['current_flow']['idp_params']
+      idp_params = self.context.idp_params
       for item in ['userinfo_endpoint', 'userinfo_method']:
-        current_idp_params[item] = self.post_form.get(item, '')
+        idp_params[item] = self.post_form.get(item, '')
 
       if 'hr_verify_certificates' in self.post_form:
-        current_idp_params['verify_certificates'] = 'on'
+        idp_params['verify_certificates'] = 'on'
       else:
-        current_idp_params['verify_certificates'] = 'off'
+        idp_params['verify_certificates'] = 'off'
     
     try:
       response = RequesterForm.send_form(self, self.post_form)
@@ -150,7 +146,7 @@ class OIDCUserinfo(FlowHandler):
       
       self.start_result_table()
       self.log_info('Userinfo response'+json.dumps(json_response, indent=2))
-      self.add_result_row('Userinfo response', json.dumps(json_response, indent=2), 'userinfo_response')
+      self.add_result_row('Userinfo response', json.dumps(json_response, indent=2), 'userinfo_response', expanded=True)
       self.end_result_table()
       
     except Exception as error:

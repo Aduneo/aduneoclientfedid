@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import copy
 import uuid
 
 class Context(dict):
@@ -26,44 +27,151 @@ class Context(dict):
     Un contexte est identifié par un identifiant unique qui permet de le retrouver côté serveur (dans la session)
       Cet identifiant est passé lors de chaque échange avec le navigateur
       => context['context_id']
-      
+    
+    En revanche, le contexte n'est pas toujours récupéré directement.
+      Ce n'est par exemple pas le cas quand son identifiant n'est pas transmis au navigateur, le cas d'usage étant 
+      le retour d'authentification : l'IdP retourne le state, qu'on n'initialise pas au context_id pour assurer son 
+      unicité. On conserve donc en session une correspondance state -> context_id pour récupérer l'objet de contexte.
+    
     La structure de Context est de type JSON : organisation non contrainte de dict et list
-      
-    On conserve la requête initiale : endpoints, mots de passe, paramètres
-      => context['initial_flow'] : dict
-           avec les propriétés communes idp_id et app_id faisant référence à la configuration
-                                        flow_type : OIDC, OAuth ou SAML
-           les caractéristiques de l'IdP sont dans le dictionnaire context.initial_flow.idp
-           la requête (client_id, etc.) est dans la propriété app_params
-      
-    Ainsi que les valeurs liées aux requêtes ultérieure (modifications apportées lors des cinématiques ultérieures)
-      => context['current_flow']
-      
-    On garde aussi les différents jetons
-      Ils sont indexés par leur nom : client_id + date d'obtention + circonstance (initial, token exchange)
-      => context['id_tokens'] (avec les AT et RT associés)
-      => context['access_tokens'] (on distingue les AT OAuth et les AT liés à des ID tokens)
-        - context['access_tokens'] contient les AT obtenus par OAuth
-        - get_all_access_tokens() retourne tous les AT, y compris ceux liés à des ID tokens
-      => context['saml_assertions']
+
+    Le contexte est découpé en plusieurs parties :
+    - identfication de la dernière authentification (identifiant de l'IdP et du client)
+    - paramètres de l'IdP, qu'il est possible de modifier et que l'on conserve pour persistance des modifications
+    - paramètres des différents clients ayant fait l'objet d'une authentification, qu'il est possible de modifier et que l'on conserve pour persistance des modifications
+    - paramètres de la dernière introspection
+    - jetons récupérés lors des différentes cinématiques
+    
+    (on ne conserve rien concernant les API (de la configuration) car on ne peut actuellement rien modifier dans le cours des cinématiques).
+      En revanche, on conserve les valeurs saisies manuellement de la dernière introspection (ou plus précisément de la dernière introspection
+      lancée manuellement)
+
+    Structure type du contexte :
+    
+    context: {
+      'idp_id': '<identifiant de l'IdP concerné par la cinématique en cours>',
+      'app_id': '<identifiant du client ayant réalisé la dernière authentification>',
+      'flow_type': '<dernière cinématique : OIDC, OAuth2 ou SAML>',
+      'idp_params': { paramètres liés à l'IdP },
+      'app_params': {
+        '<app id>': { paramètres liés à la requête et plus largement au client },
+      },
+      'api_params': { paramètres liés à la dernière introspection },
+      'id_tokens': {
+        '<timestamp de l'obtention du jeton>': {
+          'name': '<nom du jeton';
+          'type': 'id_token', 
+          'id_token': '<jeton d'identité>',
+          'access_token': '<jeton d'accès associé, s'il est retourné>',
+          'refresh_token': '<jeton de rafraîchissement du jeton d'accès associé, s'il est retourné>',
+        }
+      },
+      'access_tokens': {
+        '<timestamp de l'obtention du jeton>': {
+          'name': '<nom du jeton';
+          'type': 'access_token', 
+          'access_token': '<jeton d'accès associé, s'il est retourné>',
+          'refresh_token': '<jeton de rafraîchissement du jeton d'accès associé, s'il est retourné>',
+        }
+      }
+    }
+
+    Données liées à l'IdP : endpoints, issuer, clés de signature
+    Données liées à un client : redirct_uri, client, secret, scopes, etc.
+    Données liées à la dernière authentification : client, secret, méthode d'authentification
+    
+    access_tokens ne contient que les jetons obtenus par OAuth 2
+    
+    Si on souhaite avoir tous les jetons d'accès, y compris ceux récupérés en OIDC, il suffit d'appeler
+      get_all_access_tokens
+    
     
   Versions:
     08/08/2024 (mpham) version initiale
+    05/09/2024 (mpham) refonte du contexte et intégration des paramètres de la dernière introspection
   """
 
   def __init__(self):
     self['context_id'] = str(uuid.uuid4())
-    self['initial_flow'] = {}
-    self['initial_flow']['idp_params'] = {}
-    self['initial_flow']['app_params'] = {}
-    self['current_flow'] = {}
-    self['current_flow']['idp_params'] = {}
-    self['current_flow']['app_params'] = {}
+    self['idp_params'] = {}
+    self['app_params'] = {}
+    self['api_params'] = {}
     self['id_tokens'] = {}
     self['access_tokens'] = {}
     self['saml_assertions'] = {}
 
 
   def get_all_access_tokens(self):
-    # TODO
-    return self.oauth_access_tokens
+    """ Retourne l'ensemble des jetons d'accès
+          - ceux obtenus par O1uth 2
+          - ainsi que ceux récupérés avec un jeton d'identité en OIDC
+
+    Returns:
+      dict de la forme
+        {
+          '<timestamp de l'obtention du jeton>': {
+            'name': '<nom du jeton';
+            'type': 'access_token', 
+            'access_token': '<jeton d'accès associé, s'il est retourné>',
+            'refresh_token': '<jeton de rafraîchissement du jeton d'accès associé, s'il est retourné>',
+          },
+          '<timestamp de l'obtention du jeton>': {
+          ...
+          }
+        }
+      
+          
+    Versions:
+      28/08/2024 (mpham) version initiale
+      05/09/2024 (mpham) on retourne aussi le jeton de rafraîchissement
+    """
+
+    access_tokens = copy.deepcopy(self['access_tokens'])
+    for token_wrapper_key in self['id_tokens'].keys():
+      token_wrapper = self['id_tokens'][token_wrapper_key]
+      access_tokens[token_wrapper_key] = {'name': token_wrapper['name'], 'access_token': token_wrapper['access_token']}
+      if 'refresh_token' in token_wrapper:
+        access_tokens[token_wrapper_key]['refresh_token'] = token_wrapper['refresh_token']
+
+    return access_tokens
+    
+
+  @property
+  def idp_id(self) -> dict:
+    return self['idp_id']
+
+  
+  @property
+  def app_id(self) -> dict:
+    return self['app_id']
+
+  
+  @property
+  def idp_params(self) -> dict:
+    """ Retourne le dictionnaire des paramètres de l'IdP
+    
+    Returns:
+      dict
+          
+    Versions:
+      05/09/2024 (mpham) version initiale
+    """
+    return self['idp_params']
+
+
+  @property
+  def last_app_params(self) -> dict:
+    """ Retourne le dictionnaire des paramètres du client ayant réalisé la dernière authentification
+    
+    Returns:
+      dict
+          
+    Versions:
+      05/09/2024 (mpham) version initiale
+    """
+    return self['app_params'][self['app_id']]
+
+
+  @property
+  def last_api_params(self) -> dict:
+    return self['api_params']

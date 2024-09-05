@@ -573,10 +573,15 @@ class ConfCrypto():
       v2_idp = {}
       for key in ['endpoint_configuration', 'discovery_uri', 'authorization_endpoint', 'token_endpoint', 'introspect_endpoint', 'signature_key_configuration', 'jwks_uri', 'signature_key', 'verify_certificates']:
         if v1_client.get(key):
-          v2_idp[key] = v1_client[key]
+        
+          v2_key = key
+          if key == 'discovery_uri':
+            v2_key = 'metadata_uri'
+        
+          v2_idp[v2_key] = v1_client[key]
           
-          if key == 'endpoint_configuration' and v1_client[key] = 'Discovery URI':
-            v2_idp[key] = 'Authorization Server Metadata URI'
+          if key == 'endpoint_configuration' and v1_client[key] == 'Discovery URI':
+            v2_idp[v2_key] = 'Authorization Server Metadata URI'
       
       v2_client = {'name': 'OAuth2 Client'}
       for key in ['client_id', 'client_secret!', 'scope', 'response_type', 'redirect_uri']:

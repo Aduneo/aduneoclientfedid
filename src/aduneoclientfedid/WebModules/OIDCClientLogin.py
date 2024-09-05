@@ -45,7 +45,7 @@ from .FlowHandler import FlowHandler
   Un contexte de chaque cinématique est conservé dans la session.
     Ce contexte est compatible avec OpenID Connect et SAML, afin de réaliser des échanges de jetons
     
-    Ce contexte est indexé par un identifiant unique à la cinmatique, ce qui permet à un même ordinateur de suivre plusieurs cinématiques en parallèle
+    Ce contexte est indexé par un identifiant unique à la cinématique, ce qui permet à un même ordinateur de suivre plusieurs cinématiques en parallèle
     Cet index est le state, que l'on récupère donc en retour d'IdP
     
     Voir l'objet Context
@@ -92,11 +92,11 @@ class OIDCClientLogin(FlowHandler):
         app_params = idp['oidc_clients'][app_id]
 
         self.context = Context()
-        self.context['initial_flow']['idp_id'] = idp_id
-        self.context['initial_flow']['app_id'] = app_id
-        self.context['initial_flow']['flow_type'] = 'OIDC'
-        self.context['initial_flow']['idp_params'] = idp_params
-        self.context['initial_flow']['app_params'] = app_params
+        self.context['idp_id'] = idp_id
+        self.context['app_id'] = app_id
+        self.context['flow_type'] = 'OIDC'
+        self.context['idp_params'] = idp_params
+        self.context['app_params'][app_id] = app_params
         self.set_session_value(self.context['context_id'], self.context)
 
         if idp_params.get('endpoint_configuration', 'Local configuration').casefold() == 'discovery uri':
@@ -104,10 +104,10 @@ class OIDCClientLogin(FlowHandler):
 
     else:
       # Rejeu de requête (conservée dans la session)
-      idp_id = self.context['initial_flow']['idp_id']
-      app_id = self.context['initial_flow']['app_id']
-      idp_params = self.context['initial_flow']['idp_params']
-      app_params = self.context['initial_flow']['app_params']
+      idp_id = self.context['idp_id']
+      app_id = self.context['app_id']
+      idp_params = self.context.idp_params
+      app_params = self.context.last_app_params
     
     self.log_info(('  ' * 1) + f"for client {app_params['name']} of IdP {idp_params['name']}")
     self.add_html(f"<h1>IdP {idp_params['name']} OIDC Client {app_params['name']}</h1>")
@@ -283,30 +283,32 @@ class OIDCClientLogin(FlowHandler):
         self.log_error("""context_id not found in form data {data}""".format(data=self.post_form))
         raise AduneoError("Context not found in request")
 
-      # Mise à jour de la requête initiale
-      initial_idp_params = self.context['initial_flow']['idp_params']
+      # Mise à jour dansle contexte des paramètres liés à l'IdP
+      idp_params = self.context.idp_params
       for item in ['authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'userinfo_method', 'issuer', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
-        initial_idp_params[item] = self.post_form.get(item, '').strip()
+        idp_params[item] = self.post_form.get(item, '').strip()
 
-      initial_app_params = self.context['initial_flow']['app_params']
-      for item in ['redirect_uri', 'client_id', 'scope', 'token_endpoint_auth_method', 'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values']:
-        initial_app_params[item] = self.post_form.get(item, '').strip()
-        
-      if self.post_form.get('client_secret', '') != '':
-        initial_app_params['client_secret'] = self.post_form.get('client_secret', '')
+      # Mise à jour dansle contexte des paramètres liés au client courant
+      app_params = self.context.last_app_params
+      for item in ['redirect_uri', 'client_id', 'scope', 'token_endpoint_auth_method', 'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values',
+      'nonce']:
+        app_params[item] = self.post_form.get(item, '').strip()
+      
+      # Récupération du secret
+      if self.post_form.get('client_secret', '') == '':
+        # on va récupérer le secret dans la configuration
+        conf_idp = self.conf['idps'][self.context.idp_id]
+        conf_app = conf_idp['oidc_clients'][self.context.app_id]
+        app_params['client_secret'] = conf_app.get('client_secret!', '')
+      else:
+        app_params['client_secret'] = self.post_form.get('client_secret', '')
 
       if 'hr_verify_certificates' in self.post_form:
-        initial_idp_params['verify_certificates'] = 'on'
+        idp_params['verify_certificates'] = 'on'
       else:
-        initial_idp_params['verify_certificates'] = 'off'
-
-      # Copie de la requête initiale vers la requête courante
-      self.context['current_flow'] = copy.deepcopy(self.context['initial_flow'])
-      self.context['current_flow']['state'] = self.post_form['state'].strip()
-      self.context['current_flow']['nonce'] = self.post_form['nonce'].strip()
+        idp_params['verify_certificates'] = 'off'
 
       # Redirection vers l'IdP
-
       authentication_request = self.post_form['hr_request_url'].strip()+'?'+self.post_form['hr_request_data'].strip()
       self.log_info('Redirecting to:')
       self.log_info(authentication_request)
@@ -361,10 +363,10 @@ class OIDCClientLogin(FlowHandler):
         raise AduneoError(f"Can't retrieve request context because context id {context_id} not found in session")
       
       # extraction des informations utiles de la session
-      idp_id = self.context['current_flow']['idp_id']
-      app_id = self.context['current_flow']['app_id']
-      idp_params = self.context['current_flow']['idp_params']
-      app_params = self.context['current_flow']['app_params']
+      idp_id = self.context.idp_id
+      app_id = self.context.app_id
+      idp_params = self.context.idp_params
+      app_params = self.context.last_app_params
       token_endpoint = idp_params['token_endpoint']
       client_id = app_params['client_id']
       redirect_uri = app_params['redirect_uri']
@@ -374,13 +376,7 @@ class OIDCClientLogin(FlowHandler):
       self.start_result_table()
       self.add_result_row('State returned by IdP', idp_state, 'idp_state')
       
-      if 'client_secret' in app_params:
-        client_secret = app_params['client_secret']
-      else:
-        # il faut aller chercher le mot de passe dans la configuration
-        conf_idp = self.conf['idps'][idp_id]
-        conf_app = conf_idp['oidc_clients'][app_id]
-        client_secret = conf_app['client_secret!']
+      client_secret = app_params['client_secret']
 
       token_endpoint_auth_method = app_params['token_endpoint_auth_method'].casefold()
 
@@ -453,17 +449,20 @@ class OIDCClientLogin(FlowHandler):
       self.log_info(json.dumps(json_token, indent=2))
 
       # Vérification de nonce
-      session_nonce = self.context['current_flow']['nonce']
-      idp_nonce = json_token['nonce']
-      if session_nonce == idp_nonce:
-        self.log_info("Nonce verification OK: "+session_nonce)
-        self.add_result_row('Nonce verification', 'OK: '+session_nonce, 'nonce_verification')
+      session_nonce = app_params['nonce']
+      if session_nonce == '':
+          self.log_info("No nonce was sent in the request")
       else:
-        self.log_error(('  ' * 1)+"Nonce verification failed")
-        self.log_error(('  ' * 2)+"client nonce: "+session_nonce)
-        self.log_error(('  ' * 2)+"IdP nonce   :"+idp_nonce)
-        self.add_result_row('Nonce verification', "Failed\n  client nonce: "+session_nonce+"\n  IdP nonce: "+idp_nonce, 'nonce_verification')
-        raise AduneoError('nonce verification failed')
+        idp_nonce = json_token['nonce']
+        if session_nonce == idp_nonce:
+          self.log_info("Nonce verification OK: "+session_nonce)
+          self.add_result_row('Nonce verification', 'OK: '+session_nonce, 'nonce_verification')
+        else:
+          self.log_error(('  ' * 1)+"Nonce verification failed")
+          self.log_error(('  ' * 2)+"client nonce: "+session_nonce)
+          self.log_error(('  ' * 2)+"IdP nonce   :"+idp_nonce)
+          self.add_result_row('Nonce verification', "Failed\n  client nonce: "+session_nonce+"\n  IdP nonce: "+idp_nonce, 'nonce_verification')
+          raise AduneoError('nonce verification failed')
 
       # Vérification de validité du jeton
       self.log_info("Starting token validation")

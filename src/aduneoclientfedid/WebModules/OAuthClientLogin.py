@@ -42,37 +42,6 @@ from .FlowHandler import FlowHandler
 
 # TODO : implémentation RFC 8707 (paramètre resource, mais attention, il peut être multivalué - il faut faire évoluer CfiForm)
 
-"""
-  Un contexte de chaque cinématique est conservé dans la session.
-    Ce contexte est compatible avec OpenID Connect et SAML, afin de réaliser des échanges de jetons
-    
-    Ce contexte est indexé par un identifiant unique à la cinmatique, ce qui permet à un même ordinateur de suivre plusieurs cinématiques en parallèle
-    Cet index est le state, que l'on récupère donc en retour d'IdP
-    
-    Le contexte en lui-même est composé d'une partie commune SAML/OIDC/OAuth et d'une partie spécifique OAuth 2
-    
-    Contexte commun :
-    "context_id": "<state (l'index de la session)>"
-    "initial_flow": {
-      "app_id": "<identifiant du client ClientFedID>",
-      "flow_type": "OAuth2",
-    }
-    "tokens": {
-      "saml_assertion": "<XML>",
-      "access_token": "<access_token>",
-      "id_token": "<id_token>"
-    }
-    
-    Contexte spécifique :
-    "request": {
-      (éléments de la requête)
-    }
-    "meta_data": {
-      (informations sur l'AS - endpoints en particulier)
-    }
-    
-"""
-
 
 @register_web_module('/client/oauth2/login')
 class OAuthClientLogin(FlowHandler):
@@ -105,11 +74,11 @@ class OAuthClientLogin(FlowHandler):
         app_params = idp['oauth2_clients'][app_id]
 
         self.context = Context()
-        self.context['initial_flow']['idp_id'] = idp_id
-        self.context['initial_flow']['app_id'] = app_id
-        self.context['initial_flow']['flow_type'] = 'OAuth2'
-        self.context['initial_flow']['idp_params'] = idp_params
-        self.context['initial_flow']['app_params'] = app_params
+        self.context['idp_id'] = idp_id
+        self.context['app_id'] = app_id
+        self.context['flow_type'] = 'OAuth2'
+        self.context['idp_params'] = idp_params
+        self.context['app_params'][app_id] = app_params
         self.set_session_value(self.context['context_id'], self.context)
 
         if idp_params.get('endpoint_configuration', 'Local configuration').casefold() == 'authorization server metadata uri':
@@ -117,10 +86,10 @@ class OAuthClientLogin(FlowHandler):
 
     else:
       # Rejeu de requête (conservée dans la session)
-      idp_id = self.context['initial_flow']['idp_id']
-      app_id = self.context['initial_flow']['app_id']
-      idp_params = self.context['initial_flow']['idp_params']
-      app_params = self.context['initial_flow']['app_params']
+      idp_id = self.context['idp_id']
+      app_id = self.context['app_id']
+      idp_params = self.context.idp_params
+      app_params = self.context.last_app_params
     
     self.log_info(('  ' * 1) + f"for client {app_params['name']} of IdP {idp_params['name']}")
     self.add_html(f"<h1>IdP {idp_params['name']} OAuth2 Client {app_params['name']}</h1>")
@@ -169,7 +138,8 @@ class OAuthClientLogin(FlowHandler):
       'authorization_endpoint': idp_params.get('authorization_endpoint', ''),
       'token_endpoint': idp_params.get('token_endpoint', ''),
       'introspection_endpoint': idp_params.get('introspection_endpoint', ''),
-      'introspection_method': idp_params.get('introspection_method', 'get'),
+      'introspection_http_method': idp_params.get('introspection_http_method', 'post'),
+      'introspection_auth_method': idp_params.get('introspection_auth_method', 'basic'),
       'issuer': idp_params.get('issuer', ''),
       'signature_key_configuration': idp_params.get('signature_key_configuration', 'jwks_uri'),
       'jwks_uri': idp_params.get('jwks_uri', ''),
@@ -193,9 +163,13 @@ class OAuthClientLogin(FlowHandler):
         .text('authorization_endpoint', label='Authorization Endpoint', clipboard_category='authorization_endpoint') \
         .text('token_endpoint', label='Token Endpoint', clipboard_category='token_endpoint') \
         .text('introspection_endpoint', label='Introspection Endpoint', clipboard_category='introspection_endpoint') \
-        .closed_list('introspection_method', label='Introspection Request Method', 
+        .closed_list('introspection_http_method', label='Introspection Request Method', 
           values={'get': 'GET', 'post': 'POST'},
           default = 'get'
+          ) \
+        .closed_list('introspection_auth_method', label='Introspection Authn. Method', 
+          values={'none': 'None', 'basic': 'Basic', 'bearer_token': 'Bearer Token'},
+          default = 'basic'
           ) \
       .end_section() \
       .start_section('client_params', title="Client Parameters", collapsible=True, collapsible_default=False) \
@@ -295,26 +269,29 @@ class OAuthClientLogin(FlowHandler):
         self.log_error("""context_id not found in form data {data}""".format(data=self.post_form))
         raise AduneoError("Context not found in request")
 
-      # Mise à jour de la requête initiale
-      initial_idp_params = self.context['initial_flow']['idp_params']
-      for item in ['authorization_endpoint', 'token_endpoint', 'introspection_endpoint', 'introspection_method', 'issuer', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
-        initial_idp_params[item] = self.post_form.get(item, '').strip()
+      # Mise à jour dansle contexte des paramètres liés à l'IdP
+      idp_params = self.context.idp_params
+      for item in ['authorization_endpoint', 'token_endpoint', 'introspection_endpoint', 'introspection_http_method', 'introspection_auth_method', 'issuer', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
+        idp_params[item] = self.post_form.get(item, '').strip()
 
-      initial_app_params = self.context['initial_flow']['app_params']
+      # Mise à jour dansle contexte des paramètres liés au client courant
+      app_params = self.context.last_app_params
       for item in ['redirect_uri', 'oauth_flow', 'pkce_method', 'client_id', 'scope', 'token_endpoint_auth_method']:
-        initial_app_params[item] = self.post_form.get(item, '').strip()
+        app_params[item] = self.post_form.get(item, '').strip()
         
-      if self.post_form.get('client_secret', '') != '':
-        initial_app_params['client_secret'] = self.post_form.get('client_secret', '')
+      # Récupération du secret
+      if self.post_form.get('client_secret', '') == '':
+        # on va récupérer le secret dans la configuration
+        conf_idp = self.conf['idps'][self.context.idp_id]
+        conf_app = conf_idp['oauth2_clients'][self.context.app_id]
+        app_params['client_secret'] = conf_app.get('client_secret!', '')
+      else:
+        app_params['client_secret'] = self.post_form.get('client_secret', '')
 
       if 'hr_verify_certificates' in self.post_form:
-        initial_idp_params['verify_certificates'] = 'on'
+        idp_params['verify_certificates'] = 'on'
       else:
-        initial_idp_params['verify_certificates'] = 'off'
-
-      # Copie de la requête initiale vers la requête courante
-      self.context['current_flow'] = copy.deepcopy(self.context['initial_flow'])
-      self.context['current_flow']['state'] = self.post_form['state'].strip()
+        idp_params['verify_certificates'] = 'off'
 
       # Si on est en Resource Owner Password Credentials ou en Client Credentials, on fait une requête directe
       oauth_flow = self.post_form['oauth_flow']
@@ -374,10 +351,10 @@ class OAuthClientLogin(FlowHandler):
         raise AduneoError(f"Can't retrieve request context because context id {context_id} not found in session")
       
       # extraction des informations utiles de la session
-      idp_id = self.context['current_flow']['idp_id']
-      app_id = self.context['current_flow']['app_id']
-      idp_params = self.context['current_flow']['idp_params']
-      app_params = self.context['current_flow']['app_params']
+      idp_id = self.context.idp_id
+      app_id = self.context.app_id
+      idp_params = self.context.idp_params
+      app_params = self.context.last_app_params
 
       error = self.get_query_string_param('error')
       if error is not None:
@@ -420,14 +397,8 @@ class OAuthClientLogin(FlowHandler):
       auth = None
       if app_params['oauth_flow'] == 'authorization_code':
       
-        if 'client_secret' in app_params:
-          client_secret = app_params['client_secret']
-        else:
-          # il faut aller chercher le mot de passe dans la configuration
-          conf_idp = self.conf['idps'][idp_id]
-          conf_app = conf_idp['oauth2_clients'][app_id]
-          client_secret = conf_app['client_secret!']
-      
+        client_secret = app_params['client_secret']
+
         if token_endpoint_auth_method == 'client_secret_basic':
           auth = (app_params['client_id'], client_secret)
         elif token_endpoint_auth_method == 'client_secret_post':
@@ -469,54 +440,6 @@ class OAuthClientLogin(FlowHandler):
       if refresh_token:
         self.add_result_row('Refresh token', refresh_token, 'refresh_token')
 
-      # Si les jetons sont JWT, on récupère les clés de signature pour vérification
-      signature_key_needed = False
-      if JWT.is_jwt(access_token):
-        signature_key_needed = True
-      if refresh_token:
-        if JWT.is_jwt(refresh_token):
-          signature_key_needed = True
-
-      access_token_jwk = None
-      refresh_token_jwk = None
-      if signature_key_needed:
-        if idp_params['signature_key_configuration'] == 'Local configuration':
-        
-          # Clé de signature donnée dans la configuration
-          self.log_info('Signature JWK:')
-          self.log_info(idp_params['signature_key'])
-          access_token_jwk = json.loads(idp_params['signature_key'])
-          refresh_token_jwk = access_token_jwk
-
-        else:
-        
-          # Clé à récupérer auprès de l'IdP
-          self.log_info("Starting IdP keys retrieval")
-          self.add_result_row('JWKS endpoint', idp_params['jwks_uri'], 'jwks_endpoint')
-          self.end_result_table()
-          self.add_html('<div class="intertable">Fetching public keys...</div>')
-          try:
-            verify_certificates = Configuration.is_on(app_params.get('verify_certificates', 'on'))
-            self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-            r = requests.get(idp_params['jwks_uri'], verify=verify_certificates)
-          except Exception as error:
-            self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
-            raise AduneoError(self.log_error(('  ' * 2)+'IdP keys retrieval error: '+str(error)))
-          if r.status_code == 200:
-            self.add_html('<div class="intertable">Success</div>')
-          else:
-            self.add_html('<div class="intertable">Error, status code '+str(r.status_code)+'</div>')
-            raise AduneoError(self.log_error('IdP keys retrieval error: status code '+str(r.status_code)))
-
-          keyset = r.json()
-          self.log_info("IdP response:")
-          self.log_info(json.dumps(keyset, indent=2))
-          self.start_result_table()
-          self.add_result_row('Keyset', json.dumps(keyset, indent=2), 'keyset')
-          
-          # On en extrait les JWK qui correspondent aux jetons
-          self.add_result_row('Retrieved keys', '', 'retrieved_keys', copy_button=False)
-      
       if JWT.is_jwt(access_token):
         # l'AT est un JWT, on l'affiche
         self.add_result_row('Access Token Type', 'JWT')
@@ -532,14 +455,57 @@ class OAuthClientLogin(FlowHandler):
         # On vérifie la signature du JWT
         alg = jwt.header.get('alg')
         if not alg:
-          self.add_result_row('AT Signature Validation', 'JWT without algorithm in header')
-          self.log_info("  Can't verify Access Token signature : JWT without algorithm in header")
+          self.add_result_row('RT Signature Validation', 'JWT without algorithm in header')
+          self.log_info("  Can't verify Refresh Token signature : JWT without algorithm in header")
         else:
-          if idp_params['signature_key_configuration'] == 'jwks_uri':
-            for jwk in keyset['keys']:
-                self.add_result_row(jwk['kid'], json.dumps(jwk, indent=2))
-                if jwk['kid'] == jwt.header.get('kid'):
-                  access_token_jwk = jwk
+          
+          access_token_jwk = None
+          if alg.startswith('HS'):
+            self.log_info('HMAC signature, the secret is client_secret')
+            encoded_secret = base64.urlsafe_b64encode(str.encode(client_secret)).decode()
+            access_token_jwk = {"alg":alg,"kty":"oct","use":"sig","kid":"1","k":encoded_secret}
+          else:
+            # Signature asymétrique, on récupère la clé
+            if idp_params['signature_key_configuration'] == 'Local configuration':
+            
+              # Clé de signature donnée dans la configuration
+              self.log_info('Signature JWK:')
+              self.log_info(idp_params['signature_key'])
+              access_token_jwk = json.loads(idp_params['signature_key'])
+
+            else:
+            
+              # Clé à récupérer auprès de l'IdP
+              self.log_info("Starting IdP keys retrieval")
+              self.add_result_row('JWKS endpoint', idp_params['jwks_uri'], 'jwks_endpoint')
+              self.end_result_table()
+              self.add_html('<div class="intertable">Fetching public keys...</div>')
+              try:
+                verify_certificates = Configuration.is_on(app_params.get('verify_certificates', 'on'))
+                self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+                r = requests.get(idp_params['jwks_uri'], verify=verify_certificates)
+              except Exception as error:
+                self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
+                raise AduneoError(self.log_error(('  ' * 2)+'IdP keys retrieval error: '+str(error)))
+              if r.status_code == 200:
+                self.add_html('<div class="intertable">Success</div>')
+              else:
+                self.add_html('<div class="intertable">Error, status code '+str(r.status_code)+'</div>')
+                raise AduneoError(self.log_error('IdP keys retrieval error: status code '+str(r.status_code)))
+
+              keyset = r.json()
+              self.log_info("IdP response:")
+              self.log_info(json.dumps(keyset, indent=2))
+              self.start_result_table()
+              self.add_result_row('Keyset', json.dumps(keyset, indent=2), 'keyset')
+              
+              # On en extrait les JWK qui correspondent aux jetons
+              self.add_result_row('Retrieved keys', '', 'retrieved_keys', copy_button=False)
+          
+              for jwk in keyset['keys']:
+                  self.add_result_row(jwk['kid'], json.dumps(jwk, indent=2))
+                  if jwk['kid'] == jwt.header.get('kid'):
+                    access_token_jwk = jwk
 
           if not access_token_jwk:
             self.add_result_row('AT Signature Validation', 'Signature key not found')
@@ -549,13 +515,11 @@ class OAuthClientLogin(FlowHandler):
             self.log_info(json.dumps(access_token_jwk, indent=2))
             self.add_result_row('Signature JWK', json.dumps(access_token_jwk, indent=2), 'signature_jwk')
             
-            try:
-              jwt.is_signature_valid(access_token_jwk)
+            if jwt.is_signature_valid(access_token_jwk, raise_exception=False):
               self.log_info('Access Token signature verification OK')
               self.add_result_row('AT Signature verification', 'OK', copy_button=False)
-            except Exception as error:
+            else:
               self.add_result_row('AT Signature verification', 'Failed', copy_button=False)
-              raise AduneoError(self.log_error('Signature verification failed'))
         
       else:
         self.add_result_row('Access Token Type', 'opaque')
@@ -573,38 +537,9 @@ class OAuthClientLogin(FlowHandler):
           self.log_info("Refresh token payload:")
           self.log_info(json.dumps(jwt.payload, indent=2))
           
-          # On vérifie la signature du JWT
-          alg = jwt.header.get('alg')
-          if not alg:
-            self.add_result_row('RT Signature Validation', 'JWT without algorithm in header')
-            self.log_info("  Can't verify Refresh Token signature : JWT without algorithm in header")
-          else:
-            if idp_params['signature_key_configuration'] == 'jwks_uri':
-              for jwk in keyset['keys']:
-                  self.add_result_row(jwk['kid'], json.dumps(jwk, indent=2))
-                  if jwk['kid'] == jwt.header.get('kid'):
-                    refresh_token_jwk = jwk
-
-            if not refresh_token_jwk:
-              self.add_result_row('RT Signature Validation', 'Signature key not found')
-              self.log_info("  Can't verify Refresh Token signature : signature key not found")
-            else:
-              self.log_info('Signature JWK:')
-              self.log_info(json.dumps(refresh_token_jwk, indent=2))
-              self.add_result_row('Signature JWK', json.dumps(refresh_token_jwk, indent=2), 'signature_jwk')
-              
-              try:
-                jwt.is_signature_valid(refresh_token_jwk)
-                self.log_info('Refresh Token signature verification OK')
-                self.add_result_row('RT Signature verification', 'OK', copy_button=False)
-              except Exception as error:
-                self.add_result_row('RT Signature verification', 'Failed', copy_button=False)
-                raise AduneoError(self.log_error('Signature verification failed'))
-          
+          # Pas de vérification de signature du RT (aucun besoin, le RT est uniquement à renvoyer à l'IdP)
         else:
           self.add_result_row('Refresh Token Type', 'opaque')
-      
-      
       
       # Nonce verification
       idp_nonce = response.get('nonce')
@@ -713,7 +648,7 @@ class OAuthClientLogin(FlowHandler):
       else:
         # il faut aller chercher le mot de passe dans la configuration
         conf_idp = self.conf['idps'][idp_id]
-        conf_app = conf_idp['oidc_clients'][app_id]
+        conf_app = conf_idp['oauth2_clients'][app_id]
         client_secret = conf_app['client_secret!']
 
       token_endpoint_auth_method = app_params['token_endpoint_auth_method'].casefold()
@@ -971,7 +906,7 @@ class OAuthClientLogin(FlowHandler):
       self.context['id_tokens'][str(time.time())] = token
 
       # on considère qu'on est bien loggé
-      self.logon('oidc_client_'+idp_id+'/'+app_id, id_token)
+      self.logon('oauth_client_'+idp_id+'/'+app_id, id_token)
 
     except AduneoError as error:
       if self.is_result_in_table():

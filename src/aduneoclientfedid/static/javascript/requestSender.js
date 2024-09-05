@@ -447,8 +447,15 @@ function setFormValue(formUUID, field_id, value) {
   
   if (el.tagName == 'INPUT' && el.type == 'checkbox') {
     el.checked = value;
+    el.dispatchEvent(new Event('change'));
   } else {
     el.value = value;
+    // on déchenche des événements de changement pour diffusion des modifications
+    if (el.type == 'text' || el.type == 'textarea') {
+      el.dispatchEvent(new Event('keyup'));
+    } else {
+      el.dispatchEvent(new Event('change'));
+    }
   }
 }
 
@@ -527,7 +534,7 @@ CfiForm.prototype.getThisFieldValue = function () {
 
 
 CfiForm.prototype.setThisFieldValue = function (value) {
-  this.getThisField().value = value;
+  this.setFieldValue(this.getThisField(), value);
 };
 
 
@@ -537,7 +544,13 @@ CfiForm.prototype.getField = function (fieldId) {
 
 
 CfiForm.prototype.setFieldValue = function (fieldId, value) {
-  return this.getField(fieldId).value = value;
+  field = this.getField(fieldId)
+  field.value = value;
+  if (field.type == 'text' || field.type == 'textarea') {
+    field.dispatchEvent(new Event('keyup'));
+  } else {
+    field.dispatchEvent(new Event('change'));
+  }
 };
 
 
