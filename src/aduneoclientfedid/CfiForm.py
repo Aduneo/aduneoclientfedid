@@ -1030,6 +1030,8 @@ class RequesterForm(CfiForm):
       Versions:
         09/08/2024 (mpham) version initiale adaptée de FlowHandler.send_form_http_request
         05/09/2024 (mpham) POST ne fonctionnait pas
+        27/11/2024 (mpham) les checkbox, donc en particulier la vérification des certificats, ont le même comportement que les formulaires
+                             l'élement est présent si la case est cochée, absent sinon
     """
     
     service_endpoint = hr_data.get('hr_request_url')
@@ -1073,7 +1075,7 @@ class RequesterForm(CfiForm):
     else:
       raise AduneoError(page_handler.log_error("authentication method "+auth_method+" not supported"))
 
-    verify_cert = hr_data.get('hr_verify_certificates', 'on') == 'on'
+    verify_cert = hr_data.get('hr_verify_certificates') != None
 
     page_handler.log_info("  Submitting request")
     try:

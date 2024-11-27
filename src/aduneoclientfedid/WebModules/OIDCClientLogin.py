@@ -411,7 +411,7 @@ class OIDCClientLogin(FlowHandler):
       self.log_info("Start fetching token")
       try:
         self.log_info("Connecting to "+token_endpoint)
-        verify_certificates = Configuration.is_on(app_params.get('verify_certificates', 'on'))
+        verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
         self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
         r = requests.post(token_endpoint, data=data, auth=auth, verify=verify_certificates)
       except Exception as error:
@@ -550,7 +550,7 @@ class OIDCClientLogin(FlowHandler):
           self.end_result_table()
           self.add_html('<div class="intertable">Fetching public keys...</div>')
           try:
-            verify_certificates = Configuration.is_on(app_params.get('verify_certificates', 'on'))
+            verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
             self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
             r = requests.get(idp_params['jwks_uri'], verify=verify_certificates)
           except Exception as error:

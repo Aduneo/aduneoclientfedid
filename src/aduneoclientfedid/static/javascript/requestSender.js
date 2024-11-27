@@ -303,7 +303,6 @@ function sendToRequester_newPage(formUUID) {
   request_form = document.getElementById('form-'+formUUID);
 
   // on active tous les éléments du formulaire
-  data = {};
   request_form.querySelectorAll('.'+formUUID).forEach(el => {
     el.disabled = false;
   });
@@ -335,9 +334,16 @@ function sendToRequester_api(formUUID) {
   */
   
   // on récupère tous les éléments du formulaire - peut-être uniquement ceux qui sont actifs ?
-  data = {};
+  let data = {};
   request_form.querySelectorAll('.'+formUUID).forEach(el => {
-    data[el.name] = el.value;
+    if (el.type == 'checkbox') {
+      // pour imiter le comportement d'un formulaire normal, on ne transmet pas les cases qui ne sont pas cochées
+      if (el.checked) {
+        data[el.name] = 'on';
+      }
+    } else {
+      data[el.name] = el.value;
+    }
     el.disabled = true;
   });
 
