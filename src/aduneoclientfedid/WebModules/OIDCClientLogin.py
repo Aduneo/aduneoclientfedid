@@ -71,6 +71,7 @@ class OIDCClientLogin(FlowHandler):
       24/03/2023 (mpham) passage en mode SPA
       03/08/2023 (mpham) on achève le passage en page continuous
       08/08/2024 (mpham) récriture avec RequesterForm et nouvelle configuration
+      27/11/2024 (mpham) on n'envoie pas les éléments vides du formulaire (Keycloak tombe en erreur sinon)
     """
 
     self.log_info('--- Start OpenID Connect flow ---')
@@ -251,6 +252,7 @@ class OIDCClientLogin(FlowHandler):
       'auth_method': False,
       'verify_certificates': True,
       })
+    form.set_option('/requester/include_empty_items', False)
 
 
     self.add_html(form.get_html())

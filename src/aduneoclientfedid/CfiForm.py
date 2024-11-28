@@ -86,6 +86,7 @@ class CfiForm():
     Versions:
       27/12/2023 (mpham) version initiale
       30/08/2024 (mpham) options /requester/auth_method_options
+      27/11/2024 (mpham) option /requester/include_empty_items qui indique si le contenu du formulaire doit contenir les éléments sans valeur
     """
   
     self.form_id = form_id
@@ -113,6 +114,7 @@ class CfiForm():
       '/clipboard/remember_secrets': False,
       '/requester/cancel_button': None,
       '/requester/auth_method_options': None,
+      '/requester/include_empty_items': True,
     }
     
   
@@ -806,6 +808,7 @@ class RequesterForm(CfiForm):
       09/08/2024 (mpham) les requêtes peuvent ne pas avoir de paramètres
       24/08/2024 (mpham) mise à disposition de cfiForm dans le request data generator
       24/08/2024 (mpham) ajout des modifying_fields indiquant les champs qui déclenchent une modification de la requête
+      27/11/2024 (mpham) prise en compte de l'option /requester/include_empty_items qui permet de ne pas inclure dans le contenu du formulaire les valeurs vides
     """
 
     self._append_requester()
@@ -890,6 +893,7 @@ class RequesterForm(CfiForm):
     
     self.javascript += """
       // Valeurs des paramètres
+      console.log("Hello");
       let paramValues = {};
     """
     if self.request_parameters == {}:
@@ -897,16 +901,39 @@ class RequesterForm(CfiForm):
       for template_item in self.template:
         if template_item['holds_value'] and not template_item['id'].startswith('hr'):
           self.javascript += """
-      paramValues."""+template_item['id']+""" = getFormValue('"""+self.form_uuid+"""', '"""+template_item['id']+"""');
+      let paramValue = getFormValue('"""+self.form_uuid+"""', '"""+template_item['id']+"""');
       """
+        if not self.options['/requester/include_empty_items']:
+          self.javascript += """
+            if (paramValue != '') {
+            """
+        self.javascript += """
+          paramValues."""+template_item['id']+""" = paramValue;
+          """
+        if not self.options['/requester/include_empty_items']:
+          self.javascript += """
+            }
+            """
     elif self.request_parameters is None:
       # Requête sans paramètres
       pass
     else:
       # les paramètres sont été donnés par set_request_parameters()
       for param, value in self.request_parameters.items():
-        self.javascript += """paramValues."""+param+""" = """+self.transpose_expression_to_javascript(value)+""";
+        self.javascript += """
+          paramValue = """+self.transpose_expression_to_javascript(value)+""";
+          """
+        if not self.options['/requester/include_empty_items']:
+          self.javascript += """
+            if (paramValue != '') {
+            """
+        self.javascript += """
+          paramValues."""+param+""" = paramValue;
         """
+        if not self.options['/requester/include_empty_items']:
+          self.javascript += """
+            }
+            """
 
     if self.data_generator:
       # on a fourni du code Javascript pour retraiter les données
