@@ -53,6 +53,7 @@ class OAuthClientLogin(FlowHandler):
 
     Versions:
       23/08/2024 (mpham) version initiale copiée d'OIDC
+      28/11/2024 (mpham) on modifiait l'objet de configuration, de manière permanente s'il était enregistré par la suite
     """
 
     self.log_info('--- Start OAuth 2 flow ---')
@@ -68,7 +69,7 @@ class OAuthClientLogin(FlowHandler):
         return
       else:
         # Nouvelle requête
-        idp = self.conf['idps'][idp_id]
+        idp = copy.deepcopy(self.conf['idps'][idp_id])
         idp_params = idp['idp_parameters']['oauth2']
         idp_params['name'] = idp['name']
         app_params = idp['oauth2_clients'][app_id]

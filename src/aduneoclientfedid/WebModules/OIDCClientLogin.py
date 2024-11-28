@@ -72,6 +72,7 @@ class OIDCClientLogin(FlowHandler):
       03/08/2023 (mpham) on achève le passage en page continuous
       08/08/2024 (mpham) récriture avec RequesterForm et nouvelle configuration
       27/11/2024 (mpham) on n'envoie pas les éléments vides du formulaire (Keycloak tombe en erreur sinon)
+      28/11/2024 (mpham) on modifiait l'objet de configuration, de manière permanente s'il était enregistré par la suite
     """
 
     self.log_info('--- Start OpenID Connect flow ---')
@@ -87,7 +88,7 @@ class OIDCClientLogin(FlowHandler):
         return
       else:
         # Nouvelle requête
-        idp = self.conf['idps'][idp_id]
+        idp = copy.deepcopy(self.conf['idps'][idp_id])
         idp_params = idp['idp_parameters']['oidc']
         idp_params['name'] = idp['name']
         app_params = idp['oidc_clients'][app_id]
