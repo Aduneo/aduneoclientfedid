@@ -61,6 +61,7 @@ class Context(dict):
         '<timestamp de l'obtention du jeton>': {
           'name': '<nom du jeton';
           'type': 'id_token', 
+          'app_id': '<app id du client ayant obtenu les jetons>',
           'id_token': '<jeton d'identité>',
           'access_token': '<jeton d'accès associé, s'il est retourné>',
           'refresh_token': '<jeton de rafraîchissement du jeton d'accès associé, s'il est retourné>',
@@ -70,6 +71,7 @@ class Context(dict):
         '<timestamp de l'obtention du jeton>': {
           'name': '<nom du jeton';
           'type': 'access_token', 
+          'app_id': '<app id du client ayant obtenu les jetons>',
           'access_token': '<jeton d'accès associé, s'il est retourné>',
           'refresh_token': '<jeton de rafraîchissement du jeton d'accès associé, s'il est retourné>',
         }
@@ -89,6 +91,7 @@ class Context(dict):
   Versions:
     08/08/2024 (mpham) version initiale
     05/09/2024 (mpham) refonte du contexte et intégration des paramètres de la dernière introspection
+    28/11/2024 (mpham) on ajoute l'app ayant obtenu le jeton d'accès pour pouvoir le rafraîchir
   """
 
   def __init__(self):

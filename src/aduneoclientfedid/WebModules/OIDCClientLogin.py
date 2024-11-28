@@ -329,12 +329,13 @@ class OIDCClientLogin(FlowHandler):
   def callback(self):
     """ Retour d'authentification depuis l'IdP
     
-      Versions:
-        14/09/2022 (mpham) version initiale
-        22/12/2023 (mpham) utilisation de JWT pour la vérification de signature afin de pouvoir choisir la bibliothèque de validation
-        05/08/2024 (mpham) adaptation aux pages continues
-        09/08/2024 (mpham) nouvelle gestion du contexte
-        04/09/2024 (mpham) récupération du jeton de raraichissement du jeton d'accès
+    Versions:
+      14/09/2022 (mpham) version initiale
+      22/12/2023 (mpham) utilisation de JWT pour la vérification de signature afin de pouvoir choisir la bibliothèque de validation
+      05/08/2024 (mpham) adaptation aux pages continues
+      09/08/2024 (mpham) nouvelle gestion du contexte
+      04/09/2024 (mpham) récupération du jeton de raraichissement du jeton d'accès
+      28/11/2024 (mpham) dans le contexte, on ajoute l'identifiant du client ayant récupéré les jetons
     """
 
     self.add_javascript_include('/javascript/resultTable.js')
@@ -638,7 +639,7 @@ class OIDCClientLogin(FlowHandler):
       # Enregistrement des jetons dans la session pour manipulation ultérieure
       #   Les jetons sont indexés par timestamp d'obtention
       token_name = 'Authn OIDC '+app_params['name']+' - '+time.strftime("%H:%M:%S", time.localtime())
-      token = {'name': token_name, 'type': 'id_token', 'id_token': id_token}
+      token = {'name': token_name, 'type': 'id_token', 'app_id': app_id, 'id_token': id_token}
       if op_access_token:
         token['access_token'] = op_access_token
       if op_refresh_token:

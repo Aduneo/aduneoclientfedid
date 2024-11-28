@@ -173,6 +173,7 @@ class WebTest(BaseHandler):
       })
     form.set_option('/clipboard/remember_secrets', True)
     form.set_option('/requester/auth_method_options', ['none', 'basic', 'form'])
+    form.set_option('/requester/include_empty_items', False)
       
 
     self.add_html(form.get_html())

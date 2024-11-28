@@ -333,7 +333,7 @@ class OAuthClientLogin(FlowHandler):
     Versions:
       14/09/2022 (mpham) version initiale
       28/11/2024 (mpham) certificate verification is now a configuration parameter attached to the IDP and not the APP
-    
+      28/11/2024 (mpham) dans le contexte, on ajoute l'identifiant du client ayant récupéré les jetons
     """
   
     self.add_javascript_include('/javascript/resultTable.js')
@@ -569,7 +569,7 @@ class OAuthClientLogin(FlowHandler):
       # Enregistrement des jetons dans la session pour manipulation ultérieure
       #   Les jetons sont indexés par timestamp d'obtention
       token_name = 'Authz OAuth2 '+app_params['name']+' - '+time.strftime("%H:%M:%S", time.localtime())
-      token = {'name': token_name, 'type': 'access_token', 'access_token': access_token}
+      token = {'name': token_name, 'type': 'access_token', 'app_id': app_id, 'access_token': access_token}
       if refresh_token:
         token['refresh_token'] = refresh_token
       self.context['access_tokens'][str(time.time())] = token
