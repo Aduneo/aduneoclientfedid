@@ -554,7 +554,7 @@ CfiForm.prototype.getThisFieldValue = function () {
 
 
 CfiForm.prototype.setThisFieldValue = function (value) {
-  this.setFieldValue(this.getThisField(), value);
+  this.setFieldValue(this.thisFieldId, value);
 };
 
 
