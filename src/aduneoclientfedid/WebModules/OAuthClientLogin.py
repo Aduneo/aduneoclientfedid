@@ -54,6 +54,7 @@ class OAuthClientLogin(FlowHandler):
     Versions:
       23/08/2024 (mpham) version initiale copiée d'OIDC
       28/11/2024 (mpham) on modifiait l'objet de configuration, de manière permanente s'il était enregistré par la suite
+      28/11/2024 (mpham) on n'envoie pas les éléments vides du formulaire (Keycloak tombe en erreur sinon)
     """
 
     self.log_info('--- Start OAuth 2 flow ---')
@@ -243,6 +244,7 @@ class OAuthClientLogin(FlowHandler):
       }
       return paramValues;
     """)
+    form.set_option('/requester/include_empty_items', False)
 
     self.add_html(form.get_html())
     self.add_javascript(form.get_javascript())
