@@ -329,8 +329,11 @@ class OAuthClientLogin(FlowHandler):
         
       Regarde le flow correspondant au state retourné pour faire un simple routage vers
       - callback_flow_code_spa (Authorization Code et Authorization Code with PKCE)
-      
-    mpham 14/09/2022
+    
+    Versions:
+      14/09/2022 (mpham) version initiale
+      28/11/2024 (mpham) certificate verification is now a configuration parameter attached to the IDP and not the APP
+    
     """
   
     self.add_javascript_include('/javascript/resultTable.js')
@@ -416,7 +419,7 @@ class OAuthClientLogin(FlowHandler):
       self.log_info("Start fetching token")
       try:
         self.log_info(('  ' * 1)+"sending request to "+token_endpoint)
-        verify_certificates = Configuration.is_on(app_params.get('verify_certificates', 'on'))
+        verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
         self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
         r = requests.post(token_endpoint, api_call_data, auth=auth, verify=verify_certificates)
       except Exception as error:
@@ -484,7 +487,7 @@ class OAuthClientLogin(FlowHandler):
               self.end_result_table()
               self.add_html('<div class="intertable">Fetching public keys...</div>')
               try:
-                verify_certificates = Configuration.is_on(app_params.get('verify_certificates', 'on'))
+                verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
                 self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
                 r = requests.get(idp_params['jwks_uri'], verify=verify_certificates)
               except Exception as error:
