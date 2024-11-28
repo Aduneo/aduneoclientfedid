@@ -893,7 +893,6 @@ class RequesterForm(CfiForm):
     
     self.javascript += """
       // Valeurs des paramètres
-      console.log("Hello");
       let paramValues = {};
     """
     if self.request_parameters == {}:
