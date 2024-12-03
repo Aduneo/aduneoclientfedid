@@ -1137,6 +1137,7 @@ class RequesterForm(CfiForm):
       Versions:
         00/12/2023 (mpham) version initiale
         30/08/2024 (mpham) liste des méthodes d'authentification dans l'option /requester/auth_method_options
+        03/12/2024 (mpham) les champs auth_login et auth_secret ne sont plus affichés en authentification de type form
     """
     
     if not self._requester_appened:
@@ -1153,8 +1154,8 @@ class RequesterForm(CfiForm):
         'hr_body_format': "@[hr_form_method] = 'post' or @[hr_form_method] = 'redirect'",
         'hr_request_data': "@[hr_form_method] = 'post' or @[hr_form_method] = 'redirect'",
         'hr_auth_method': "True",
-        'hr_auth_login': "@[hr_auth_method] = 'basic' or @[hr_auth_method] = 'form' or @[hr_auth_method] = 'bearer_token'",
-        'hr_auth_secret': "@[hr_auth_method] = 'basic' or @[hr_auth_method] = 'form'",
+        'hr_auth_login': "@[hr_auth_method] = 'basic' or @[hr_auth_method] = 'bearer_token'",
+        'hr_auth_secret': "@[hr_auth_method] = 'basic'",
         'hr_auth_login_param': "@[hr_auth_method] = 'form' and (@[hr_form_method] = 'post' or @[hr_form_method] = 'redirect')",
         'hr_auth_secret_param': "@[hr_auth_method] = 'form' and (@[hr_form_method] = 'post' or @[hr_form_method] = 'redirect')",
         'hr_verify_certificates': "True",
