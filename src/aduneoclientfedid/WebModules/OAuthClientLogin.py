@@ -439,10 +439,61 @@ class OAuthClientLogin(FlowHandler):
       
       if 'access_token' not in response:
         raise AduneoError(self.log_error('access token not found in response'))
-      
+
+      # Affichage des jetons d'accès et de rafraîchissement
       access_token = response['access_token']
-      self.add_result_row('Access Token', access_token, 'access_token')
       refresh_token = response.get('refresh_token')
+      self.display_tokens(access_token, refresh_token, idp_params, client_secret)
+      
+      # Nonce verification
+      idp_nonce = response.get('nonce')
+      if idp_nonce:
+        session_nonce = request['nonce']
+        if session_nonce == idp_nonce:
+          self.log_info("Nonce verification OK: "+session_nonce)
+          self.add_result_row('Nonce verification', 'OK: '+session_nonce, 'nonce_verification')
+        else:
+          self.log_error(('  ' * 1)+"Nonce verification failed")
+          self.log_error(('  ' * 2)+"client nonce: "+session_nonce)
+          self.log_error(('  ' * 2)+"IdP nonce   :"+idp_nonce)
+          self.add_result_row('Nonce verification', "Failed\n  client nonce: "+session_nonce+"\n  IdP nonce: "+idp_nonce, 'nonce_verification')
+          raise AduneoError('nonce verification failed')
+
+      else:
+        self.log_info('No nonce in response')
+
+      self.end_result_table()
+
+      # Enregistrement des jetons dans la session pour manipulation ultérieure
+      #   Les jetons sont indexés par timestamp d'obtention
+      token_name = 'Authz OAuth2 '+app_params['name']+' - '+time.strftime("%H:%M:%S", time.localtime())
+      token = {'name': token_name, 'type': 'access_token', 'app_id': app_id, 'access_token': access_token}
+      if refresh_token:
+        token['refresh_token'] = refresh_token
+      self.context['access_tokens'][str(time.time())] = token
+
+    except AduneoError as error:
+      if self.is_result_in_table():
+        self.end_result_table()
+      self.add_html('<h4>Authorization failed: '+html.escape(str(error))+'</h4>')
+      if error.explanation_code:
+        self.add_html(Explanation.get(error.explanation_code))
+    except Exception as error:
+      if self.is_result_in_table():
+        self.end_result_table()
+      self.log_error(('  ' * 1)+traceback.format_exc())
+      self.add_html('<h4>Authorization failed: '+html.escape(str(error))+'</h4>')
+
+    self.log_info('--- End OAuth 2 flow ---')
+
+    self.add_menu() 
+
+    self.send_page()
+
+
+  def display_tokens(self, access_token:str, refresh_token:str, idp_params:dict, client_secret:str):
+
+      self.add_result_row('Access Token', access_token, 'access_token')
       if refresh_token:
         self.add_result_row('Refresh token', refresh_token, 'refresh_token')
 
@@ -546,53 +597,6 @@ class OAuthClientLogin(FlowHandler):
           # Pas de vérification de signature du RT (aucun besoin, le RT est uniquement à renvoyer à l'IdP)
         else:
           self.add_result_row('Refresh Token Type', 'opaque')
-      
-      # Nonce verification
-      idp_nonce = response.get('nonce')
-      if idp_nonce:
-        session_nonce = request['nonce']
-        if session_nonce == idp_nonce:
-          self.log_info("Nonce verification OK: "+session_nonce)
-          self.add_result_row('Nonce verification', 'OK: '+session_nonce, 'nonce_verification')
-        else:
-          self.log_error(('  ' * 1)+"Nonce verification failed")
-          self.log_error(('  ' * 2)+"client nonce: "+session_nonce)
-          self.log_error(('  ' * 2)+"IdP nonce   :"+idp_nonce)
-          self.add_result_row('Nonce verification', "Failed\n  client nonce: "+session_nonce+"\n  IdP nonce: "+idp_nonce, 'nonce_verification')
-          raise AduneoError('nonce verification failed')
-
-      else:
-        self.log_info('No nonce in response')
-
-      self.end_result_table()
-
-      # Enregistrement des jetons dans la session pour manipulation ultérieure
-      #   Les jetons sont indexés par timestamp d'obtention
-      token_name = 'Authz OAuth2 '+app_params['name']+' - '+time.strftime("%H:%M:%S", time.localtime())
-      token = {'name': token_name, 'type': 'access_token', 'app_id': app_id, 'access_token': access_token}
-      if refresh_token:
-        token['refresh_token'] = refresh_token
-      self.context['access_tokens'][str(time.time())] = token
-
-    except AduneoError as error:
-      if self.is_result_in_table():
-        self.end_result_table()
-      self.add_html('<h4>Authorization failed: '+html.escape(str(error))+'</h4>')
-      if error.explanation_code:
-        self.add_html(Explanation.get(error.explanation_code))
-    except Exception as error:
-      if self.is_result_in_table():
-        self.end_result_table()
-      self.log_error(('  ' * 1)+traceback.format_exc())
-      self.add_html('<h4>Authorization failed: '+html.escape(str(error))+'</h4>')
-
-    self.log_info('--- End OAuth 2 flow ---')
-
-    self.add_menu() 
-
-    self.send_page()
-
-
 
 
 

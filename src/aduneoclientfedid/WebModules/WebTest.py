@@ -43,6 +43,7 @@ class WebTest(BaseHandler):
     self.add_html('<a href="listonchange">Closed list on change</a><br>')
     self.add_html('<a href="textonload">Text on load</a><br>')
     self.add_html('<a href="datagenerator">Request Data Generator</a><br>')
+    self.add_html('<a href="tables">Tables</a><br>')
 
 
   @register_page_url(url='cfiform', method='GET', template='page_default.html')
@@ -652,3 +653,75 @@ class WebTest(BaseHandler):
     self.add_javascript(form.get_javascript())
     self.send_page()
 
+
+  @register_page_url(url='tables', method='GET', template='page_default.html', continuous=True)
+  def tables(self):
+
+    refresh_tokens = {
+      '0': 'Direct Input',
+      'token1': 'Token 1 - 03/12/2024',
+      'token2': 'Token 2 - 03/12/2024',
+      'token3': 'Token 3 - 03/12/2024',
+      }
+    default_refresh_token = '0'
+
+    token_clients = {
+      '0': '',
+      'token1': 'client1',
+      'token2': 'client2',
+      'token3': 'client1',
+      }
+
+    form_content = {
+      'refresh_token': default_refresh_token,
+      'grant_type': 'refresh_token',
+      'scope': '',
+      }
+    
+    form = RequesterForm('refresh', form_content, mode='new_page', request_url='@[token_endpoint]') \
+      .text('token_endpoint', label='Token endpoint', clipboard_category='token_endpoint') \
+      .closed_list('refresh_token', label='Refresh Token', 
+        values = refresh_tokens,
+        default = default_refresh_token,
+        on_change = """let value = cfiForm.getThisFieldValue(); 
+          cfiForm.setFieldValue('client_id', cfiForm.getTable('token_clients')[value]);
+          cfiForm.setFieldValue('client_secret', '');
+          """,
+        ) \
+      .text('grant_type', label='Grant type', clipboard_category='grant_type') \
+      .text('scope', label='Scope', clipboard_category='scope') \
+      .closed_list('auth_method', label='Authn. Method', 
+        values = {'none': 'None', 'basic': 'Basic', 'form': 'Form'},
+        default = 'basic'
+        ) \
+      .text('client_id', label='Client ID', clipboard_category='client_id') \
+      .password('client_secret', label='Client secret', clipboard_category='client_secret!') \
+
+    form.set_table('token_clients', token_clients)
+    form.set_request_parameters({
+        'refresh_token': '@[refresh_token]',
+        'grant_type': '@[grant_type]',
+        'scope': '@[scope]',
+      }) 
+    form.modify_http_parameters({
+      'request_url': '@[token_endpoint]',
+      'form_method': 'post',
+      'body_format': 'x-www-form-urlencoded',
+      'verify_certificates': True,
+      'auth_method': '@[auth_method]',
+      'auth_login': '@[client_id]',
+      'auth_secret': '@[client_secret]',
+      })
+    form.modify_visible_requester_fields({
+      'request_url': True,
+      'request_data': True,
+      'body_format': False,
+      'form_method': False,
+      'auth_method': True,
+      'verify_certificates': True,
+      })
+    form.set_option('/requester/include_empty_items', False)
+
+    self.add_html(form.get_html())
+    self.add_javascript(form.get_javascript())
+    self.send_page()

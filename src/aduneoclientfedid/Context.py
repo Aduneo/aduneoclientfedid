@@ -115,6 +115,7 @@ class Context(dict):
           '<timestamp de l'obtention du jeton>': {
             'name': '<nom du jeton';
             'type': 'access_token', 
+            'app_id': '<app id du client ayant obtenu les jetons>',
             'access_token': '<jeton d'accès associé, s'il est retourné>',
             'refresh_token': '<jeton de rafraîchissement du jeton d'accès associé, s'il est retourné>',
           },
@@ -165,6 +166,19 @@ class Context(dict):
       05/09/2024 (mpham) version initiale
     """
     return self['idp_params']
+
+
+  @property
+  def app_params(self) -> dict:
+    """ Retourne le dictionnaire des clients, donnant accès aux paramètres des applications correspondantes
+    
+    Returns:
+      dict
+          
+    Versions:
+      03/12/2024 (mpham) version initiale
+    """
+    return self['app_params']
 
 
   @property

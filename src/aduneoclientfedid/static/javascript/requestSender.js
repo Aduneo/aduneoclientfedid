@@ -190,11 +190,18 @@ function reinitFormRequest(domId) {
   
   let fields = document.querySelectorAll('input.'+domId);
   fields.forEach((field) => {
-    field.value = field.defaultValue
-    field.checked = field.defaultChecked
+    field.value = field.defaultValue;
+    field.checked = field.defaultChecked;
   });
+  fields = document.querySelectorAll('textarea.'+domId);
+  fields.forEach((field) => {
+    field.value = field.defaultValue;
+  });
+  
 
-  eval('initForm_'+domId+'()')
+  eval('initForm_'+domId+'()');
+  eval('if (typeof updateRequest_'+domId+' === "function") { updateRequest_'+domId+'(); }');
+  
 
   /*
   document.getElementById(domId+'_d_url').value = document.getElementById(domId+'_d_url').defaultValue
@@ -572,5 +579,11 @@ CfiForm.prototype.setFieldValue = function (fieldId, value) {
     field.dispatchEvent(new Event('change'));
   }
 };
+
+
+CfiForm.prototype.getTable = function (tableId) {
+  eval("var tables = tables_"+this.formId);
+  return tables[tableId];
+}
 
 

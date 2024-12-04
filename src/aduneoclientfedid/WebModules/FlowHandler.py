@@ -547,7 +547,7 @@ class FlowHandler(BaseHandler):
       if introspection:
         self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/introspection/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Introspect AT</span>')
       if refresh:
-        self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/refreshtoken_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Refresh AT</span>')
+        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/refresh/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Refresh AT</span>')
       if token_exchange:
         self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Exchange Token</span>')
       if oauth_exchange:

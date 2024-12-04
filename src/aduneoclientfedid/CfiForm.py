@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 import html
+import json
 import requests
 import uuid
 
@@ -66,9 +67,20 @@ class CfiForm():
   L'inclusion dans une page se fait donc naturellement par
     self.add_html(form.get_html())
     self.add_javascript(form.get_javascript())
+    
+  On peut fournir au formulaire des données accessible au Javascript au travers des tables.
+    form.set_table('token_clients', {'0': 'client1', '19': 'client2'})
+  
+    on_change = ""let value = cfiForm.getThisFieldValue(); 
+      cfiForm.setFieldValue('client_id', cfiForm.getTable('token_clients')[value]);
+      cfiForm.setFieldValue('client_secret', '');
+      "",
+    ) \
+    (mettre 3 guillemets au lieu de 2)
   
   Versions:
     27/12/2023 (mpham) version initiale
+    03/12/2024 (mpham) ajout des tables : dictionnaires clé / valeur utilisables par le Javascript (on_change en particulier)
   """
 
   def __init__(self, form_id:str, content:dict, action:str=None, mode:str='new_page', submit_label:str=None):
@@ -87,6 +99,7 @@ class CfiForm():
       27/12/2023 (mpham) version initiale
       30/08/2024 (mpham) options /requester/auth_method_options
       27/11/2024 (mpham) option /requester/include_empty_items qui indique si le contenu du formulaire doit contenir les éléments sans valeur
+      03/12/2024 (mpham) tables contenant des valeurs exploitables par le Javascript
     """
   
     self.form_id = form_id
@@ -101,6 +114,7 @@ class CfiForm():
     # Contenu
     self.title = None
     self.content = content
+    self.tables = {}
     
     # Pour génération HTML et Javascript
     self.html = None
@@ -195,6 +209,19 @@ class CfiForm():
     raw_html['html'] = html
     return self
 
+  def set_table(self, table_id:str, table:dict):
+    """ Ajoute une table au formulaire
+    
+    Args:
+      table_id: un identifiant permettant au Javascript de récupérer la table
+      table: la table en tant que telle, dont les valeurs sont libres, mais doivent être représentables par du JSON
+      
+    Versions:
+      03/12/2024 (mpham) version initiale
+    """
+    
+    self.tables[table_id] = table
+    
 
   def get_html(self):
 
@@ -254,6 +281,7 @@ class CodeGenerator():
     """
       Versions:
         11/08/2024 (mpham) événement onchange
+        12/03/2024 (mpham) tables contenant des valeurs accessibles au Javascript
     """
 
     self.html = '<form id="form-'+self.form.form_uuid+'" method="POST" {action}">'.format(
@@ -318,6 +346,13 @@ class CodeGenerator():
     
     self.html += '</form>'
 
+    # Pour le Javascript, on commence par ajouter les tables pour que les données soient tout de suite disponibles
+    self.javascript += f"""var tables_{self.form.form_uuid} = [];
+    """
+    for table_id, table in self.form.tables.items():
+      self.javascript += f"""tables_{self.form.form_uuid}['{table_id}'] = {json.dumps(table)};
+      """
+
     # Ajoute les listeners pour affichage/masquage des champs en fonction des choix de l'utilisateur (modification de SELECT)
     self.javascript += "{select_array}".format(select_array=self.selects_with_triggers)
     self.javascript += """.forEach(selectId => {
@@ -347,7 +382,8 @@ class CodeGenerator():
     for template_item in self.form.template:
       if template_item.get('on_change'):
         self.javascript += "document.getElementById('"+self.form.form_uuid+'_d_'+template_item['id']+"').addEventListener('change', () => { cfiForm = new CfiForm('"+self.form.form_uuid+"', '"+template_item['id']+"'); "+template_item['on_change']+"      });";
-  
+ 
+ 
   def _generate_code_text(self, template_item:str):
 
     self._start_table()
@@ -417,6 +453,10 @@ class CodeGenerator():
   
   
   def _generate_code_textarea(self, template_item:str):
+    """
+      Versions:
+        03/12/2024 (mpham) la valeur était toujours vide
+    """
 
     self._start_table()
   
@@ -434,7 +474,7 @@ class CodeGenerator():
       copy_value_html = """<span class="cellimg"><img title="Copy value" onclick="copyFieldValue(this)" src="/images/copy.png"></span>"""
     
 
-    self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><textarea name="{field_id}" value="{value}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" rows={rows} {disabled}{clipboard_data}{readonly}></textarea></td><td>{clipboard_html}</td><td>{copy_value_html}</td></tr>'.format(
+    self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><textarea name="{field_id}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" rows={rows} {disabled}{clipboard_data}{readonly}>{value}</textarea></td><td>{clipboard_html}</td><td>{copy_value_html}</td></tr>'.format(
       form_uuid = self.form.form_uuid,
       tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
       input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
