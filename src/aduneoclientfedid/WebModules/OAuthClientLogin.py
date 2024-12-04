@@ -55,6 +55,7 @@ class OAuthClientLogin(FlowHandler):
       23/08/2024 (mpham) version initiale copiée d'OIDC
       28/11/2024 (mpham) on modifiait l'objet de configuration, de manière permanente s'il était enregistré par la suite
       28/11/2024 (mpham) on n'envoie pas les éléments vides du formulaire (Keycloak tombe en erreur sinon)
+      04/12/2024 (mpham) new auth : on conserve le contexte, mais on récupère les paramètres de la configuration
     """
 
     self.log_info('--- Start OAuth 2 flow ---')
@@ -64,27 +65,36 @@ class OAuthClientLogin(FlowHandler):
 
     fetch_configuration_document = False
 
+    new_auth = True
     if self.context is None:
       if idp_id is None or app_id is None:
         self.send_redirection('/')
         return
-      else:
-        # Nouvelle requête
-        idp = copy.deepcopy(self.conf['idps'][idp_id])
-        idp_params = idp['idp_parameters']['oauth2']
-        idp_params['name'] = idp['name']
-        app_params = idp['oauth2_clients'][app_id]
+    else:
+      new_auth = False
+    
+    if self.get_query_string_param('newauth'):
+      new_auth = True
 
+    if new_auth:
+      # Nouvelle requête
+      idp = copy.deepcopy(self.conf['idps'][idp_id])
+      idp_params = idp['idp_parameters']['oauth2']
+      idp_params['name'] = idp['name']
+      app_params = idp['oauth2_clients'][app_id]
+
+      # si le contexte existe, on le conserve (cas newauth)
+      if self.context is None:
         self.context = Context()
-        self.context['idp_id'] = idp_id
-        self.context['app_id'] = app_id
-        self.context['flow_type'] = 'OAuth2'
-        self.context['idp_params'] = idp_params
-        self.context['app_params'][app_id] = app_params
-        self.set_session_value(self.context['context_id'], self.context)
+      self.context['idp_id'] = idp_id
+      self.context['app_id'] = app_id
+      self.context['flow_type'] = 'OAuth2'
+      self.context['idp_params'] = idp_params
+      self.context['app_params'][app_id] = app_params
+      self.set_session_value(self.context['context_id'], self.context)
 
-        if idp_params.get('endpoint_configuration', 'Local configuration').casefold() == 'authorization server metadata uri':
-          fetch_configuration_document = True
+      if idp_params.get('endpoint_configuration', 'Local configuration').casefold() == 'authorization server metadata uri':
+        fetch_configuration_document = True
 
     else:
       # Rejeu de requête (conservée dans la session)

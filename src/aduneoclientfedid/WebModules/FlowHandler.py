@@ -75,6 +75,64 @@ class FlowHandler(BaseHandler):
     self.send_page()
   
   
+  @register_page_url(url='newauth', method='GET', continuous=True)
+  def new_auth(self):
+    """ Menu de nouvelle authentification auprès d'une application de l'IdP courant, en poursuite de contexte
+    
+    Versions:
+      04/12/2024 (mpham) version initiale
+    """
+    self.add_html("""<h2>New auth in same context</h2>""")
+    
+    idp_id = self.context.idp_id
+    idp = self.conf['idps'][idp_id]
+
+    if idp.get('oidc_clients'):
+      
+      self.add_html("""<div>OIDC Clients</div>""")          
+      for client_id in sorted(idp['oidc_clients'].keys()):
+        
+        client = idp['oidc_clients'][client_id]
+        self.add_html("""
+          <div>
+            <span>{name}</span>
+            <span><a href="/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
+          </div>
+          """.format(
+            name = html.escape(client.get('name', 'Client')),
+            idp_id = urllib.parse.quote_plus(idp_id),
+            app_id = urllib.parse.quote_plus(client_id),
+            context_id = self.context.context_id,
+          )
+        )
+
+    if idp.get('oauth2_clients'):
+        
+      self.add_html("""<div>OAuth 2 Clients</div>""")          
+      for client_id in sorted(idp['oauth2_clients'].keys()):
+        
+        client = idp['oauth2_clients'][client_id]
+        self.add_html("""
+          <div>
+            <span>{name}</span>
+            <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
+          </div>
+          """.format(
+            name = html.escape(client.get('name', 'Client')),
+            idp_id = urllib.parse.quote_plus(idp_id),
+            app_id = urllib.parse.quote_plus(client_id),
+            context_id = self.context.context_id,
+          )
+        )
+
+    dom_id = 'id'+str(uuid.uuid4())
+    self.add_html('<div id="'+html.escape(dom_id)+'">')
+    self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/cancelrequest?contextid='+urllib.parse.quote_plus(self.context.context_id)+'\', \'\', \''+dom_id+'\')" class="button">Cancel</span>')
+    self.add_html('</div>')
+    
+    self.send_page()
+  
+  
   def display_http_request(self, method:str, url:str, data:dict = None, auth_method:str = 'None', auth_login:str = None, sender_url:str = None, context:str = None, dom_id=None):
     """ Affiche un formulaire avec une requête HTTP à envoyer
          - soit pour afficher une page (directement par le navigateur)
@@ -541,7 +599,7 @@ class FlowHandler(BaseHandler):
       self.add_html('<div id="'+html.escape(dom_id)+'">')
       if retry_url:
         self.add_html('<span><a href="'+retry_url+'?contextid='+urllib.parse.quote_plus(context_id)+'&idpid='+urllib.parse.quote_plus(self.context.idp_id)+'&appid='+urllib.parse.quote_plus(self.context.app_id)+'" class="button">Retry original flow</a></span>')
-      self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oidc/flows/newauth?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">New auth</span>')
+      self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/newauth?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">New auth</span>')
       if userinfo:
         self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oidc/userinfo/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Userinfo</span>')
       if introspection:
