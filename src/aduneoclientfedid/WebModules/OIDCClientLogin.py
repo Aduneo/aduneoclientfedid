@@ -346,6 +346,7 @@ class OIDCClientLogin(FlowHandler):
       09/08/2024 (mpham) nouvelle gestion du contexte
       04/09/2024 (mpham) récupération du jeton de raraichissement du jeton d'accès
       28/11/2024 (mpham) dans le contexte, on ajoute l'identifiant du client ayant récupéré les jetons
+      23/12/2024 (mpham) les clés HMAC peuvent être données en JWK ou directement avec le secret
     """
 
     self.add_javascript_include('/javascript/resultTable.js')
@@ -538,6 +539,7 @@ class OIDCClientLogin(FlowHandler):
       elif alg.startswith('HS'):
         # Signature symétrique HMAC
         self.log_info('HMAC signature, the secret is client_secret')
+        self.add_result_row('Signature algorithm', f'Symmetric: {alg}', 'signature_algorithm')
         encoded_secret = base64.urlsafe_b64encode(str.encode(client_secret)).decode()
         key = {"alg":alg,"kty":"oct","use":"sig","kid":"1","k":encoded_secret}
         token_key = key
@@ -545,6 +547,7 @@ class OIDCClientLogin(FlowHandler):
       else:
         # Signature asymétrique
         self.log_info('Asymmetric signature, fetching public key')
+        self.add_result_row('Signature algorithm', f'Asymmetric: {alg}', 'signature_algorithm')
       
         # On regarde si on doit aller chercher les clés avec l'endpoint JWKS ou si la clé a été donnée localement
         if idp_params['signature_key_configuration'] == 'Local configuration':
@@ -600,27 +603,35 @@ class OIDCClientLogin(FlowHandler):
         jwt = JWT(id_token)
         jwt.is_signature_valid(token_key, raise_exception=True)
         self.log_info('Signature verification OK')
+        if alg.startswith('HS'):
+          self.add_result_row('Signature key', 'Client secret', copy_button=False)
         self.add_result_row('Signature verification', 'OK', copy_button=False)
       except Exception as error:
       
         default_case = True
         # Si on est en HS256, peut-être que le serveur a utilisé une clé autre que celle du client_secret (cas Keycloak)
-        if alg == 'HS256':
-          if idp_params['signature_key_configuration'] != 'Local configuration':
-            self.log_info('HS256 signature, client_secret not working. The server might have used another key. Put this key in configuration')
+        if alg.startswith('HS'):
+          if idp_params['signature_key_configuration'] != 'local_configuration':
+            self.log_info('HMAC signature (e.g HS256, HX512, etc.), client_secret not working. The server might have used another key. Put this key in configuration. Set Signature key configuration to Local configuration and enter the key in Signature key.')
           else:
             default_case = False
-            self.log_info('HS256 signature, client_secret not working, trying key from configuration')
+            self.log_info('HMAC signature (e.g HS256, HX512, etc.), client_secret not working, trying key from configuration')
             
             configuration_key = idp_params['signature_key']
             self.log_info('Configuration key:')
             self.log_info(configuration_key)
-            json_key = json.loads(configuration_key)
-          
-            token_key = json_key
+            
+            if configuration_key.startswith('{"'):
+              self.log_info(('  ' * 1)+"key seems to be in JWK format")
+              token_key = json.loads({"alg":alg,"kty":"oct","use":"sig","kid":"1","k":configuration_key})
+            else:
+              self.log_info(('  ' * 1)+"key not in JWK format, converting key to:")
+              token_key = {"alg":alg,"kty":"oct","use":"sig","kid":"1","k":configuration_key}
+              self.log_info(('  ' * 2)+json.dumps(token_key))
           
             try:
               jwt.is_signature_valid(token_key, raise_exception=True)
+              self.add_result_row('Signature key', 'Local configuration', copy_button=False)
               self.log_info('Signature verification OK')
               self.add_result_row('Signature verification', 'OK', copy_button=False)
             except Exception as error:
