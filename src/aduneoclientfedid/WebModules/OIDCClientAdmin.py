@@ -61,6 +61,12 @@ class OIDCClientAdmin(BaseHandler):
       
 
   def modify_single_display(self):
+    """ Modification des paramètres de l'IdP et du client sur la même page
+    
+    Versions:
+      10/08/2024 (mpham) version initiale
+      23/12/2024 (mpham) possibilité de donner la clé de vérification même en Discovery URI (pour entrer la clé HS256 de Keycloak qui n'est pas aux normes : https://github.com/keycloak/keycloak/issues/13823)
+    """
 
     idp_params = {}
     app_params = {}
@@ -112,27 +118,27 @@ class OIDCClientAdmin(BaseHandler):
       .text('name', label='Name') \
       .start_section('op_endpoints', title="OP endpoints") \
         .closed_list('endpoint_configuration', label='Endpoint configuration', 
-          values={'Discovery URI': 'Discovery URI', 'Local configuration': 'Local configuration'},
-          default = 'Discovery URI'
+          values={'discovery_uri': 'Discovery URI', 'local_configuration': 'Local configuration'},
+          default = 'discovery_uri'
           ) \
-        .text('discovery_uri', label='Discovery URI', clipboard_category='discovery_uri', displayed_when="@[endpoint_configuration] = 'Discovery URI'") \
-        .text('authorization_endpoint', label='Authorization endpoint', clipboard_category='authorization_endpoint', displayed_when="@[endpoint_configuration] = 'Local configuration'") \
-        .text('token_endpoint', label='Token endpoint', clipboard_category='token_endpoint', displayed_when="@[endpoint_configuration] = 'Local configuration'") \
-        .text('logout_endpoint', label='Logout endpoint', clipboard_category='logout_endpoint', displayed_when="@[endpoint_configuration] = 'Local configuration'") \
-        .text('userinfo_endpoint', label='Userinfo endpoint', clipboard_category='userinfo_endpoint', displayed_when="@[endpoint_configuration] = 'Local configuration'") \
+        .text('discovery_uri', label='Discovery URI', clipboard_category='discovery_uri', displayed_when="@[endpoint_configuration] = 'discovery_uri'") \
+        .text('authorization_endpoint', label='Authorization endpoint', clipboard_category='authorization_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
+        .text('token_endpoint', label='Token endpoint', clipboard_category='token_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
+        .text('logout_endpoint', label='Logout endpoint', clipboard_category='logout_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
+        .text('userinfo_endpoint', label='Userinfo endpoint', clipboard_category='userinfo_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
         .closed_list('userinfo_method', label='Userinfo Request Method',
           values = {'get': 'GET', 'post': 'POST'},
           default = 'get'
           ) \
       .end_section() \
-      .start_section('id_token_validation', title="ID token validation", displayed_when="@[endpoint_configuration] = 'Local configuration'") \
-        .text('issuer', label='Issuer', clipboard_category='issuer', displayed_when="@[endpoint_configuration] = 'Local configuration'") \
-        .closed_list('signature_key_configuration', label='Signature key configuration', displayed_when="@[endpoint_configuration] = 'Local configuration'",
-          values = {'JWKS URI': 'JWKS URI', 'Local configuration': 'Local configuration'},
-          default = 'jWKS URI'
+      .start_section('id_token_validation', title="ID token validation") \
+        .text('issuer', label='Issuer', clipboard_category='issuer', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
+        .closed_list('signature_key_configuration', label='Signature key configuration',
+          values = {'jwks_uri': 'JWKS URI', 'local_configuration': 'Local configuration'},
+          default = 'jwks_uri'
           ) \
-        .text('jwks_uri', label='JWKS URI', displayed_when="@[endpoint_configuration] = 'Local configuration' and @[signature_key_configuration] = 'JWKS URI'") \
-        .text('signature_key', label='Signature key', displayed_when="@[endpoint_configuration] = 'Local configuration' and @[signature_key_configuration] = 'Local configuration'") \
+        .text('jwks_uri', label='JWKS URI', displayed_when="@[endpoint_configuration] = 'local_configuration' and @[signature_key_configuration] = 'jwks_uri'") \
+        .text('signature_key', label='Signature key', displayed_when="@[signature_key_configuration] = 'local_configuration'") \
       .end_section() \
       .start_section('rp_endpoints', title="RP endpoints") \
         .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri',

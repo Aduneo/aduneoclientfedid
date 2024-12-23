@@ -74,6 +74,7 @@ class OAuthClientAdmin(BaseHandler):
     
     Versions:
       23/08/2024 (mpham) version initiale copiée de OIDC
+      23/12/2024 (mpham) les valeurs des select sont maintenant toutes des constantes du type metadata_uri et non plus des libellés comme Authorization Server Metadata URI
     """
 
     idp_params = {}
@@ -93,7 +94,7 @@ class OAuthClientAdmin(BaseHandler):
       'idp_id': idp_id,
       'app_id': app_id,
       'name': idp.get('name', ''),
-      'endpoint_configuration': idp_params.get('endpoint_configuration', 'Authorization Server Metadata URI'),
+      'endpoint_configuration': idp_params.get('endpoint_configuration', 'metadata_uri'),
       'metadata_uri': idp_params.get('metadata_uri', ''),
       'authorization_endpoint': idp_params.get('', ''),
       'token_endpoint': idp_params.get('', ''),
@@ -119,18 +120,18 @@ class OAuthClientAdmin(BaseHandler):
       .text('name', label='Name') \
       .start_section('as_endpoints', title="Authorization Server Endpoints") \
         .closed_list('endpoint_configuration', label='Endpoint configuration', 
-          values={'Authorization Server Metadata URI': 'Authorization Server Metadata URI', 'Local configuration': 'Local configuration'},
-          default = 'Authorization Server Metadata URI'
+          values={'metadata_uri': 'Authorization Server Metadata URI', 'local_configuration': 'Local configuration'},
+          default = 'metadata_uri'
           ) \
-        .text('metadata_uri', label='AS Metadata URI', clipboard_category='metadata_uri', displayed_when="@[endpoint_configuration] = 'Authorization Server Metadata URI'") \
-        .text('authorization_endpoint', label='Authorization endpoint', clipboard_category='authorization_endpoint', displayed_when="@[endpoint_configuration] = 'Local configuration'") \
-        .text('token_endpoint', label='Token endpoint', clipboard_category='token_endpoint', displayed_when="@[endpoint_configuration] = 'Local configuration'") \
-        .text('introspection_endpoint', label='Introspection endpoint', clipboard_category='introspection_endpoint', displayed_when="@[endpoint_configuration] = 'Local configuration'") \
+        .text('metadata_uri', label='AS Metadata URI', clipboard_category='metadata_uri', displayed_when="@[endpoint_configuration] = 'metadata_uri'") \
+        .text('authorization_endpoint', label='Authorization endpoint', clipboard_category='authorization_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
+        .text('token_endpoint', label='Token endpoint', clipboard_category='token_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
+        .text('introspection_endpoint', label='Introspection endpoint', clipboard_category='introspection_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
         .closed_list('introspection_method', label='Introspect. Request Method',
           values = {'get': 'GET', 'post': 'POST'},
           default = 'get'
           ) \
-        .text('revocation_endpoint', label='Revocation endpoint', clipboard_category='revocation_endpoint', displayed_when="@[endpoint_configuration] = 'Local configuration'") \
+        .text('revocation_endpoint', label='Revocation endpoint', clipboard_category='revocation_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
       .end_section() \
       .start_section('client_endpoints', title="Client Endpoints") \
         .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri',

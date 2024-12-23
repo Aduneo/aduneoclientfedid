@@ -111,7 +111,7 @@ class OIDCClientLogin(FlowHandler):
       self.context['app_params'][app_id] = app_params
       self.set_session_value(self.context['context_id'], self.context)
 
-      if idp_params.get('endpoint_configuration', 'Local configuration').casefold() == 'discovery uri':
+      if idp_params.get('endpoint_configuration', 'Local configuration').casefold() == 'discovery_uri':
         fetch_configuration_document = True
 
     else:

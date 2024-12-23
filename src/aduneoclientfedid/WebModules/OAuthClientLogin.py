@@ -56,6 +56,7 @@ class OAuthClientLogin(FlowHandler):
       28/11/2024 (mpham) on modifiait l'objet de configuration, de manière permanente s'il était enregistré par la suite
       28/11/2024 (mpham) on n'envoie pas les éléments vides du formulaire (Keycloak tombe en erreur sinon)
       04/12/2024 (mpham) new auth : on conserve le contexte, mais on récupère les paramètres de la configuration
+      23/12/2024 (mpham) les valeurs des select sont maintenant toutes des constantes du type metadata_uri et non plus des libellés comme Authorization Server Metadata URI
     """
 
     self.log_info('--- Start OAuth 2 flow ---')
@@ -93,7 +94,7 @@ class OAuthClientLogin(FlowHandler):
       self.context['app_params'][app_id] = app_params
       self.set_session_value(self.context['context_id'], self.context)
 
-      if idp_params.get('endpoint_configuration', 'Local configuration').casefold() == 'authorization server metadata uri':
+      if idp_params.get('endpoint_configuration', 'local_configuration') == 'metadata_uri':
         fetch_configuration_document = True
 
     else:

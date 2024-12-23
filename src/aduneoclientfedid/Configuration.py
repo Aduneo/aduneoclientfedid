@@ -521,6 +521,7 @@ class ConfCrypto():
     
     Versions
       08/08/2024 (mpham) version initiale
+      23/12/2024 (mpham) changement des valeurs de endpoint_configuration et signature_key_configuration (Discovery URI -> discovery_uri par exemple)
     """
     
     if not self.app_conf.get('idps'):
@@ -533,7 +534,15 @@ class ConfCrypto():
       v2_idp = {}
       for key in ['endpoint_configuration', 'discovery_uri', 'authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'signature_key_configuration', 'jwks_uri', 'signature_key', 'verify_certificates']:
         if v1_client.get(key):
-          v2_idp[key] = v1_client[key]
+          value = v1_client[key]
+          if key == 'endpoint_configuration' or key == 'signature_key_configuration':
+            if value == 'Discovery URI':
+              value = 'discovery_uri'
+            elif value == 'JWKS URI':
+              value = 'jwks_uri'
+            elif value == 'Local configuration':
+              value = 'local_configuration'
+          v2_idp[key] = value
       
       v2_client = {'name': 'OIDC Client'}
       for key in ['client_id', 'client_secret!', 'scope', 'response_type', 'redirect_uri', 'fetch_userinfo']:
@@ -561,6 +570,7 @@ class ConfCrypto():
     Versions
       08/08/2024 (mpham) version initiale
       23/08/2024 (mpham) en OAuth 2, la valeur Discovery URI de l'aiguillage de configuration des endpoints devient Authorization Server Metadata URI
+      23/12/2024 (mpham) changement des valeurs de endpoint_configuration et signature_key_configuration (Discovery URI -> metadata_uri par exemple)
     """
     
     if not self.app_conf.get('idps'):
@@ -581,7 +591,12 @@ class ConfCrypto():
           v2_idp[v2_key] = v1_client[key]
           
           if key == 'endpoint_configuration' and v1_client[key] == 'Discovery URI':
-            v2_idp[v2_key] = 'Authorization Server Metadata URI'
+            v2_idp[v2_key] = 'metadata_uri'
+          elif key == 'endpoint_configuration' or key == 'signature_key_configuration':
+            if value == 'JWKS URI':
+              v2_idp[v2_key] = 'jwks_uri'
+            elif value == 'Local configuration':
+              v2_idp[v2_key] = 'local_configuration'
       
       v2_client = {'name': 'OAuth2 Client'}
       for key in ['client_id', 'client_secret!', 'scope', 'response_type', 'redirect_uri']:
