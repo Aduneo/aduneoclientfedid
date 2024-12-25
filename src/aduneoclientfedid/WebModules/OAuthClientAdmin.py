@@ -75,10 +75,8 @@ class OAuthClientAdmin(BaseHandler):
     Versions:
       23/08/2024 (mpham) version initiale copiée de OIDC
       23/12/2024 (mpham) les valeurs des select sont maintenant toutes des constantes du type metadata_uri et non plus des libellés comme Authorization Server Metadata URI
+      25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
     """
-
-    idp_params = {}
-    app_params = {}
 
     idp_id = self.get_query_string_param('idpid', '')
     app_id = self.get_query_string_param('appid', '')
@@ -87,23 +85,24 @@ class OAuthClientAdmin(BaseHandler):
       idp = {'idp_parameters': {'oidc': {}}, 'oauth2_clients': {'client': {}}}
     if idp_id != '' and app_id != '':
       idp = self.conf['idps'][idp_id]
-      idp_params = idp['idp_parameters']['oauth2']
-      app_params = idp['oauth2_clients'][app_id]
+    idp_params = idp['idp_parameters']
+    oauth2_params = idp_params['oauth2']
+    app_params = idp['oauth2_clients'][app_id]
 
     form_content = {
       'idp_id': idp_id,
       'app_id': app_id,
       'name': idp.get('name', ''),
-      'endpoint_configuration': idp_params.get('endpoint_configuration', 'metadata_uri'),
-      'metadata_uri': idp_params.get('metadata_uri', ''),
-      'authorization_endpoint': idp_params.get('', ''),
-      'token_endpoint': idp_params.get('', ''),
-      'introspection_endpoint': idp_params.get('introspection_endpoint', ''),
-      'introspection_method': idp_params.get('introspection_method', 'get'),
-      'revocation_endpoint': idp_params.get('revocation_endpoint', ''),
-      'signature_key_configuration': idp_params.get('signature_key_configuration', 'jwks_uri'),
-      'jwks_uri': idp_params.get('jwks_uri', ''),
-      'signature_key': idp_params.get('signature_key', ''),
+      'endpoint_configuration': oauth2_params.get('endpoint_configuration', 'metadata_uri'),
+      'metadata_uri': oauth2_params.get('metadata_uri', ''),
+      'authorization_endpoint': oauth2_params.get('', ''),
+      'token_endpoint': oauth2_params.get('', ''),
+      'introspection_endpoint': oauth2_params.get('introspection_endpoint', ''),
+      'introspection_method': oauth2_params.get('introspection_method', 'get'),
+      'revocation_endpoint': oauth2_params.get('revocation_endpoint', ''),
+      'signature_key_configuration': oauth2_params.get('signature_key_configuration', 'jwks_uri'),
+      'jwks_uri': oauth2_params.get('jwks_uri', ''),
+      'signature_key': oauth2_params.get('signature_key', ''),
       'oauth_flow': app_params.get('oauth_flow', 'Authorization Code'),
       'pkce_method': app_params.get('pkce_method', 'S256'),
       'redirect_uri': app_params.get('redirect_uri', ''),
@@ -180,6 +179,7 @@ class OAuthClientAdmin(BaseHandler):
     
     Versions:
       23/08/2024 (mpham) version initiale copiée d'OIDC
+      25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
     """
     
     idp_id = self.post_form['idp_id']
@@ -191,7 +191,8 @@ class OAuthClientAdmin(BaseHandler):
       self.conf['idps'][idp_id] = {'idp_parameters': {'oauth2': {}}, 'oauth2_clients': {'client': {}}}
     
     idp = self.conf['idps'][idp_id]
-    idp_params = idp['idp_parameters']['oauth2']
+    idp_params = idp['idp_parameters']
+    oauth2_params = idp_params['oauth2']
     app_params = idp['oauth2_clients'][app_id]
     
     if self.post_form['name'] == '':
@@ -203,9 +204,9 @@ class OAuthClientAdmin(BaseHandler):
     for item in ['endpoint_configuration', 'metadata_uri', 'authorization_endpoint', 'token_endpoint', 
     'revocation_endpoint', 'introspection_endpoint', 'introspection_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
       if self.post_form.get(item, '') == '':
-        idp_params.pop(item, None)
+        oauth2_params.pop(item, None)
       else:
-        idp_params[item] = self.post_form[item].strip()
+        oauth2_params[item] = self.post_form[item].strip()
       
     for item in ['redirect_uri', 'client_id', 'oauth_flow', 'pkce_method', 'scope', 'response_type', 'token_endpoint_auth_method']:
       if self.post_form.get(item, '') == '':

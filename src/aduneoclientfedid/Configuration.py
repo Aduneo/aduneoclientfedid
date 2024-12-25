@@ -522,7 +522,7 @@ class ConfCrypto():
     Versions
       08/08/2024 (mpham) version initiale
       23/12/2024 (mpham) changement des valeurs de endpoint_configuration et signature_key_configuration (Discovery URI -> discovery_uri par exemple)
-      25/12/2024 (mpham) verify_certificates est remonté au biveau de idp_params
+      25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
     """
     
     if not self.app_conf.get('idps'):
@@ -573,7 +573,7 @@ class ConfCrypto():
       08/08/2024 (mpham) version initiale
       23/08/2024 (mpham) en OAuth 2, la valeur Discovery URI de l'aiguillage de configuration des endpoints devient Authorization Server Metadata URI
       23/12/2024 (mpham) changement des valeurs de endpoint_configuration et signature_key_configuration (Discovery URI -> metadata_uri par exemple)
-      25/12/2024 (mpham) verify_certificates est remonté au biveau de idp_params
+      25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
     """
     
     if not self.app_conf.get('idps'):
@@ -617,7 +617,6 @@ class ConfCrypto():
           'client': v2_client
         },
         'verify_certificates': v1_client.get(verify_certificates, 'on')
-        }
       }
       
       if v1_client.get('rs_client_id'):

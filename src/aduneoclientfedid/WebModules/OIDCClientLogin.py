@@ -74,6 +74,7 @@ class OIDCClientLogin(FlowHandler):
       27/11/2024 (mpham) on n'envoie pas les éléments vides du formulaire (Keycloak tombe en erreur sinon)
       28/11/2024 (mpham) on modifiait l'objet de configuration, de manière permanente s'il était enregistré par la suite
       04/12/2024 (mpham) new auth : on conserve le contexte, mais on récupère les paramètres de la configuration
+      25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
     """
 
     self.log_info('--- Start OpenID Connect flow ---')
@@ -98,8 +99,11 @@ class OIDCClientLogin(FlowHandler):
       # Nouvelle requête
       idp = copy.deepcopy(self.conf['idps'][idp_id])
       idp_params = idp['idp_parameters']['oidc']
-      idp_params['name'] = idp['name']
       app_params = idp['oidc_clients'][app_id]
+
+      # On récupère name et verify_certificates des paramètres de l'IdP
+      idp_params['name'] = idp['name']
+      idp_params['verify_certificates'] = idp['idp_parameters']['verify_certificates']
 
       # si le contexte existe, on le conserve (cas newauth)
       if self.context is None:

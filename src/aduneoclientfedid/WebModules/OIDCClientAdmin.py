@@ -66,10 +66,8 @@ class OIDCClientAdmin(BaseHandler):
     Versions:
       10/08/2024 (mpham) version initiale
       23/12/2024 (mpham) possibilité de donner la clé de vérification même en Discovery URI (pour entrer la clé HS256 de Keycloak qui n'est pas aux normes : https://github.com/keycloak/keycloak/issues/13823)
+      25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
     """
-
-    idp_params = {}
-    app_params = {}
 
     idp_id = self.get_query_string_param('idpid', '')
     app_id = self.get_query_string_param('appid', '')
@@ -78,24 +76,25 @@ class OIDCClientAdmin(BaseHandler):
       idp = {'idp_parameters': {'oidc': {}}, 'oidc_clients': {'client': {}}}
     if idp_id != '' and app_id != '':
       idp = self.conf['idps'][idp_id]
-      idp_params = idp['idp_parameters']['oidc']
-      app_params = idp['oidc_clients'][app_id]
+    idp_params = idp['idp_parameters']
+    oidc_params = idp_params['oidc']
+    app_params = idp['oidc_clients'][app_id]
 
     form_content = {
       'idp_id': idp_id,
       'app_id': app_id,
       'name': idp.get('name', ''),
-      'endpoint_configuration': idp_params.get('endpoint_configuration', 'discovery_uri'),
-      'discovery_uri': idp_params.get('discovery_uri', ''),
-      'authorization_endpoint': idp_params.get('', ''),
-      'token_endpoint': idp_params.get('', ''),
-      'userinfo_endpoint': idp_params.get('userinfo_endpoint', ''),
-      'userinfo_method': idp_params.get('userinfo_method', 'get'),
-      'logout_endpoint': idp_params.get('logout_endpoint', ''),
-      'issuer': idp_params.get('issuer', ''),
-      'signature_key_configuration': idp_params.get('signature_key_configuration', 'discovery_uri'),
-      'jwks_uri': idp_params.get('jwks_uri', ''),
-      'signature_key': idp_params.get('signature_key', ''),
+      'endpoint_configuration': oidc_params.get('endpoint_configuration', 'discovery_uri'),
+      'discovery_uri': oidc_params.get('discovery_uri', ''),
+      'authorization_endpoint': oidc_params.get('', ''),
+      'token_endpoint': oidc_params.get('', ''),
+      'userinfo_endpoint': oidc_params.get('userinfo_endpoint', ''),
+      'userinfo_method': oidc_params.get('userinfo_method', 'get'),
+      'logout_endpoint': oidc_params.get('logout_endpoint', ''),
+      'issuer': oidc_params.get('issuer', ''),
+      'signature_key_configuration': oidc_params.get('signature_key_configuration', 'discovery_uri'),
+      'jwks_uri': oidc_params.get('jwks_uri', ''),
+      'signature_key': oidc_params.get('signature_key', ''),
       'redirect_uri': app_params.get('redirect_uri', ''),
       'post_logout_redirect_uri': app_params.get('post_logout_redirect_uri', ''),
       'client_id': app_params.get('client_id', ''),
@@ -202,6 +201,7 @@ class OIDCClientAdmin(BaseHandler):
       22/02/2023 (mpham) suppression des références à fetch_userinfo puisque l'appel à userinfo est désormais manuel
       10/08/2024 (mpham) version 2 de la configuration
       23/08/2024 (mpham) request parameters et strip des données du formulaire
+      25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
     """
     
     idp_id = self.post_form['idp_id']
@@ -213,7 +213,8 @@ class OIDCClientAdmin(BaseHandler):
       self.conf['idps'][idp_id] = {'idp_parameters': {'oidc': {}}, 'oidc_clients': {'client': {}}}
     
     idp = self.conf['idps'][idp_id]
-    idp_params = idp['idp_parameters']['oidc']
+    idp_params = idp['idp_parameters']
+    oidc_params = idp_params['oidc']
     app_params = idp['oidc_clients'][app_id]
     
     if self.post_form['name'] == '':
@@ -225,9 +226,9 @@ class OIDCClientAdmin(BaseHandler):
     for item in ['endpoint_configuration', 'discovery_uri', 'issuer', 'authorization_endpoint', 'token_endpoint', 
     'end_session_endpoint', 'userinfo_endpoint', 'userinfo_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
       if self.post_form.get(item, '') == '':
-        idp_params.pop(item, None)
+        oidc_params.pop(item, None)
       else:
-        idp_params[item] = self.post_form[item].strip()
+        oidc_params[item] = self.post_form[item].strip()
       
     for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'post_logout_redirect_uri',
     'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values']:

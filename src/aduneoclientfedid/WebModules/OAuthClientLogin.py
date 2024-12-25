@@ -57,6 +57,7 @@ class OAuthClientLogin(FlowHandler):
       28/11/2024 (mpham) on n'envoie pas les éléments vides du formulaire (Keycloak tombe en erreur sinon)
       04/12/2024 (mpham) new auth : on conserve le contexte, mais on récupère les paramètres de la configuration
       23/12/2024 (mpham) les valeurs des select sont maintenant toutes des constantes du type metadata_uri et non plus des libellés comme Authorization Server Metadata URI
+      25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
     """
 
     self.log_info('--- Start OAuth 2 flow ---')
@@ -81,8 +82,11 @@ class OAuthClientLogin(FlowHandler):
       # Nouvelle requête
       idp = copy.deepcopy(self.conf['idps'][idp_id])
       idp_params = idp['idp_parameters']['oauth2']
-      idp_params['name'] = idp['name']
       app_params = idp['oauth2_clients'][app_id]
+
+      # On récupère name et verify_certificates des paramètres de l'IdP
+      idp_params['name'] = idp['name']
+      idp_params['verify_certificates'] = idp['idp_parameters']['verify_certificates']
 
       # si le contexte existe, on le conserve (cas newauth)
       if self.context is None:
