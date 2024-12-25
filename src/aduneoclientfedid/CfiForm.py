@@ -224,10 +224,21 @@ class CfiForm():
     self.tables[table_id] = table
     
 
-  def get_html(self):
+  def get_html(self, display_only:bool=False):
+    """ Retourne le code HTML pour affichage du formulaire
+    
+    Args:
+      display_only: si True, fait un affichage simple sans possibilité de modifier les champs et sans boutons de validation
+      
+    Returns:
+      code HTML (sans le code Javascript)
+      
+    Versions:
+      25/12/2024 (mpham) ajout de display_only
+    """
 
     if self.html is None:
-      self._generate_code()
+      self._generate_code(display_only)
     
     return self.html
     
@@ -264,30 +275,60 @@ class CfiForm():
     return item
   
   
-  def _generate_code(self):
+  def _generate_code(self, display_only:bool=False):
+    """ Génère le code HTML et le Javascript pour affichage du formulaire
+    
+    Args:
+      display_only: si True, fait un affichage simple sans possibilité de modifier les champs et sans boutons de validation
+      
+    Versions:
+      25/12/2024 (mpham) ajout de display_only
+    """
 
-    code_generator = CodeGenerator(self)
+    code_generator = CodeGenerator(self, display_only)
     code_generator.generate()
     self.html = code_generator.html
     self.javascript = code_generator.javascript
 
 
 class CodeGenerator():
+  """ Génération du code HTML et du Javascript pour affichage d'un formulaire
   
-  def __init__(self, form):
+  Versions:
+    25/12/2024 (mpham) ajout de display_only
+  """
+  
+  def __init__(self, form, display_only:bool=False):
+    """ Constructeur
+    
+    Appelé par CfiForm:
+      code_generator = CodeGenerator(self, display_only)
+    où self représente l'objet CfiForm
+    
+    Args:
+      form: objet CfiForm à afficher
+      display_only: si True, fait un affichage simple sans possibilité de modifier les champs et sans boutons de validation
+      
+    Versions:
+      25/12/2024 (mpham) ajout de display_only
+    """
     self.form = form
+    self.display_only = display_only
 
   
   def generate(self):
     """
-      Versions:
-        11/08/2024 (mpham) événement onchange
-        12/03/2024 (mpham) tables contenant des valeurs accessibles au Javascript
+    Versions:
+      11/08/2024 (mpham) événement onchange
+      12/03/2024 (mpham) tables contenant des valeurs accessibles au Javascript
+      25/12/2024 (mpham) ajout de display_only
     """
 
-    self.html = '<form id="form-'+self.form.form_uuid+'" method="POST" {action}">'.format(
-      action = 'action="'+self.form.action+'"' if self.form.action else ''
-      )
+    self.html = ''
+    if not self.display_only:
+      self.html += '<form id="form-'+self.form.form_uuid+'" method="POST" {action}">'.format(
+        action = 'action="'+self.form.action+'"' if self.form.action else ''
+        )
     self.javascript = ''
     self.selects_with_triggers = []
     self.items_with_conditions = []
@@ -321,76 +362,82 @@ class CodeGenerator():
 
     self._end_table()
     
-    self.html += '<div id="'+html.escape(self.form.form_uuid)+'_button_bar">'
-    self.html += '<span class="middlebutton" onClick="reinitFormRequest(\''+html.escape(self.form.form_uuid)+'\')">Reinit request</span>'
+    if not self.display_only:
+      
+      self.html += '<div id="'+html.escape(self.form.form_uuid)+'_button_bar">'
+      self.html += '<span class="middlebutton" onClick="reinitFormRequest(\''+html.escape(self.form.form_uuid)+'\')">Reinit request</span>'
 
-    if self.form.mode == 'new_page':
-      label = self.form.submit_label
-      if label is None:
-        label = 'Send'
-      #self.html += f'<span class="middlebutton" onClick="document.getElementById(\'form-{html.escape(self.form.form_uuid)}\').submit();">{label}</span>'
-      self.html += f'<span class="middlebutton" onClick="sendToRequester_newPage(\'{html.escape(self.form.form_uuid)}\')">{label}</span>'
-    else:
-      label = self.form.submit_label
-      if label is None:
-        label = 'Send request'
-      self.html += f'<span class="middlebutton" onClick="sendToRequester_api(\'{html.escape(self.form.form_uuid)}\')">{label}</span>'
-      if self.form.options['/requester/cancel_button']:
-        self.html += f'<span class="middlebutton" onClick="cancelRequester_api(\'{html.escape(self.form.form_uuid)}\', \'{self.form.options["/requester/cancel_button"]}\')">Cancel</span>'
-    
-    #self.html += '<span class="middlebutton" onClick="cancelRequest(\''+html.escape(self.form.form_uuid)+'\', \''+html.escape(context)+'\')">Cancel</span>'
-    self.html += '</div>'
-    self.html += '<div id="'+html.escape(self.form.form_uuid)+'_send_notification" style="display: none;">'
-    self.html += '<h3>Sending request...</h3>'
-    self.html += '</div>'
-    
-    
-    self.html += '</form>'
+      if self.form.mode == 'new_page':
+        label = self.form.submit_label
+        if label is None:
+          label = 'Send'
+        #self.html += f'<span class="middlebutton" onClick="document.getElementById(\'form-{html.escape(self.form.form_uuid)}\').submit();">{label}</span>'
+        self.html += f'<span class="middlebutton" onClick="sendToRequester_newPage(\'{html.escape(self.form.form_uuid)}\')">{label}</span>'
+      else:
+        label = self.form.submit_label
+        if label is None:
+          label = 'Send request'
+        self.html += f'<span class="middlebutton" onClick="sendToRequester_api(\'{html.escape(self.form.form_uuid)}\')">{label}</span>'
+        if self.form.options['/requester/cancel_button']:
+          self.html += f'<span class="middlebutton" onClick="cancelRequester_api(\'{html.escape(self.form.form_uuid)}\', \'{self.form.options["/requester/cancel_button"]}\')">Cancel</span>'
+      
+      #self.html += '<span class="middlebutton" onClick="cancelRequest(\''+html.escape(self.form.form_uuid)+'\', \''+html.escape(context)+'\')">Cancel</span>'
+      self.html += '</div>'
+      self.html += '<div id="'+html.escape(self.form.form_uuid)+'_send_notification" style="display: none;">'
+      self.html += '<h3>Sending request...</h3>'
+      self.html += '</div>'
+      
+      self.html += '</form>'
 
-    # Pour le Javascript, on commence par ajouter les tables pour que les données soient tout de suite disponibles
-    self.javascript += f"""var tables_{self.form.form_uuid} = [];
-    """
-    for table_id, table in self.form.tables.items():
-      self.javascript += f"""tables_{self.form.form_uuid}['{table_id}'] = {json.dumps(table)};
+      # Pour le Javascript, on commence par ajouter les tables pour que les données soient tout de suite disponibles
+      self.javascript += f"""var tables_{self.form.form_uuid} = [];
       """
+      for table_id, table in self.form.tables.items():
+        self.javascript += f"""tables_{self.form.form_uuid}['{table_id}'] = {json.dumps(table)};
+        """
 
-    # Ajoute les listeners pour affichage/masquage des champs en fonction des choix de l'utilisateur (modification de SELECT)
-    self.javascript += "{select_array}".format(select_array=self.selects_with_triggers)
-    self.javascript += """.forEach(selectId => {
-      let select_element = document.getElementById('"""+self.form.form_uuid+"""_d_'+selectId);
-      select_element.addEventListener('change', () => {
-          update_form_visibility_"""+self.form.form_uuid+"""();
+      # Ajoute les listeners pour affichage/masquage des champs en fonction des choix de l'utilisateur (modification de SELECT)
+      self.javascript += "{select_array}".format(select_array=self.selects_with_triggers)
+      self.javascript += """.forEach(selectId => {
+        let select_element = document.getElementById('"""+self.form.form_uuid+"""_d_'+selectId);
+        select_element.addEventListener('change', () => {
+            update_form_visibility_"""+self.form.form_uuid+"""();
+        });
       });
-    });
+      
+      function update_form_visibility_"""+self.form.form_uuid+"""() {"""
+      for item_id in self.items_with_conditions:
+        self.javascript += "update_visibility_"+self.form.form_uuid+'_d_'+item_id+"();"
+      self.javascript += """
+      }
+      """
     
-    function update_form_visibility_"""+self.form.form_uuid+"""() {"""
-    for item_id in self.items_with_conditions:
-      self.javascript += "update_visibility_"+self.form.form_uuid+'_d_'+item_id+"();"
-    self.javascript += """
-    }
-    """
-  
-    # Ajoute le code Javascript appelé à l'initialisation du formulaire (mais aussi quand on clique sur le bouton de réinitialisation)
-    self.javascript += "function initForm_"+self.form.form_uuid+"() {"
-    for template_item in self.form.template:
-      if template_item.get('on_load'):
-        self.javascript += "cfiForm = new CfiForm('"+self.form.form_uuid+"', '"+template_item['id']+"'); "+template_item['on_load'] + ";";
-        # ORG self.javascript += template_item['on_load'].format(formItem="'"+self.form.form_uuid+"'", inputItem="document.getElementById('"+self.form.form_uuid+'_d_'+template_item['id']+"')") + "\n"
-    self.javascript += "}"
-    self.javascript += "initForm_"+self.form.form_uuid+"();"
-        
-    # Ajoute les listener onchange
-    for template_item in self.form.template:
-      if template_item.get('on_change'):
-        self.javascript += "document.getElementById('"+self.form.form_uuid+'_d_'+template_item['id']+"').addEventListener('change', () => { cfiForm = new CfiForm('"+self.form.form_uuid+"', '"+template_item['id']+"'); "+template_item['on_change']+"      });";
+      # Ajoute le code Javascript appelé à l'initialisation du formulaire (mais aussi quand on clique sur le bouton de réinitialisation)
+      self.javascript += "function initForm_"+self.form.form_uuid+"() {"
+      for template_item in self.form.template:
+        if template_item.get('on_load'):
+          self.javascript += "cfiForm = new CfiForm('"+self.form.form_uuid+"', '"+template_item['id']+"'); "+template_item['on_load'] + ";";
+          # ORG self.javascript += template_item['on_load'].format(formItem="'"+self.form.form_uuid+"'", inputItem="document.getElementById('"+self.form.form_uuid+'_d_'+template_item['id']+"')") + "\n"
+      self.javascript += "}"
+      self.javascript += "initForm_"+self.form.form_uuid+"();"
+          
+      # Ajoute les listener onchange
+      for template_item in self.form.template:
+        if template_item.get('on_change'):
+          self.javascript += "document.getElementById('"+self.form.form_uuid+'_d_'+template_item['id']+"').addEventListener('change', () => { cfiForm = new CfiForm('"+self.form.form_uuid+"', '"+template_item['id']+"'); "+template_item['on_change']+"      });";
  
  
   def _generate_code_text(self, template_item:str):
+    """
+    Versions:
+      25/12/2024 (mpham) ajout de display_only
+    """
 
     self._start_table()
   
     display = self._evaluate_display(template_item['displayed_when'])
-    self._add_display_javascript(template_item['id'], template_item['displayed_when'])
+    if not self.display_only:
+      self._add_display_javascript(template_item['id'], template_item['displayed_when'])
 
     clipboard_data = ''
     clipboard_html = ''
@@ -402,29 +449,40 @@ class CodeGenerator():
     if template_item.get('copy_value'):
       copy_value_html = """<span class="cellimg"><img title="Copy value" onclick="copyFieldValue(this)" src="/images/copy.png"></span>"""
     
-
-    self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><input type="text" name="{field_id}" value="{value}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" {disabled}{clipboard_data}{readonly}/></td><td>{clipboard_html}</td><td>{copy_value_html}</td></tr>'.format(
-      form_uuid = self.form.form_uuid,
-      tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
-      input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
-      label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
-      field_id = html.escape(template_item['id']),
-      value = html.escape(self.form.content.get(template_item['id'], '')),
-      display = 'table-row' if display else 'none',
-      disabled = 'disabled ' if not display else '',
-      clipboard_data = clipboard_data,
-      clipboard_html = clipboard_html,
-      copy_value_html = copy_value_html,
-      readonly = 'readonly' if template_item.get('readonly', False) else '',
-      )
+    if self.display_only:
+      self.html += '<tr style="display: {display}"><td>{label}</td><td>{value}</td><td></td><td></td></tr>'.format(
+        label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+        value = html.escape(self.form.content.get(template_item['id'], '')),
+        display = 'table-row' if display else 'none',
+        )
+    else:
+      self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><input type="text" name="{field_id}" value="{value}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" {disabled}{clipboard_data}{readonly}/></td><td>{clipboard_html}</td><td>{copy_value_html}</td></tr>'.format(
+        form_uuid = self.form.form_uuid,
+        tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
+        input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
+        label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+        field_id = html.escape(template_item['id']),
+        value = html.escape(self.form.content.get(template_item['id'], '')),
+        display = 'table-row' if display else 'none',
+        disabled = 'disabled ' if not display else '',
+        clipboard_data = clipboard_data,
+        clipboard_html = clipboard_html,
+        copy_value_html = copy_value_html,
+        readonly = 'readonly' if template_item.get('readonly', False) else '',
+        )
       
   
   def _generate_code_password(self, template_item:str):
+    """
+    Versions:
+      25/12/2024 (mpham) ajout de display_only
+    """
 
     self._start_table()
   
     display = self._evaluate_display(template_item['displayed_when'])
-    self._add_display_javascript(template_item['id'], template_item['displayed_when'])
+    if not self.display_only:
+      self._add_display_javascript(template_item['id'], template_item['displayed_when'])
 
     clipboard_data = ''
     clipboard_html = ''
@@ -436,33 +494,41 @@ class CodeGenerator():
     if template_item.get('copy_value'):
       copy_value_html = """<span class="cellimg"><img title="Copy value" onclick="copyFieldValue(this)" src="/images/copy.png"></span>"""
     
-
-    self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><input type="password" name="{field_id}" value="{value}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" {disabled}{clipboard_data}{readonly}/></td><td>{clipboard_html}</td><td>{copy_value_html}</td></tr>'.format(
-      form_uuid = self.form.form_uuid,
-      tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
-      input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
-      label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
-      field_id = html.escape(template_item['id']),
-      value = html.escape(self.form.content.get(template_item['id'], '')),
-      display = 'table-row' if display else 'none',
-      disabled = 'disabled ' if not display else '',
-      clipboard_data = clipboard_data,
-      clipboard_html = clipboard_html,
-      copy_value_html = copy_value_html,
-      readonly = 'readonly' if template_item.get('readonly', False) else '',
-      )
+    if self.display_only:
+      self.html += '<tr style="display: {display}"><td>{label}</td><td>{value}</td><td></td><td></td></tr>'.format(
+        label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+        value = '' if self.form.content.get(template_item['id'], '') == '' else '********',
+        display = 'table-row' if display else 'none',
+        )
+    else:
+      self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><input type="password" name="{field_id}" value="{value}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" {disabled}{clipboard_data}{readonly}/></td><td>{clipboard_html}</td><td>{copy_value_html}</td></tr>'.format(
+        form_uuid = self.form.form_uuid,
+        tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
+        input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
+        label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+        field_id = html.escape(template_item['id']),
+        value = html.escape(self.form.content.get(template_item['id'], '')),
+        display = 'table-row' if display else 'none',
+        disabled = 'disabled ' if not display else '',
+        clipboard_data = clipboard_data,
+        clipboard_html = clipboard_html,
+        copy_value_html = copy_value_html,
+        readonly = 'readonly' if template_item.get('readonly', False) else '',
+        )
   
   
   def _generate_code_textarea(self, template_item:str):
     """
-      Versions:
-        03/12/2024 (mpham) la valeur était toujours vide
+    Versions:
+      03/12/2024 (mpham) la valeur était toujours vide
+      25/12/2024 (mpham) ajout de display_only
     """
 
     self._start_table()
   
     display = self._evaluate_display(template_item['displayed_when'])
-    self._add_display_javascript(template_item['id'], template_item['displayed_when'])
+    if not self.display_only:
+      self._add_display_javascript(template_item['id'], template_item['displayed_when'])
 
     clipboard_data = ''
     clipboard_html = ''
@@ -473,85 +539,127 @@ class CodeGenerator():
     copy_value_html = ''
     if template_item.get('copy_value'):
       copy_value_html = """<span class="cellimg"><img title="Copy value" onclick="copyFieldValue(this)" src="/images/copy.png"></span>"""
-    
 
-    self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><textarea name="{field_id}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" rows={rows} {disabled}{clipboard_data}{readonly}>{value}</textarea></td><td>{clipboard_html}</td><td>{copy_value_html}</td></tr>'.format(
-      form_uuid = self.form.form_uuid,
-      tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
-      input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
-      label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
-      field_id = html.escape(template_item['id']),
-      value = html.escape(self.form.content.get(template_item['id'], '')),
-      rows = template_item['rows'],
-      display = 'table-row' if display else 'none',
-      disabled = 'disabled ' if not display else '',
-      clipboard_data = clipboard_data,
-      clipboard_html = clipboard_html,
-      copy_value_html = copy_value_html,
-      readonly = 'readonly' if template_item.get('readonly', False) else '',
-      )
+    if self.display_only:
+      self.html += '<tr style="display: {display}"><td>{label}</td><td>{value}</td><td></td><td></td></tr>'.format(
+        label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+        value = html.escape(self.form.content.get(template_item['id'], '')),
+        display = 'table-row' if display else 'none',
+        )
+    else:
+      self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><textarea name="{field_id}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" rows={rows} {disabled}{clipboard_data}{readonly}>{value}</textarea></td><td>{clipboard_html}</td><td>{copy_value_html}</td></tr>'.format(
+        form_uuid = self.form.form_uuid,
+        tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
+        input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
+        label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+        field_id = html.escape(template_item['id']),
+        value = html.escape(self.form.content.get(template_item['id'], '')),
+        rows = template_item['rows'],
+        display = 'table-row' if display else 'none',
+        disabled = 'disabled ' if not display else '',
+        clipboard_data = clipboard_data,
+        clipboard_html = clipboard_html,
+        copy_value_html = copy_value_html,
+        readonly = 'readonly' if template_item.get('readonly', False) else '',
+        )
   
   
   def _generate_code_closed_list(self, template_item:str):
+    """
+    Versions:
+      25/12/2024 (mpham) ajout de display_only
+    """
 
     self._start_table()
 
     display = self._evaluate_display(template_item['displayed_when'])
-    self._add_display_javascript(template_item['id'], template_item['displayed_when'])
+    if not self.display_only:
+      self._add_display_javascript(template_item['id'], template_item['displayed_when'])
     
-    self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><select id={input_uuid} name="{field_id}" class="intable {form_uuid}" {disabled}{readonly}/>'.format(
-      form_uuid = self.form.form_uuid,
-      tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
-      input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
-      label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
-      field_id = html.escape(template_item['id']),
-      display = 'table-row' if display else 'none',
-      disabled = 'disabled ' if not display else '',
-      readonly = 'readonly' if self.form.content.get(template_item['readonly'], False) else '',
-      )
+    if self.display_only:
+      value = template_item['values'].get(self.form.content.get(template_item['id'], template_item['default']), '')
+      self.html += '<tr style="display: {display}"><td>{label}</td><td>{value}</td><td></td><td></td></tr>'.format(
+        label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+        value = html.escape(value),
+        display = 'table-row' if display else 'none',
+        )
+    else:
+      self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><select id={input_uuid} name="{field_id}" class="intable {form_uuid}" {disabled}{readonly}/>'.format(
+        form_uuid = self.form.form_uuid,
+        tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
+        input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
+        label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+        field_id = html.escape(template_item['id']),
+        display = 'table-row' if display else 'none',
+        disabled = 'disabled ' if not display else '',
+        readonly = 'readonly' if self.form.content.get(template_item['readonly'], False) else '',
+        )
 
-    for value, option_label in template_item['values'].items():
-      selected = ''
-      if value.casefold() == self.form.content.get(template_item['id'], template_item['default']).casefold():
-        selected = ' selected'
-      self.html += '<option value="'+value+'"'+selected+'>'+html.escape(option_label)+'</value>'
-    self.html += '</td><td></td><td></td></tr>'
+      for value, option_label in template_item['values'].items():
+        selected = ''
+        if value.casefold() == self.form.content.get(template_item['id'], template_item['default']).casefold():
+          selected = ' selected'
+        self.html += '<option value="'+value+'"'+selected+'>'+html.escape(option_label)+'</value>'
+      self.html += '</td><td></td><td></td></tr>'
 
 
   def _generate_code_check_box(self, template_item:str):
+    """
+    Versions:
+      25/12/2024 (mpham) ajout de display_only
+    """
 
     self._start_table()
   
     display = self._evaluate_display(template_item['displayed_when'])
-    self._add_display_javascript(template_item['id'], template_item['displayed_when'])
+    if not self.display_only:
+      self._add_display_javascript(template_item['id'], template_item['displayed_when'])
 
-    self.html += '<tr id="{tr_uuid}" style="display: {display};"><td>{label}</td><td><input type="checkbox" name="{field_id}" {checked} id={input_uuid} class="{form_uuid}" {disabled}{readonly}/></td><td></td><td></td></tr>'.format(
-      form_uuid = self.form.form_uuid,
-      tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
-      input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
-      label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
-      field_id = html.escape(template_item['id']),
-      checked = 'checked ' if self.form.content.get(template_item['id'], False) else '',
-      display = 'table-row' if display else 'none',
-      disabled = 'disabled ' if not display else '',
-      readonly = 'readonly' if template_item.get('readonly', False) else '',
-      )
+    if self.display_only:
+      self.html += '<tr style="display: {display};"><td>{label}</td><td><input type="checkbox" {checked} disabled/></td><td></td><td></td></tr>'.format(
+        label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+        checked = 'checked ' if self.form.content.get(template_item['id'], False) else '',
+        display = 'table-row' if display else 'none',
+        )
+    else:
+      self.html += '<tr id="{tr_uuid}" style="display: {display};"><td>{label}</td><td><input type="checkbox" name="{field_id}" {checked} id={input_uuid} class="{form_uuid}" {disabled}{readonly}/></td><td></td><td></td></tr>'.format(
+        form_uuid = self.form.form_uuid,
+        tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
+        input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
+        label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+        field_id = html.escape(template_item['id']),
+        checked = 'checked ' if self.form.content.get(template_item['id'], False) else '',
+        display = 'table-row' if display else 'none',
+        disabled = 'disabled ' if not display else '',
+        readonly = 'readonly' if template_item.get('readonly', False) else '',
+        )
   
   def _generate_code_hidden(self, template_item:str):
+    """
+    Versions:
+      25/12/2024 (mpham) ajout de display_only
+    """
 
-    self.html += '<input type="hidden" name="{field_id}" value="{value}" id="{input_uuid}" class="intable {form_uuid}" />'.format(
-      form_uuid = self.form.form_uuid,
-      input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
-      field_id = html.escape(template_item['id']),
-      value = html.escape(self.form.content.get(template_item['id'], '')),
-      )
+    if not self.display_only:
+      self.html += '<input type="hidden" name="{field_id}" value="{value}" id="{input_uuid}" class="intable {form_uuid}" />'.format(
+        form_uuid = self.form.form_uuid,
+        input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
+        field_id = html.escape(template_item['id']),
+        value = html.escape(self.form.content.get(template_item['id'], '')),
+        )
       
       
   def _generate_code_start_section(self, template_item:str):
+    """
+    Versions:
+      25/12/2024 (mpham) ajout de display_only
+    """
+
     self._end_table()
 
     display = self._evaluate_display(template_item['displayed_when'])
-    self._add_display_javascript(template_item['id'], template_item['displayed_when'], element_type='section')
+    if not self.display_only:
+      self._add_display_javascript(template_item['id'], template_item['displayed_when'], element_type='section')
 
     section_id = self.form.form_uuid+'_section_'+template_item['id']
 
