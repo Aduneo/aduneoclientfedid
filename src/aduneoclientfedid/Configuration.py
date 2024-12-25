@@ -522,6 +522,7 @@ class ConfCrypto():
     Versions
       08/08/2024 (mpham) version initiale
       23/12/2024 (mpham) changement des valeurs de endpoint_configuration et signature_key_configuration (Discovery URI -> discovery_uri par exemple)
+      25/12/2024 (mpham) verify_certificates est remonté au biveau de idp_params
     """
     
     if not self.app_conf.get('idps'):
@@ -532,14 +533,14 @@ class ConfCrypto():
       v1_client = self.app_conf['oidc_clients'][v1_client_id]
       
       v2_idp = {}
-      for key in ['endpoint_configuration', 'discovery_uri', 'authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'signature_key_configuration', 'jwks_uri', 'signature_key', 'verify_certificates']:
+      for key in ['endpoint_configuration', 'discovery_uri', 'authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
         if v1_client.get(key):
           value = v1_client[key]
           if key == 'endpoint_configuration' or key == 'signature_key_configuration':
             if value == 'Discovery URI':
               value = 'discovery_uri'
             elif value == 'JWKS URI':
-              value = 'jwks_uri'
+              value = 'discovery_uri'
             elif value == 'Local configuration':
               value = 'local_configuration'
           v2_idp[key] = value
@@ -558,7 +559,8 @@ class ConfCrypto():
         },
         'oidc_clients': {
           'client': v2_client
-        }
+        },
+        'verify_certificates': v1_client.get(verify_certificates, 'on')
       }
       
     del self.app_conf['oidc_clients']
@@ -571,6 +573,7 @@ class ConfCrypto():
       08/08/2024 (mpham) version initiale
       23/08/2024 (mpham) en OAuth 2, la valeur Discovery URI de l'aiguillage de configuration des endpoints devient Authorization Server Metadata URI
       23/12/2024 (mpham) changement des valeurs de endpoint_configuration et signature_key_configuration (Discovery URI -> metadata_uri par exemple)
+      25/12/2024 (mpham) verify_certificates est remonté au biveau de idp_params
     """
     
     if not self.app_conf.get('idps'):
@@ -581,7 +584,7 @@ class ConfCrypto():
       v1_client = self.app_conf['oauth_clients'][v1_client_id]
       
       v2_idp = {}
-      for key in ['endpoint_configuration', 'discovery_uri', 'authorization_endpoint', 'token_endpoint', 'introspect_endpoint', 'signature_key_configuration', 'jwks_uri', 'signature_key', 'verify_certificates']:
+      for key in ['endpoint_configuration', 'discovery_uri', 'authorization_endpoint', 'token_endpoint', 'introspect_endpoint', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
         if v1_client.get(key):
         
           v2_key = key
@@ -594,7 +597,7 @@ class ConfCrypto():
             v2_idp[v2_key] = 'metadata_uri'
           elif key == 'endpoint_configuration' or key == 'signature_key_configuration':
             if value == 'JWKS URI':
-              v2_idp[v2_key] = 'jwks_uri'
+              v2_idp[v2_key] = 'discovery_uri'
             elif value == 'Local configuration':
               v2_idp[v2_key] = 'local_configuration'
       
@@ -612,6 +615,8 @@ class ConfCrypto():
         },
         'oauth2_clients': {
           'client': v2_client
+        },
+        'verify_certificates': v1_client.get(verify_certificates, 'on')
         }
       }
       

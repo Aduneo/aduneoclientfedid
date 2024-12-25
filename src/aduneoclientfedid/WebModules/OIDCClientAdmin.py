@@ -85,7 +85,7 @@ class OIDCClientAdmin(BaseHandler):
       'idp_id': idp_id,
       'app_id': app_id,
       'name': idp.get('name', ''),
-      'endpoint_configuration': idp_params.get('endpoint_configuration', 'Discovery URI'),
+      'endpoint_configuration': idp_params.get('endpoint_configuration', 'discovery_uri'),
       'discovery_uri': idp_params.get('discovery_uri', ''),
       'authorization_endpoint': idp_params.get('', ''),
       'token_endpoint': idp_params.get('', ''),
@@ -93,7 +93,7 @@ class OIDCClientAdmin(BaseHandler):
       'userinfo_method': idp_params.get('userinfo_method', 'get'),
       'logout_endpoint': idp_params.get('logout_endpoint', ''),
       'issuer': idp_params.get('issuer', ''),
-      'signature_key_configuration': idp_params.get('signature_key_configuration', 'jwks_uri'),
+      'signature_key_configuration': idp_params.get('signature_key_configuration', 'discovery_uri'),
       'jwks_uri': idp_params.get('jwks_uri', ''),
       'signature_key': idp_params.get('signature_key', ''),
       'redirect_uri': app_params.get('redirect_uri', ''),
@@ -134,10 +134,10 @@ class OIDCClientAdmin(BaseHandler):
       .start_section('id_token_validation', title="ID token validation") \
         .text('issuer', label='Issuer', clipboard_category='issuer', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
         .closed_list('signature_key_configuration', label='Signature key configuration',
-          values = {'jwks_uri': 'JWKS URI', 'local_configuration': 'Local configuration'},
-          default = 'jwks_uri'
+          values = {'discovery_uri': 'JWKS from discovery URI', 'jwks_uri': 'JWKS URI', 'local_configuration': 'Local configuration'},
+          default = 'discovery_uri'
           ) \
-        .text('jwks_uri', label='JWKS URI', displayed_when="@[endpoint_configuration] = 'local_configuration' and @[signature_key_configuration] = 'jwks_uri'") \
+        .text('jwks_uri', label='JWKS URI', displayed_when="@[signature_key_configuration] = 'jwks_uri'") \
         .text('signature_key', label='Signature key', displayed_when="@[signature_key_configuration] = 'local_configuration'") \
       .end_section() \
       .start_section('rp_endpoints', title="RP endpoints") \

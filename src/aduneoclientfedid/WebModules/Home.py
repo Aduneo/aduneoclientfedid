@@ -58,7 +58,7 @@ class Home(BaseHandler):
             <span class="homeIdp">{title}</span>
             <span class="section_content" style="display: {display};">
               <div>
-                <span><a href="/client/oidc/admin/modifyidp?idpid={idp_id}" class="smallbutton">IdP Parameters</a></span>
+                <span><a href="/client/idp/admin/modify?idpid={idp_id}" class="smallbutton">IdP Parameters</a></span>
               </div>
               <div>
         """.format(

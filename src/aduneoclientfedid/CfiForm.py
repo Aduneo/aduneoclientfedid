@@ -633,7 +633,12 @@ class CodeGenerator():
       proposition = Proposition(condition)
       js_condition = proposition.transpose_javascript(lambda var: "document.getElementById('" + self.form.form_uuid+'_d_'+var + "').value")
 
-      display_value = 'table-row' if element_type == 'tr' else 'flex'
+      if element_type == 'tr':
+        display_value = 'table-row'
+      elif element_type == 'section':
+        display_value = 'flex'
+      else:
+        display_value = 'block'
 
       # ajuste la visibilité des champs (et activation des INPUT) en fonction des SELECT
       #   appelés lorsque l'utilisateur change un SELECT
