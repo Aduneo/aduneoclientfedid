@@ -209,6 +209,7 @@ class CfiForm():
     raw_html['html'] = html
     return self
 
+
   def set_table(self, table_id:str, table:dict):
     """ Ajoute une table au formulaire
     
@@ -550,9 +551,9 @@ class CodeGenerator():
     self._end_table()
 
     display = self._evaluate_display(template_item['displayed_when'])
-    self._add_display_javascript(template_item['id'], template_item['displayed_when'], element_type='span')
+    self._add_display_javascript(template_item['id'], template_item['displayed_when'], element_type='section')
 
-    section_id = self.form.form_uuid+'_span_'+template_item['id']
+    section_id = self.form.form_uuid+'_section_'+template_item['id']
 
     collapse_display = "block"
     collapse_html = ""
@@ -569,9 +570,9 @@ class CodeGenerator():
         minus_display = minus_display,
         )
 
-    self.html += '<div id="{section_id}" style="display: {display};"><span style="width: 20px; display: inline-block;">{collapse}</span><span style="display: inline-block;"><h{header}>{title}</h{header}><span class="section_content" style="display: {collapse_display};">'.format(
+    self.html += '<div id="{section_id}" style="display: {display}; align-items: baseline;"><span style="width: 20px; display: inline-block;">{collapse}</span><span style="display: inline-block;"><h{header}>{title}</h{header}><span class="section_content" style="display: {collapse_display};">'.format(
       section_id = section_id,
-      display = 'block' if display else 'none',
+      display = 'flex' if display else 'none',
       collapse = collapse_html,
       collapse_display = collapse_display,
       title = html.escape(template_item['label']), 
@@ -581,8 +582,8 @@ class CodeGenerator():
 
   def _generate_code_end_section(self, template_item:str):
     self._end_table()
-  
     self.html += '</span></span></div>'
+    
 
   def _generate_code_raw_html(self, template_item:str):
     self.html += template_item['html']
@@ -632,7 +633,7 @@ class CodeGenerator():
       proposition = Proposition(condition)
       js_condition = proposition.transpose_javascript(lambda var: "document.getElementById('" + self.form.form_uuid+'_d_'+var + "').value")
 
-      display_value = 'table-row' if element_type == 'tr' else 'block'
+      display_value = 'table-row' if element_type == 'tr' else 'flex'
 
       # ajuste la visibilité des champs (et activation des INPUT) en fonction des SELECT
       #   appelés lorsque l'utilisateur change un SELECT
@@ -940,19 +941,19 @@ class RequesterForm(CfiForm):
       for template_item in self.template:
         if template_item['holds_value'] and not template_item['id'].startswith('hr'):
           self.javascript += """
-      let paramValue = getFormValue('"""+self.form_uuid+"""', '"""+template_item['id']+"""');
+      paramValue = getFormValue('"""+self.form_uuid+"""', '"""+template_item['id']+"""');
       """
-        if not self.options['/requester/include_empty_items']:
+          if not self.options['/requester/include_empty_items']:
+            self.javascript += """
+              if (paramValue != '') {
+              """
           self.javascript += """
-            if (paramValue != '') {
+            paramValues."""+template_item['id']+""" = paramValue;
             """
-        self.javascript += """
-          paramValues."""+template_item['id']+""" = paramValue;
-          """
-        if not self.options['/requester/include_empty_items']:
-          self.javascript += """
-            }
-            """
+          if not self.options['/requester/include_empty_items']:
+            self.javascript += """
+              }
+              """
     elif self.request_parameters is None:
       # Requête sans paramètres
       pass
