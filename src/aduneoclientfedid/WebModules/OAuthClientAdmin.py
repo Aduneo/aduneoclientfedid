@@ -19,10 +19,8 @@ from ..BaseServer import BaseHandler
 from ..BaseServer import register_web_module, register_url, register_page_url
 from ..CfiForm import CfiForm
 from ..Configuration import Configuration
-from ..Help import Help
 import html
-import time
-import logging
+import uuid
 
 """
   TODO : je crois qu'on ne peut pas donner la clé publique (drop down list qui ne fonctionne pas)
@@ -229,6 +227,107 @@ class OAuthClientAdmin(BaseHandler):
     self.send_redirection(f"/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}")
 
 
+  @register_page_url(url='modifymulti', method='GET', template='page_default.html', continuous=True)
+  def modify_multi_endpoint(self):
+    self.modify_multi_display()
+
+  
+  def modify_multi_display(self):
+    """ Modification des paramètres du client (mais pas de l'IdP)
+    
+    Versions:
+      26/12/2024 (mpham) version initiale
+    """
+
+    idp_id = self.get_query_string_param('idpid', '')
+    app_id = self.get_query_string_param('appid', '')
+    if idp_id == '':
+      # Création de l'IdP, on redirige vers Single
+      self.modify_single_display()
+    else:
+      idp = self.conf['idps'][idp_id]
+      if app_id == '':
+        # Création du client
+        app_params = {}
+      else:
+        app_params = idp['oauth2_clients'][app_id]
+        
+      # Affichage de l'IdP
+      self.add_html(f"<h1>IdP {idp['name']}</h1>")
+      idp_panel_uuid = str(uuid.uuid4())
+      self.add_html("""
+        <div>
+          <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide IdP parameters" displayLabel="Display IdP parameters">Display IdP parameters</span>
+        </div>
+        """.format(
+          div_id = idp_panel_uuid,
+          ))
+          
+      from .IdPClientAdmin import IdPClientAdmin
+      idp['id'] = idp_id
+      idp_form = IdPClientAdmin.get_idp_form(self, idp)
+          
+      self.add_html("""
+        <div id="panel_{div_id}" style="display: none;">{form}</div>
+        """.format(
+          div_id = idp_panel_uuid,
+          form = idp_form.get_html(display_only=True),
+          ))
+
+      app_params['idp_id'] = idp_id
+      app_params['app_id'] = app_id
+      app_form = self.get_app_form(app_params)
+
+      self.add_html(app_form.get_html())
+      self.add_javascript(app_form.get_javascript())
+      
+      self.send_page()
+
+
+  @register_url(url='modifymulti', method='POST')
+  def modify_multi_modify(self):
+    """ Crée ou modifie une App OAuth 2 pour un IdP existant (mode multi)
+    
+    Si l'identifiant existe, ajoute un suffixe numérique
+    
+    Versions:
+      26/12/2024 (mpham) version initiale
+    """
+    
+    idp_id = self.post_form['idp_id']
+    idp = self.conf['idps'][idp_id]
+    
+    app_id = self.post_form['app_id']
+    if app_id == '':
+      # Création
+      if not idp.get('oauth2_clients'):
+        idp['oauth2_clients'] = {}
+      
+      app_id = self._generate_idpid(self.post_form['name'].strip(), idp['oauth2_clients'].keys())
+      idp['oauth2_clients'][app_id] = {}
+    
+    app_params = idp['oauth2_clients'][app_id]
+    
+    if self.post_form['name'] == '':
+      self.post_form['name'] = app_id
+
+    app_params['name'] = self.post_form['name'].strip()
+    
+    for item in ['redirect_uri', 'client_id', 'oauth_flow', 'pkce_method', 'scope', 'response_type', 'token_endpoint_auth_method']:
+      if self.post_form.get(item, '') == '':
+        app_params.pop(item, None)
+      else:
+        app_params[item] = self.post_form[item].strip()
+      
+    for secret in ['client_secret']:
+      if self.post_form.get(secret, '') != '':
+        app_params[secret+'!'] = self.post_form[secret]
+        
+    Configuration.write_configuration(self.conf)
+    
+    self.send_redirection(f"/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}")
+    
+
   @register_url(url='removeclient', method='GET')
   def remove(self):
   
@@ -244,6 +343,73 @@ class OAuthClientAdmin(BaseHandler):
       Configuration.write_configuration(self.conf)
       
     self.send_redirection('/')
+
+
+  def get_app_form(handler, app_params:dict):
+    """ Retourne un RequesterForm avec un client OAuth 2 (sans les paramètres de l'IdP)
+    
+    Args:
+      handler: objet de type BaseHandler, pour accès à la configuration
+      app_params: dict avec les paramètres du client OAuth 2, dans le formalisme du fichier de configuration
+             Attention : il faut ajouter deux champs
+              - idp_id avec l'identifiant unique de l'IdP
+              - app_id avec l'identifiant unique du client
+             
+    Returns:
+      objet RequesterForm
+    
+    Versions:
+      26/12/2024 (mpham) version initiale
+    """
+
+    form_content = {
+      'idp_id': app_params['idp_id'],
+      'app_id': app_params['app_id'],
+      'name': app_params.get('name', ''),
+      'oauth_flow': app_params.get('oauth_flow', 'Authorization Code'),
+      'pkce_method': app_params.get('pkce_method', 'S256'),
+      'redirect_uri': app_params.get('redirect_uri', ''),
+      'client_id': app_params.get('client_id', ''),
+      'scope': app_params.get('scope', ''),
+      'response_type': app_params.get('response_type', 'code'),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+      }
+    
+    form = CfiForm('oauth2adminmulti', form_content, action='modifymulti', submit_label='Save') \
+      .hidden('idp_id') \
+      .hidden('app_id') \
+      .text('name', label='Name') \
+      .start_section('client_endpoints', title="Client Endpoints") \
+        .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri',
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/oauth2/login/callback'); }" 
+          ) \
+      .end_section() \
+      .start_section('oauth2_configuration', title="OAuth 2 Configuration") \
+        .closed_list('oauth_flow', label='OAuth Flow', 
+          values={'authorization_code': 'Authorization Code', 'authorization_code_pkce': 'Authorization Code with PKCE', 'resource_owner_password_predentials': 'Resource Owner Password Credentials'},
+          default = 'authorization_code'
+          ) \
+        .closed_list('pkce_method', label='PKCE Code Challenge Method', displayed_when="@[oauth_flow] = 'authorization_code_pkce'",
+          values={'plain': 'plain', 'S256': 'S256'},
+          default = 'S256'
+          ) \
+        .text('client_id', label='Client ID', clipboard_category='client_id') \
+        .text('scope', label='Scope', clipboard_category='scope') \
+        .closed_list('response_type', label='Reponse Type', 
+          values={'code': 'code'},
+          default = 'code'
+          ) \
+        .closed_list('token_endpoint_auth_method', label='Token endpoint auth method', 
+          values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
+          default = 'client_secret_basic'
+          ) \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+      .end_section() 
+      
+    form.set_title('OAuth 2 Authorization'+('' if form_content['name'] == '' else ': '+form_content['name']))
+    form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
+
+    return form
 
 
   def _generate_idpid(self, name, existing_names):

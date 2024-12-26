@@ -19,7 +19,10 @@ from ..BaseServer import BaseHandler
 from ..BaseServer import register_web_module, register_url, register_page_url
 from ..CfiForm import CfiForm
 from ..Configuration import Configuration
+from .OIDCClientAdmin import OIDCClientAdmin
+from .OAuthClientAdmin import OAuthClientAdmin
 import html
+import uuid
 
 
 @register_web_module('/client/idp/admin')
@@ -44,13 +47,216 @@ class IdPClientAdmin(BaseHandler):
       idp = {'idp_parameters': {'oidc': {}, 'oauth2': {}}}
     else:
       idp = self.conf['idps'][idp_id]
+
+    idp['id'] = idp_id
+    form = self.get_idp_form(idp)  
+
+    self.add_html(form.get_html())
+    self.add_javascript(form.get_javascript())
+    
+    self.send_page()
+
+
+  @register_url(url='modify', method='POST')
+  def modify_save(self):
+    """ Crée ou modifie un IdP dans la configuration
+    
+    Si l'identifiant existe, ajoute un suffixe numérique
+    
+    Versions:
+      25/12/2024 (mpham)
+    """
+    
+    idp_id = self.post_form['idp_id']
+    if idp_id == '':
+      # Création
+      idp_id = self._generate_idpid(self.post_form['name'].strip(), self.conf['idps'].keys())
+      self.conf['idps'][idp_id] = {'idp_parameters': {'oidc': {}, 'oauth2': {}}}
+    
+    idp = self.conf['idps'][idp_id]
+    idp_params = idp['idp_parameters']
+    oidc_params = idp_params.get('oidc')
+    if not oidc_params:
+      idp['idp_parameters']['oidc'] = {}
+      oidc_params = idp_params['oidc']
+    oauth2_params = idp_params.get('oauth2')
+    if not oauth2_params:
+      idp_params['oauth2'] = {}
+      oauth2_params = idp_params['oauth2']
+    
+    if self.post_form['name'] == '':
+      self.post_form['name'] = idp_id
+
+    idp['name'] = self.post_form['name'].strip()
+
+    # Paramètres OIDC
+    for item in ['endpoint_configuration', 'discovery_uri', 'issuer', 'authorization_endpoint', 'token_endpoint', 
+    'end_session_endpoint', 'userinfo_endpoint', 'userinfo_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
+      if self.post_form.get('oidc_'+item, '') == '':
+        oidc_params.pop(item, None)
+      else:
+        oidc_params[item] = self.post_form['oidc_'+item].strip()
       
+    # Paramètres OAuth 2
+    for item in ['endpoint_configuration', 'metadata_uri', 'authorization_endpoint', 'token_endpoint', 
+    'revocation_endpoint', 'introspection_endpoint', 'introspection_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
+      if self.post_form.get('oauth2_'+item, '') == '':
+        oauth2_params.pop(item, None)
+      else:
+        oauth2_params[item] = self.post_form['oauth2_'+item].strip()
+      
+    # Paramètres communs
+    for item in ['verify_certificates']:
+      if item in self.post_form:
+        idp_params[item] = 'on'
+      else:
+        idp_params[item] = 'off'
+
+    Configuration.write_configuration(self.conf)
+    
+    self.send_redirection(f"/client/idp/admin/display?idpid={html.escape(idp_id)}")
+
+
+  @register_page_url(url='display', method='GET', template='page_default.html', continuous=True)
+  def display(self):
+    """ Affichage des paramètres de l'IdP
+    
+    TODO : ajouter SAML
+    
+    Versions:
+      25/12/2024 (mpham) version initiale
+    """
+
+
+    idp_id = self.get_query_string_param('idpid', '')
+    idp = self.conf['idps'][idp_id]
+    
+    idp['id'] = idp_id
+    form = self.get_idp_form(idp)  
+
+    self.add_html(form.get_html(display_only=True))
+
+    # Clients OIDC
+    self.add_html(f""" 
+      <h2>OpenID Connect clients</h2>
+      <div>
+        <span><a href="/client/oidc/admin/modifymulti?idpid={idp_id}" class="smallbutton">Add client</a></span>
+      </div>
+    """)
+    
+    for client_id in idp.get('oidc_clients', {}):
+      client = idp['oidc_clients'][client_id]
+      param_uuid = str(uuid.uuid4())
+      self.add_html("""
+        <div style="width: 1140px; display: flex; align-items: center; background-color: #fbe1686b; padding: 3px 3px 3px 6px; margin-top: 2px; margin-bottom: 2px;">
+          <span style="flex-grow: 1; font-size: 12px;">{name}</span>
+          <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">Display parameters</span>
+          <span><a href="/client/oidc/admin/modifymulti?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
+          <span><a href="/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+          <span><a href="/client/oidc/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
+          <span><a href="/client/oidc/admin/modifymulti?idpid={idp_id}" class="smallbutton">Remove</a></span>
+        </div>
+        """.format(
+          name = html.escape(client.get('name', '')),
+          idp_id = idp_id,
+          app_id = client_id,
+          div_id = param_uuid,
+          ))
+          
+      client['idp_id'] = idp_id
+      client['app_id'] = client_id
+      client_form = OIDCClientAdmin.get_app_form(self, client)
+          
+      self.add_html("""
+        <div id="panel_{div_id}" style="display: none;">{form}</div>
+        """.format(
+          div_id = param_uuid,
+          form = client_form.get_html(display_only=True),
+          ))
+    
+    # Clients OAuth 2
+    self.add_html(f""" 
+      <h2>OAuth 2 clients</h2>
+      <div>
+        <span><a href="/client/oauth2/admin/modifymulti?idpid={idp_id}" class="smallbutton">Add client</a></span>
+      </div>
+    """)
+    
+    for client_id in idp.get('oauth2_clients', {}):
+      client = idp['oauth2_clients'][client_id]
+      param_uuid = str(uuid.uuid4())
+      self.add_html("""
+        <div style="width: 1140px; display: flex; align-items: center; background-color: #fbe1686b; padding: 3px 3px 3px 6px; margin-top: 2px; margin-bottom: 2px;">
+          <span style="flex-grow: 1; font-size: 12px;">{name}</span>
+          <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">Display parameters</span>
+          <span><a href="/client/oauth2/admin/modifymulti?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
+          <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+          <span><a href="/client/oauth2/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
+          <span><a href="/client/oauth2/admin/modifymulti?idpid={idp_id}" class="smallbutton">Remove</a></span>
+        </div>
+        """.format(
+          name = html.escape(client.get('name', '')),
+          idp_id = idp_id,
+          app_id = client_id,
+          div_id = param_uuid,
+          ))
+          
+      client['idp_id'] = idp_id
+      client['app_id'] = client_id
+      client_form = OAuthClientAdmin.get_app_form(self, client)
+          
+      self.add_html("""
+        <div id="panel_{div_id}" style="display: none;">{form}</div>
+        """.format(
+          div_id = param_uuid,
+          form = client_form.get_html(display_only=True),
+          ))
+    
+    self.send_page()
+    
+
+
+  @register_url(url='remove', method='GET')
+  def remove(self):
+  
+    """
+    Supprime un IdP
+    
+    Versions:
+      28/02/2021 (mpham) version initiale
+    """
+
+    idp_id = self.get_query_string_param('id')
+    if idp_id is not None:
+      self.conf['idps'].pop(idp_id, None)
+      Configuration.write_configuration(self.conf)
+      
+    self.send_redirection('/')
+
+
+  def get_idp_form(handler, idp:dict):
+    """ Retourne un RequesterForm avec un IdP
+    
+    TODO : ajouter SAML
+    
+    Args:
+      handler: objet de type BaseHandler, pour accès à la configuration
+      idp: dict avec les paramètres de l'IdP, dans le formalisme du fichier de configuration
+             Attention : il faut ajouter le champ id avec l'identifiant unique de l'IdP
+             
+    Returns:
+      objet RequesterForm
+    
+    Versions:
+      25/12/2024 (mpham) version initiale
+    """
+
     idp_params = idp['idp_parameters']
     oidc_params = idp_params.get('oidc', {})
     oauth2_params = idp_params.get('oauth2', {})
 
     form_content = {
-      'idp_id': idp_id,
+      'idp_id': idp.get('id', ''),
       'name': idp.get('name', ''),
       'oidc_endpoint_configuration': oidc_params.get('endpoint_configuration', 'discovery_uri'),
       'oidc_discovery_uri': oidc_params.get('discovery_uri', ''),
@@ -127,91 +333,10 @@ class IdPClientAdmin(BaseHandler):
       .end_section() 
       
     form.set_title('IdP Configuration'+('' if form_content['name'] == '' else ': '+form_content['name']))
-    form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
+    form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
-    self.add_html(form.get_html())
-    self.add_javascript(form.get_javascript())
+    return form
     
-    self.send_page()
-
-
-  @register_url(url='modify', method='POST')
-  def modify_save(self):
-    """ Crée ou modifie un IdP dans la configuration
-    
-    Si l'identifiant existe, ajoute un suffixe numérique
-    
-    Versions:
-      25/12/2024 (mpham)
-    """
-    
-    idp_id = self.post_form['idp_id']
-    if idp_id == '':
-      # Création
-      idp_id = self._generate_idpid(self.post_form['name'].strip(), self.conf['idps'].keys())
-      self.conf['idps'][idp_id] = {'idp_parameters': {'oidc': {}, 'oauth2': {}}}
-    
-    idp = self.conf['idps'][idp_id]
-    idp_params = idp['idp_parameters']
-    oidc_params = idp_params.get('oidc')
-    if not oidc_params:
-      idp['idp_parameters']['oidc'] = {}
-      oidc_params = idp_params['oidc']
-    oauth2_params = idp_params.get('oauth2')
-    if not oauth2_params:
-      idp_params['oauth2'] = {}
-      oauth2_params = idp_params['oauth2']
-    
-    if self.post_form['name'] == '':
-      self.post_form['name'] = idp_id
-
-    idp['name'] = self.post_form['name'].strip()
-
-    # Paramètres OIDC
-    for item in ['endpoint_configuration', 'discovery_uri', 'issuer', 'authorization_endpoint', 'token_endpoint', 
-    'end_session_endpoint', 'userinfo_endpoint', 'userinfo_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
-      if self.post_form.get('oidc_'+item, '') == '':
-        oidc_params.pop(item, None)
-      else:
-        oidc_params[item] = self.post_form['oidc_'+item].strip()
-      
-    # Paramètres OAuth 2
-    for item in ['endpoint_configuration', 'metadata_uri', 'authorization_endpoint', 'token_endpoint', 
-    'revocation_endpoint', 'introspection_endpoint', 'introspection_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
-      if self.post_form.get('oauth2_'+item, '') == '':
-        oauth2_params.pop(item, None)
-      else:
-        oauth2_params[item] = self.post_form['oauth2_'+item].strip()
-      
-    # Paramètres communs
-    for item in ['verify_certificates']:
-      if item in self.post_form:
-        idp_params[item] = 'on'
-      else:
-        idp_params[item] = 'off'
-
-    Configuration.write_configuration(self.conf)
-    
-    self.send_redirection("/")
-
-
-  @register_url(url='remove', method='GET')
-  def remove(self):
-  
-    """
-    Supprime un IdP
-    
-    Versions:
-      28/02/2021 (mpham) version initiale
-    """
-
-    idp_id = self.get_query_string_param('id')
-    if idp_id is not None:
-      self.conf['idps'].pop(idp_id, None)
-      Configuration.write_configuration(self.conf)
-      
-    self.send_redirection('/')
-
 
   def _generate_idpid(self, name, existing_names):
     

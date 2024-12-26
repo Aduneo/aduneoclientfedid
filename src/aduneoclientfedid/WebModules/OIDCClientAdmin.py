@@ -20,6 +20,7 @@ from ..BaseServer import register_web_module, register_url, register_page_url
 from ..CfiForm import CfiForm
 from ..Configuration import Configuration
 import html
+import uuid
 
 
 @register_web_module('/client/oidc/admin')
@@ -51,7 +52,7 @@ class OIDCClientAdmin(BaseHandler):
         raise AduneoError(f"IdP {idp_id} not found in configuration")
         
       oidc_clients = idp.get('oidc_clients', {})  
-      oauth2_clients = idp.get('oidc_oauth2', {})  
+      oauth2_clients = idp.get('oauth2_clients', {})  
       saml_clients = idp.get('saml_clients', {})  
         
       if len(oidc_clients) == 1 and len(oauth2_clients) == 0 and len(saml_clients) == 0:
@@ -252,6 +253,108 @@ class OIDCClientAdmin(BaseHandler):
     self.send_redirection(f"/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}")
 
 
+  @register_page_url(url='modifymulti', method='GET', template='page_default.html', continuous=True)
+  def modify_multi_endpoint(self):
+    self.modify_multi_display()
+
+  
+  def modify_multi_display(self):
+    """ Modification des paramètres du client (mais pas de l'IdP)
+    
+    Versions:
+      26/12/2024 (mpham) version initiale
+    """
+
+    idp_id = self.get_query_string_param('idpid', '')
+    app_id = self.get_query_string_param('appid', '')
+    if idp_id == '':
+      # Création de l'IdP, on redirige vers Single
+      self.modify_single_display()
+    else:
+      idp = self.conf['idps'][idp_id]
+      if app_id == '':
+        # Création du client
+        app_params = {}
+      else:
+        app_params = idp['oidc_clients'][app_id]
+        
+      # Affichage de l'IdP
+      self.add_html(f"<h1>IdP {idp['name']}</h1>")
+      idp_panel_uuid = str(uuid.uuid4())
+      self.add_html("""
+        <div>
+          <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide IdP parameters" displayLabel="Display IdP parameters">Display IdP parameters</span>
+        </div>
+        """.format(
+          div_id = idp_panel_uuid,
+          ))
+          
+      from .IdPClientAdmin import IdPClientAdmin
+      idp['id'] = idp_id
+      idp_form = IdPClientAdmin.get_idp_form(self, idp)
+          
+      self.add_html("""
+        <div id="panel_{div_id}" style="display: none;">{form}</div>
+        """.format(
+          div_id = idp_panel_uuid,
+          form = idp_form.get_html(display_only=True),
+          ))
+
+      app_params['idp_id'] = idp_id
+      app_params['app_id'] = app_id
+      app_form = self.get_app_form(app_params)
+
+      self.add_html(app_form.get_html())
+      self.add_javascript(app_form.get_javascript())
+      
+      self.send_page()
+
+
+  @register_url(url='modifymulti', method='POST')
+  def modify_multi_modify(self):
+    """ Crée ou modifie une App OIDC pour un IdP existant (mode multi)
+    
+    Si l'identifiant existe, ajoute un suffixe numérique
+    
+    Versions:
+      26/12/2024 (mpham) version initiale
+    """
+    
+    idp_id = self.post_form['idp_id']
+    idp = self.conf['idps'][idp_id]
+    
+    app_id = self.post_form['app_id']
+    if app_id == '':
+      # Création
+      if not idp.get('oidc_clients'):
+        idp['oidc_clients'] = {}
+      
+      app_id = self._generate_idpid(self.post_form['name'].strip(), idp['oidc_clients'].keys())
+      idp['oidc_clients'][app_id] = {}
+    
+    app_params = idp['oidc_clients'][app_id]
+    
+    if self.post_form['name'] == '':
+      self.post_form['name'] = app_id
+
+    app_params['name'] = self.post_form['name'].strip()
+    
+    for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'post_logout_redirect_uri',
+    'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values']:
+      if self.post_form.get(item, '') == '':
+        app_params.pop(item, None)
+      else:
+        app_params[item] = self.post_form[item].strip()
+      
+    for secret in ['client_secret']:
+      if self.post_form.get(secret, '') != '':
+        app_params[secret+'!'] = self.post_form[secret]
+        
+    Configuration.write_configuration(self.conf)
+    
+    self.send_redirection(f"/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}")
+
+
   @register_url(url='removeclient', method='GET')
   def remove(self):
   
@@ -268,6 +371,89 @@ class OIDCClientAdmin(BaseHandler):
       
     self.send_redirection('/')
 
+
+  def get_app_form(handler, app_params:dict):
+    """ Retourne un RequesterForm avec un client OIDC (sans les paramètres de l'IdP)
+    
+    Args:
+      handler: objet de type BaseHandler, pour accès à la configuration
+      app_params: dict avec les paramètres du client OIDC (RP), dans le formalisme du fichier de configuration
+             Attention : il faut ajouter deux champs
+              - idp_id avec l'identifiant unique de l'IdP
+              - app_id avec l'identifiant unique du client
+             
+    Returns:
+      objet RequesterForm
+    
+    Versions:
+      26/12/2024 (mpham) version initiale
+    """
+
+    form_content = {
+      'idp_id': app_params['idp_id'],
+      'app_id': app_params['app_id'],
+      'name': app_params.get('name', ''),
+      'redirect_uri': app_params.get('redirect_uri', ''),
+      'post_logout_redirect_uri': app_params.get('post_logout_redirect_uri', ''),
+      'client_id': app_params.get('client_id', ''),
+      'scope': app_params.get('scope', 'openid'),
+      'response_type': app_params.get('response_type', 'code'),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+      'display': app_params.get('display', ''),
+      'prompt': app_params.get('prompt', ''),
+      'max_age': app_params.get('max_age', ''),
+      'ui_locales': app_params.get('ui_locales', ''),
+      'id_token_hint': app_params.get('id_token_hint', ''),
+      'login_hint': app_params.get('login_hint', ''),
+      'acr_values': app_params.get('acr_values', ''),
+      }
+    
+    form = CfiForm('oidcadminmulti', form_content, action='modifymulti', submit_label='Save') \
+      .hidden('idp_id') \
+      .hidden('app_id') \
+      .text('name', label='Name') \
+      .start_section('rp_endpoints', title="RP endpoints") \
+        .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri',
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/oidc/login/callback'); }" 
+          ) \
+        .text('post_logout_redirect_uri', label='Post logout redirect URI', clipboard_category='post_logout_redirect_uri',
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/oidc/logout/callback'); }" \
+          ) \
+      .end_section() \
+      .start_section('openid_connect_configuration', title="OpenID Connect Configuration") \
+        .text('client_id', label='Client ID', clipboard_category='client_id') \
+        .text('scope', label='Scope', clipboard_category='scope') \
+        .closed_list('response_type', label='Reponse type', 
+          values={'code': 'code'},
+          default = 'code'
+          ) \
+        .closed_list('token_endpoint_auth_method', label='Token endpoint auth method', 
+          values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
+          default = 'client_secret_basic'
+          ) \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+      .end_section() \
+      .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=True) \
+        .closed_list('display', label='Display', 
+          values={'': '', 'page': 'page', 'popup': 'popup', 'touch': 'touch', 'wap': 'wap'},
+          default = ''
+          ) \
+        .closed_list('prompt', label='Prompt', 
+          values={'': '', 'none': 'none', 'login': 'login', 'consent': 'consent', 'select_account': 'select_account'},
+          default = ''
+          ) \
+        .text('max_age', label='Max Age', clipboard_category='max_age') \
+        .text('ui_locales', label='UI Locales', clipboard_category='ui_locales') \
+        .text('id_token_hint', label='ID Token Hint', clipboard_category='id_token_hint') \
+        .text('login_hint', label='Login Hint', clipboard_category='login_hint') \
+        .text('acr_values', label='ACR Values', clipboard_category='acr_values') \
+      .end_section()
+      
+    form.set_title('OpenID Connect authentication'+('' if form_content['name'] == '' else ': '+form_content['name']))
+    form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
+
+    return form
+    
 
   def _generate_idpid(self, name, existing_names):
     

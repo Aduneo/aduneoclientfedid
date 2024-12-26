@@ -542,6 +542,27 @@ function fetchContent(method, thisurl, data, menuId=null, notificationId=null) {
 }
 
 
+// Appelée par IdpClientAdmin pour afficher / masquer les paramètres des clients
+//   Les libellés du bouton doivent être mis dans les attributs displayLabel et hideLabel de l'élement bouton
+//   Exemple : <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">
+//   panelId est l'identifiant de l'élément à afficher / masquer
+function togglePanel(buttonEl, panelId) {
+  
+  panelEl = document.getElementById(panelId);
+  if (panelEl) {
+    if (panelEl.style.display == 'none') {
+      panelEl.style.display = 'block';
+      label = buttonEl.getAttribute('hideLabel');
+      if (!label) label = 'Hide';
+      buttonEl.innerHTML = label;
+    } else {
+      panelEl.style.display = 'none'
+      label = buttonEl.getAttribute('displayLabel');
+      if (!label) label = 'Display';
+      buttonEl.innerHTML = label;
+    }
+  }
+}
 
 
 function CfiForm(formId, thisFieldId) {

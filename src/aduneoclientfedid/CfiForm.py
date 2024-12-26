@@ -956,169 +956,178 @@ class RequesterForm(CfiForm):
     self.data_generator = code
     
   
-  def _generate_code(self):
-    """
+  def _generate_code(self, display_only:bool=False):
+    """ Génère le code HTML et le Javascript pour affichage du formulaire
+    
+    Args:
+      display_only: si True, fait un affichage simple sans possibilité de modifier les champs et sans boutons de validation
+      
     Versions:
       09/08/2024 (mpham) les requêtes peuvent ne pas avoir de paramètres
       24/08/2024 (mpham) mise à disposition de cfiForm dans le request data generator
       24/08/2024 (mpham) ajout des modifying_fields indiquant les champs qui déclenchent une modification de la requête
       27/11/2024 (mpham) prise en compte de l'option /requester/include_empty_items qui permet de ne pas inclure dans le contenu du formulaire les valeurs vides
+      25/12/2024 (mpham) ajout de display_only
     """
 
-    self._append_requester()
-
-    self.content['hr_request_url'] = self.http_parameters.get('request_url', '')
-    self.content['hr_form_method'] = self.http_parameters.get('form_method', 'post')
-    self.content['hr_body_format'] = self.http_parameters.get('body_format', 'x-www-form-urlencoded')
-    self.content['hr_auth_method'] = self.http_parameters.get('auth_method', 'none')
-    self.content['hr_verify_certificates'] = self.http_parameters.get('verify_certificates', True)
-
-    code_generator = CodeGenerator(self)
-    code_generator.generate()
-    self.html = code_generator.html
-    self.javascript = code_generator.javascript
-    
-    # code Javascript pour mise à jour dynamique de la requête finale
-    
-    # listeners sur les champs du formulaire déclenchant la mise à jour automatiquement
-    
-    # la fonction Javascript updateRequest_<form_uuid> déclenche les actions suivantes :
-    #   - mise à jour des champs du requêteur (hors request data / query string) en fonction des champs du formulaire
-    #   - calcul de request data (pour POST et REDIRECT) ou de la query string (pour GET) dans ce dernier cas l'URL est aussi modifiée pour lui ajouter la query string
-    # On a donc besoin de listeners sur les champs du formulaire pour ces deux utilisations
-    #
-    # Listeners pour mise à jour des champs du requêteur :
-    #   on interprète les http_parameters qui donnent les valeurs des champs pour en extraire les champs du formulaire qui y sont référencés
-    # Listeneurs de request data
-    #   on regarde request_parameters si donné
-    #   sinon on prend tous les champs du formulaire puisque la requête finale est alors construite avec tous les champs
-    
-    listener_fields = []
-    if self.modifying_fields:
-      listener_fields = self.modifying_fields
-
-    # ajout des champs du formulaire modifiant le requêteur
-    listener_fields.extend(self._find_variables_from_expressions(self.http_parameters.values()))
-    
-    # ajout des champs du formulaire utilisés pour construire les données de la requête
-    if self.request_parameters == {}:
-      # tous les champs déclenchent une modification
-      for template_item in self.template:
-        if template_item['holds_value'] and not template_item['id'].startswith('hr'):
-          if template_item['id'] not in listener_fields:
-            listener_fields.append(template_item['id'])
-    elif self.request_parameters is None:
-      # Requête sans paramètres
-      pass
+    if display_only:
+      super()._generate_code(display_only)
     else:
-      parameters_listener_fields = self._find_variables_from_expressions(self.request_parameters.values())
-      for field_id in parameters_listener_fields:
-        if field_id not in listener_fields:
-          listener_fields.append(field_id)
+
+      self._append_requester()
+
+      self.content['hr_request_url'] = self.http_parameters.get('request_url', '')
+      self.content['hr_form_method'] = self.http_parameters.get('form_method', 'post')
+      self.content['hr_body_format'] = self.http_parameters.get('body_format', 'x-www-form-urlencoded')
+      self.content['hr_auth_method'] = self.http_parameters.get('auth_method', 'none')
+      self.content['hr_verify_certificates'] = self.http_parameters.get('verify_certificates', True)
+
+      code_generator = CodeGenerator(self, display_only)
+      code_generator.generate()
+      self.html = code_generator.html
+      self.javascript = code_generator.javascript
       
-    # mise en place des listeners
-    indexed_template = {}
-    for template_item in self.template:
-      indexed_template[template_item['id']] = template_item
-    
-    for field_id in listener_fields:
-      template_item = indexed_template.get(field_id)
-      if template_item is None:
-        raise DesignError("unknown field {field_id}".format(field_id=field_id))
-      event = 'change'
-      if template_item['type'] in ['text', 'password', 'textarea']:
-        event = 'keyup'
-      js = """document.getElementById('"""+self.form_uuid+'_d_'+html.escape(field_id)+"""').addEventListener('"""+event+"""', () => {
-        updateRequest_"""+self.form_uuid+"""();
-      });
-      """
-      self.javascript += js
-    
-    # Javascript de mise à jour
-    self.javascript += """
-    function updateRequest_"""+self.form_uuid+"""() {
-    
-      // Valeurs des champs du requêteur
-      let requesterFieldValues = {};
-    """
-    for param, value in self.http_parameters.items():
-      self.javascript += """requesterFieldValues."""+param+""" = """+self.transpose_expression_to_javascript(value)+""";
-      """
-    
-    self.javascript += """
-      // Valeurs des paramètres
-      let paramValues = {};
-    """
-    if self.request_parameters == {}:
-      # on met tous les champs en paramètres
+      # code Javascript pour mise à jour dynamique de la requête finale
+      
+      # listeners sur les champs du formulaire déclenchant la mise à jour automatiquement
+      
+      # la fonction Javascript updateRequest_<form_uuid> déclenche les actions suivantes :
+      #   - mise à jour des champs du requêteur (hors request data / query string) en fonction des champs du formulaire
+      #   - calcul de request data (pour POST et REDIRECT) ou de la query string (pour GET) dans ce dernier cas l'URL est aussi modifiée pour lui ajouter la query string
+      # On a donc besoin de listeners sur les champs du formulaire pour ces deux utilisations
+      #
+      # Listeners pour mise à jour des champs du requêteur :
+      #   on interprète les http_parameters qui donnent les valeurs des champs pour en extraire les champs du formulaire qui y sont référencés
+      # Listeneurs de request data
+      #   on regarde request_parameters si donné
+      #   sinon on prend tous les champs du formulaire puisque la requête finale est alors construite avec tous les champs
+      
+      listener_fields = []
+      if self.modifying_fields:
+        listener_fields = self.modifying_fields
+
+      # ajout des champs du formulaire modifiant le requêteur
+      listener_fields.extend(self._find_variables_from_expressions(self.http_parameters.values()))
+      
+      # ajout des champs du formulaire utilisés pour construire les données de la requête
+      if self.request_parameters == {}:
+        # tous les champs déclenchent une modification
+        for template_item in self.template:
+          if template_item['holds_value'] and not template_item['id'].startswith('hr'):
+            if template_item['id'] not in listener_fields:
+              listener_fields.append(template_item['id'])
+      elif self.request_parameters is None:
+        # Requête sans paramètres
+        pass
+      else:
+        parameters_listener_fields = self._find_variables_from_expressions(self.request_parameters.values())
+        for field_id in parameters_listener_fields:
+          if field_id not in listener_fields:
+            listener_fields.append(field_id)
+        
+      # mise en place des listeners
+      indexed_template = {}
       for template_item in self.template:
-        if template_item['holds_value'] and not template_item['id'].startswith('hr'):
-          self.javascript += """
-      paramValue = getFormValue('"""+self.form_uuid+"""', '"""+template_item['id']+"""');
+        indexed_template[template_item['id']] = template_item
+      
+      for field_id in listener_fields:
+        template_item = indexed_template.get(field_id)
+        if template_item is None:
+          raise DesignError("unknown field {field_id}".format(field_id=field_id))
+        event = 'change'
+        if template_item['type'] in ['text', 'password', 'textarea']:
+          event = 'keyup'
+        js = """document.getElementById('"""+self.form_uuid+'_d_'+html.escape(field_id)+"""').addEventListener('"""+event+"""', () => {
+          updateRequest_"""+self.form_uuid+"""();
+        });
+        """
+        self.javascript += js
+      
+      # Javascript de mise à jour
+      self.javascript += """
+      function updateRequest_"""+self.form_uuid+"""() {
+      
+        // Valeurs des champs du requêteur
+        let requesterFieldValues = {};
       """
+      for param, value in self.http_parameters.items():
+        self.javascript += """requesterFieldValues."""+param+""" = """+self.transpose_expression_to_javascript(value)+""";
+        """
+      
+      self.javascript += """
+        // Valeurs des paramètres
+        let paramValues = {};
+      """
+      if self.request_parameters == {}:
+        # on met tous les champs en paramètres
+        for template_item in self.template:
+          if template_item['holds_value'] and not template_item['id'].startswith('hr'):
+            self.javascript += """
+        paramValue = getFormValue('"""+self.form_uuid+"""', '"""+template_item['id']+"""');
+        """
+            if not self.options['/requester/include_empty_items']:
+              self.javascript += """
+                if (paramValue != '') {
+                """
+            self.javascript += """
+              paramValues."""+template_item['id']+""" = paramValue;
+              """
+            if not self.options['/requester/include_empty_items']:
+              self.javascript += """
+                }
+                """
+      elif self.request_parameters is None:
+        # Requête sans paramètres
+        pass
+      else:
+        # les paramètres sont été donnés par set_request_parameters()
+        for param, value in self.request_parameters.items():
+          self.javascript += """
+            paramValue = """+self.transpose_expression_to_javascript(value)+""";
+            """
           if not self.options['/requester/include_empty_items']:
             self.javascript += """
               if (paramValue != '') {
               """
           self.javascript += """
-            paramValues."""+template_item['id']+""" = paramValue;
-            """
+            paramValues."""+param+""" = paramValue;
+          """
           if not self.options['/requester/include_empty_items']:
             self.javascript += """
               }
               """
-    elif self.request_parameters is None:
-      # Requête sans paramètres
-      pass
-    else:
-      # les paramètres sont été donnés par set_request_parameters()
-      for param, value in self.request_parameters.items():
-        self.javascript += """
-          paramValue = """+self.transpose_expression_to_javascript(value)+""";
-          """
-        if not self.options['/requester/include_empty_items']:
-          self.javascript += """
-            if (paramValue != '') {
-            """
-        self.javascript += """
-          paramValues."""+param+""" = paramValue;
-        """
-        if not self.options['/requester/include_empty_items']:
-          self.javascript += """
-            }
-            """
 
-    if self.data_generator:
-      # on a fourni du code Javascript pour retraiter les données
+      if self.data_generator:
+        # on a fourni du code Javascript pour retraiter les données
+        self.javascript += """
+          paramValues = transformData_"""+self.form_uuid+"""(paramValues);
+        """
+        
       self.javascript += """
-        paramValues = transformData_"""+self.form_uuid+"""(paramValues);
-      """
-      
-    self.javascript += """
-      updateFormData('"""+self.form_uuid+"""', requesterFieldValues, paramValues);
-    }
-    """
-    
-    if self.data_generator:
-      # on a fourni du code Javascript pour retraiter les données
-      self.javascript += """
-    function transformData_"""+self.form_uuid+"""(paramValues) {
-      cfiForm = new CfiForm('"""+self.form_uuid+"""', null);
-      """+self.data_generator+"""
+        updateFormData('"""+self.form_uuid+"""', requesterFieldValues, paramValues);
       }
       """
-    
-    # on met à jour les données dynamiques du formulaire : champs du requêteur
-    self.javascript += """
-    updateRequest_"""+self.form_uuid+"""();
-    """
-    
-    # Bouton Modify request
-    self.javascript += """document.getElementById('"""+self.form_uuid+'_modify_request'+"""').addEventListener('change', () => {
-        updateModifyRequest('"""+self.form_uuid+"""');
-      });
-      updateModifyRequest('"""+self.form_uuid+"""');
+      
+      if self.data_generator:
+        # on a fourni du code Javascript pour retraiter les données
+        self.javascript += """
+      function transformData_"""+self.form_uuid+"""(paramValues) {
+        cfiForm = new CfiForm('"""+self.form_uuid+"""', null);
+        """+self.data_generator+"""
+        }
+        """
+      
+      # on met à jour les données dynamiques du formulaire : champs du requêteur
+      self.javascript += """
+      updateRequest_"""+self.form_uuid+"""();
       """
+      
+      # Bouton Modify request
+      self.javascript += """document.getElementById('"""+self.form_uuid+'_modify_request'+"""').addEventListener('change', () => {
+          updateModifyRequest('"""+self.form_uuid+"""');
+        });
+        updateModifyRequest('"""+self.form_uuid+"""');
+        """
     
     
   def _find_variables_from_expressions(self, expressions:list) -> list:
