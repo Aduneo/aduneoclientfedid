@@ -99,7 +99,7 @@ class IdPClientAdmin(BaseHandler):
       
     # Paramètres OAuth 2
     for item in ['endpoint_configuration', 'metadata_uri', 'authorization_endpoint', 'token_endpoint', 
-    'revocation_endpoint', 'introspection_endpoint', 'introspection_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
+    'revocation_endpoint', 'introspection_endpoint', 'introspection_http_method', 'introspection_auth_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
       if self.post_form.get('oauth2_'+item, '') == '':
         oauth2_params.pop(item, None)
       else:
@@ -136,6 +136,13 @@ class IdPClientAdmin(BaseHandler):
 
     self.add_html(form.get_html(display_only=True))
 
+    # Bouton de modification de l'IdP
+    self.add_html(f""" 
+      <div>
+        <span><a href="modify?idpid={idp_id}" class="smallbutton">Modify IdP parameters</a></span>
+      </div>
+    """)
+    
     # Clients OIDC
     self.add_html(f""" 
       <h2>OpenID Connect clients</h2>
@@ -211,6 +218,43 @@ class IdPClientAdmin(BaseHandler):
           div_id = param_uuid,
           form = client_form.get_html(display_only=True),
           ))
+
+    # API OAuth 2
+    self.add_html(f""" 
+      <h2>OAuth 2 API</h2>
+      <div>
+        <span><a href="/client/oauth2/admin/modifyapi?idpid={idp_id}" class="smallbutton">Add API</a></span>
+      </div>
+    """)
+    
+    for api_id in idp.get('oauth2_apis', {}):
+      api = idp['oauth2_apis'][api_id]
+      param_uuid = str(uuid.uuid4())
+      self.add_html("""
+        <div style="width: 1140px; display: flex; align-items: center; background-color: #fbe1686b; padding: 3px 3px 3px 6px; margin-top: 2px; margin-bottom: 2px;">
+          <span style="flex-grow: 1; font-size: 12px;">{name}</span>
+          <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">Display parameters</span>
+          <span><a href="/client/oauth2/admin/modifyapi?idpid={idp_id}&apiid={api_id}" class="smallbutton">Modify</a></span>
+          <span><a href="/client/oauth2/admin/removeapi?idpid={idp_id}&apiid={api_id}" class="smallbutton">Remove</a></span>
+        </div>
+        """.format(
+          name = html.escape(api.get('name', '')),
+          idp_id = idp_id,
+          api_id = api_id,
+          div_id = param_uuid,
+          ))
+          
+      api['idp_id'] = idp_id
+      api['api_id'] = api_id
+      #client_form = OAuthClientAdmin.get_app_form(self, client)
+          
+      self.add_html("""
+        <div id="panel_{div_id}" style="display: none;">{form}</div>
+        """.format(
+          div_id = param_uuid,
+          form = 'TEST',
+          ))
+
     
     self.send_page()
     
@@ -274,7 +318,8 @@ class IdPClientAdmin(BaseHandler):
       'oauth2_authorization_endpoint': oauth2_params.get('', ''),
       'oauth2_token_endpoint': oauth2_params.get('', ''),
       'oauth2_introspection_endpoint': oauth2_params.get('introspection_endpoint', ''),
-      'oauth2_introspection_method': oauth2_params.get('introspection_method', 'get'),
+      'oauth2_introspection_http_method': oauth2_params.get('introspection_http_method', 'get'),
+      'oauth2_introspection_auth_method': oauth2_params.get('introspection_auth_method', 'basic'),
       'oauth2_revocation_endpoint': oauth2_params.get('revocation_endpoint', ''),
       'oauth2_signature_key_configuration': oauth2_params.get('signature_key_configuration', 'jwks_uri'),
       'oauth2_jwks_uri': oauth2_params.get('jwks_uri', ''),
@@ -321,9 +366,13 @@ class IdPClientAdmin(BaseHandler):
           .text('oauth2_authorization_endpoint', label='Authorization endpoint', clipboard_category='authorization_endpoint', displayed_when="@[oauth2_endpoint_configuration] = 'local_configuration'") \
           .text('oauth2_token_endpoint', label='Token endpoint', clipboard_category='token_endpoint', displayed_when="@[oauth2_endpoint_configuration] = 'local_configuration'") \
           .text('oauth2_introspection_endpoint', label='Introspection endpoint', clipboard_category='introspection_endpoint', displayed_when="@[oauth2_endpoint_configuration] = 'local_configuration'") \
-          .closed_list('oauth2_introspection_method', label='Introspect. Request Method',
+          .closed_list('oauth2_introspection_http_method', label='Introspect. Request Method',
             values = {'get': 'GET', 'post': 'POST'},
             default = 'get'
+            ) \
+          .closed_list('oauth2_introspection_auth_method', label='Introspect. Authn. Method',
+            values = {'none': 'None', 'basic': 'Basic', 'bearer_token': 'Bearer Token'},
+            default = 'basic'
             ) \
           .text('oauth2_revocation_endpoint', label='Revocation endpoint', clipboard_category='revocation_endpoint', displayed_when="@[oauth2_endpoint_configuration] = 'local_configuration'") \
         .end_section() \
@@ -333,6 +382,10 @@ class IdPClientAdmin(BaseHandler):
       .end_section() 
       
     form.set_title('IdP Configuration'+('' if form_content['name'] == '' else ': '+form_content['name']))
+    if idp.get('id', '') == '':
+      form.add_button('Cancel', '/')
+    else:
+      form.add_button('Cancel', f"display?idpid={idp['id']}")
     form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     return form

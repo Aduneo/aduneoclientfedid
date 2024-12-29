@@ -100,6 +100,7 @@ class CfiForm():
       30/08/2024 (mpham) options /requester/auth_method_options
       27/11/2024 (mpham) option /requester/include_empty_items qui indique si le contenu du formulaire doit contenir les éléments sans valeur
       03/12/2024 (mpham) tables contenant des valeurs exploitables par le Javascript
+      29/12/2204 (mpham) ajout de boutons
     """
   
     self.form_id = form_id
@@ -107,6 +108,9 @@ class CfiForm():
     self.mode = mode
     self.submit_label = submit_label
     self.form_uuid = 'i'+str(uuid.uuid4()).replace('-', '_') # car on utilise dom_id dans le nom de fonctions Javascript, et document.querySelectorAll n'aime pas les classes commençant par un chiffre
+
+    # Boutons supplémentaires, donnés par {'label': '', 'action': '<URL en new_page, Javascript en api'}
+    self.buttons = []
 
     # Template (construit par les méthodes text(), closed_list(), check_box(), etc.)
     self.template = []
@@ -223,6 +227,20 @@ class CfiForm():
     
     self.tables[table_id] = table
     
+    
+  def add_button(self, label:str, action:str):
+    """ Ajoute un bouton au formulaire
+    
+    Args:
+      label: libellé du bouton
+      action: URL pour les formulaire en mode new_page, Javascript en mode api
+      
+    Versions:
+      29/12/2024 (mpham) version initiale
+    """
+    
+    self.buttons.append({'label': label, 'action': action})
+    
 
   def get_html(self, display_only:bool=False):
     """ Retourne le code HTML pour affichage du formulaire
@@ -322,6 +340,7 @@ class CodeGenerator():
       11/08/2024 (mpham) événement onchange
       12/03/2024 (mpham) tables contenant des valeurs accessibles au Javascript
       25/12/2024 (mpham) ajout de display_only
+      29/12/2024 (mpham) boutons supplémentaires dans self.buttons
     """
 
     self.html = ''
@@ -371,8 +390,11 @@ class CodeGenerator():
         label = self.form.submit_label
         if label is None:
           label = 'Send'
-        #self.html += f'<span class="middlebutton" onClick="document.getElementById(\'form-{html.escape(self.form.form_uuid)}\').submit();">{label}</span>'
         self.html += f'<span class="middlebutton" onClick="sendToRequester_newPage(\'{html.escape(self.form.form_uuid)}\')">{label}</span>'
+        
+        for button in self.form.buttons:
+          self.html += f'<span><a class="middlebutton" href="{button.get("action", "")}" >{button.get("label", "")}</a></span>'
+        
       else:
         label = self.form.submit_label
         if label is None:
