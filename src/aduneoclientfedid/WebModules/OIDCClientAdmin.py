@@ -75,7 +75,8 @@ class OIDCClientAdmin(BaseHandler):
     app_id = self.get_query_string_param('appid', '')
     if idp_id == '':
       # Création
-      idp = {'idp_parameters': {'oidc': {}}, 'oidc_clients': {'client': {}}}
+      app_id = 'client'
+      idp = {'idp_parameters': {'oidc': {}}, 'oidc_clients': {app_id: {}}}
     if idp_id != '' and app_id != '':
       idp = self.conf['idps'][idp_id]
     idp_params = idp['idp_parameters']
@@ -401,6 +402,7 @@ class OIDCClientAdmin(BaseHandler):
       app_params['idp_id'] = idp_id
       app_params['app_id'] = app_id
       app_form = self.get_app_form(app_params)
+      app_form.set_title('Remove Oauth 2 app '+(' '+app_params['name'] if app_params.get('name') else ''))
       app_form.add_button('Remove', f'removeappconfirmed?idpid={idp_id}&appid={app_id}', display='all')
       app_form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
 

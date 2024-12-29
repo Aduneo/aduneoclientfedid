@@ -137,10 +137,11 @@ class IdPClientAdmin(BaseHandler):
 
     self.add_html(form.get_html(display_only=True))
 
-    # Bouton de modification de l'IdP
+    # Boutons de modification de l'IdP
     self.add_html(f""" 
       <div>
         <span><a href="modify?idpid={idp_id}" class="smallbutton">Modify IdP parameters</a></span>
+        <span><a href="remove?idpid={idp_id}" class="smallbutton">Remove IdP</a></span>
       </div>
     """)
     
@@ -260,23 +261,64 @@ class IdPClientAdmin(BaseHandler):
     self.send_page()
     
 
+  @register_page_url(url='remove', method='GET', template='page_default.html', continuous=True)
+  def remove_idp_display(self):
+    """ Page de suppression d'un IdP
+    
+    Versions:
+      29/12/2024 (mpham) version initiale
+    """
 
-  @register_url(url='remove', method='GET')
-  def remove(self):
-  
+    try:
+
+      idp_id = self.get_query_string_param('idpid', '')
+      if idp_id == '':
+        raise AduneoError(f"IdP {idp_id} does not exist", button_label="Return to homepage", action="/")
+      idp = copy.deepcopy(self.conf['idps'][idp_id])
+      
+      # Affichage de l'IdP
+      idp['id'] = idp_id
+      idp_form = IdPClientAdmin.get_idp_form(self, idp)
+      idp_form.set_title('Remove IdP'+(' '+idp['name'] if idp.get('name') else ''))
+      idp_form.add_button('Remove', f'removeconfirmed?idpid={idp_id}', display='all')
+      idp_form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
+
+      self.add_html(idp_form.get_html(display_only=True))
+      self.add_javascript(idp_form.get_javascript())
+      
+      self.send_page()
+
+    except AduneoError as e:
+      self.add_html(f"""
+        <div>
+          Error: {e}
+        </div>
+        <div>
+          <span><a class="smallbutton" href="{e.action}">{e.button_label}</a></span>
+        </div>
+        """)
+
+
+  @register_url(url='removeconfirmed', method='GET')
+  def remove_idp_remove(self):
     """
     Supprime un IdP
     
-    Versions:
-      28/02/2021 (mpham) version initiale
+    29/12/2024 (mpham) version initiale
     """
 
-    idp_id = self.get_query_string_param('id')
-    if idp_id is not None:
-      self.conf['idps'].pop(idp_id, None)
-      Configuration.write_configuration(self.conf)
+    try:
+
+      idp_id = self.get_query_string_param('idpid', '')
+      if idp_id == '':
+        raise AduneoError(f"IdP {idp_id} does not exist", action="/")
       
-    self.send_redirection('/')
+      del self.conf['idps'][idp_id]
+      Configuration.write_configuration(self.conf)
+      self.send_redirection("/")
+      
+    except AduneoError as e:
+      self.send_redirection(e.action)
 
 
   def get_idp_form(handler, idp:dict):
