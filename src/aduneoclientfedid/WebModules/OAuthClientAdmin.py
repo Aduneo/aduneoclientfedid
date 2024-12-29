@@ -19,6 +19,7 @@ from ..BaseServer import BaseHandler
 from ..BaseServer import register_web_module, register_url, register_page_url
 from ..CfiForm import CfiForm
 from ..Configuration import Configuration
+import copy
 import html
 import uuid
 
@@ -82,7 +83,7 @@ class OAuthClientAdmin(BaseHandler):
       # Création
       idp = {'idp_parameters': {'oidc': {}}, 'oauth2_clients': {'client': {}}}
     if idp_id != '' and app_id != '':
-      idp = self.conf['idps'][idp_id]
+      idp = copy.deepcopy(self.conf['idps'][idp_id])
     idp_params = idp['idp_parameters']
     oauth2_params = idp_params['oauth2']
     app_params = idp['oauth2_clients'][app_id]
@@ -245,7 +246,7 @@ class OAuthClientAdmin(BaseHandler):
       # Création de l'IdP, on redirige vers Single
       self.modify_single_display()
     else:
-      idp = self.conf['idps'][idp_id]
+      idp = copy.deepcopy(self.conf['idps'][idp_id])
       if app_id == '':
         # Création du client
         app_params = {}
@@ -407,6 +408,152 @@ class OAuthClientAdmin(BaseHandler):
       .end_section() 
       
     form.set_title('OAuth 2 Authorization'+('' if form_content['name'] == '' else ': '+form_content['name']))
+    form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
+
+    return form
+
+
+  @register_page_url(url='modifyapi', method='GET', template='page_default.html', continuous=True)
+  def modify_api_display(self):
+    """ Modification des paramètres d'une API
+    
+    Versions:
+      29/12/2024 (mpham) version initiale
+    """
+
+    idp_id = self.get_query_string_param('idpid', '')
+    api_id = self.get_query_string_param('apiid', '')
+    if idp_id == '':
+      # l'IdP n'existe pas, on redirige vers la page d'accueil
+      self.send_redirection('/')
+    else:
+      idp = copy.deepcopy(self.conf['idps'][idp_id])
+      if api_id == '':
+        # Création de l'API
+        api_params = {}
+      else:
+        api_params = idp['oauth2_apis'][api_id]
+        
+      # Affichage de l'IdP
+      self.add_html(f"<h1>IdP {idp['name']}</h1>")
+      idp_panel_uuid = str(uuid.uuid4())
+      self.add_html("""
+        <div>
+          <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide IdP parameters" displayLabel="Display IdP parameters">Display IdP parameters</span>
+        </div>
+        """.format(
+          div_id = idp_panel_uuid,
+          ))
+          
+      from .IdPClientAdmin import IdPClientAdmin
+      idp['id'] = idp_id
+      idp_form = IdPClientAdmin.get_idp_form(self, idp)
+          
+      self.add_html("""
+        <div id="panel_{div_id}" style="display: none;">{form}</div>
+        """.format(
+          div_id = idp_panel_uuid,
+          form = idp_form.get_html(display_only=True),
+          ))
+
+      api_params['idp_id'] = idp_id
+      api_params['api_id'] = api_id
+      api_form = self.get_api_form(api_params)
+
+      self.add_html(api_form.get_html())
+      self.add_javascript(api_form.get_javascript())
+      
+      self.send_page()
+
+
+  @register_url(url='modifyapi', method='POST')
+  def modify_multi_modify(self):
+    """ Crée ou modifie une API OAuth 2 pour un IdP existant
+    
+    Si l'identifiant existe, ajoute un suffixe numérique
+    
+    Versions:
+      29/12/2024 (mpham) version initiale
+    """
+    
+    idp_id = self.post_form['idp_id']
+    idp = self.conf['idps'][idp_id]
+    
+    api_id = self.post_form['api_id']
+    if api_id == '':
+      # Création
+      if not idp.get('oauth2_apis'):
+        idp['oauth2_apis'] = {}
+      
+      api_id = self._generate_idpid(self.post_form['name'].strip(), idp['oauth2_apis'].keys())
+      idp['oauth2_apis'][api_id] = {}
+    
+    api_params = idp['oauth2_apis'][api_id]
+    
+    if self.post_form['name'] == '':
+      self.post_form['name'] = api_id
+
+    api_params['name'] = self.post_form['name'].strip()
+    
+    for item in ['introspection_http_method', 'introspection_auth_method', 'login']:
+      if self.post_form.get(item, '') == '':
+        api_params.pop(item, None)
+      else:
+        api_params[item] = self.post_form[item].strip()
+      
+    for secret in ['secret']:
+      if self.post_form.get(secret, '') != '':
+        api_params[secret+'!'] = self.post_form[secret]
+        
+    Configuration.write_configuration(self.conf)
+    
+    self.send_redirection(f"/client/idp/admin/display?idpid={idp_id}")
+
+    
+  def get_api_form(handler, api_params:dict):
+    """ Retourne un RequesterForm avec la définition d'une API, c'est-à-dire d'un Resource Server (RS) OAuth 2 qui reçoit une jeton et le valide par introspection
+    
+    Args:
+      handler: objet de type BaseHandler, pour accès à la configuration
+      api_params: dict avec les paramètres de l'API, dans le formalisme du fichier de configuration
+             Attention : il faut ajouter deux champs
+              - idp_id avec l'identifiant unique de l'IdP
+              - api_id avec l'identifiant unique de l'API
+             
+    Returns:
+      objet RequesterForm
+    
+    Versions:
+      29/12/2024 (mpham) version initiale
+    """
+
+    form_content = {
+      'idp_id': api_params['idp_id'],
+      'api_id': api_params['api_id'],
+      'name': api_params.get('name', ''),
+      'introspection_http_method': api_params.get('introspection_http_method', 'inherit_from_idp'),
+      'introspection_auth_method': api_params.get('introspection_auth_method', 'inherit_from_idp'),
+      'login': api_params.get('login', ''),
+      'secret': '',
+      }
+    
+    form = CfiForm('oauth2api', form_content, action='modifyapi', submit_label='Save') \
+      .hidden('idp_id') \
+      .hidden('api_id') \
+      .text('name', label='Name') \
+      .closed_list('introspection_http_method', label='Introspect. Request Method',
+        values = {'inherit_from_idp': 'Inherit from IdP', 'get': 'GET', 'post': 'POST'},
+        default = 'inherit_from_idp'
+        ) \
+      .closed_list('introspection_auth_method', label='Introspect. Authn. Method',
+        values = {'inherit_from_idp': 'Inherit from IdP', 'none': 'None', 'basic': 'Basic', 'bearer_token': 'Bearer Token'},
+        default = 'inherit_from_idp'
+        ) \
+      .text('login', label='Login', clipboard_category='client_id') \
+      .password('secret', label='Secret', clipboard_category='client_secret!')
+      
+    form.set_title('OAuth 2 API'+('' if form_content['name'] == '' else ': '+form_content['name']))
+    form.add_button('Cancel', f"/client/idp/admin/display?idpid={api_params['idp_id']}")
     form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     return form

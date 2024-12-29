@@ -21,6 +21,7 @@ from ..CfiForm import CfiForm
 from ..Configuration import Configuration
 from .OIDCClientAdmin import OIDCClientAdmin
 from .OAuthClientAdmin import OAuthClientAdmin
+import copy
 import html
 import uuid
 
@@ -46,7 +47,7 @@ class IdPClientAdmin(BaseHandler):
       # Création
       idp = {'idp_parameters': {'oidc': {}, 'oauth2': {}}}
     else:
-      idp = self.conf['idps'][idp_id]
+      idp = copy.deepcopy(self.conf['idps'][idp_id])
 
     idp['id'] = idp_id
     form = self.get_idp_form(idp)  
@@ -129,7 +130,7 @@ class IdPClientAdmin(BaseHandler):
 
 
     idp_id = self.get_query_string_param('idpid', '')
-    idp = self.conf['idps'][idp_id]
+    idp = copy.deepcopy(self.conf['idps'][idp_id])
     
     idp['id'] = idp_id
     form = self.get_idp_form(idp)  
