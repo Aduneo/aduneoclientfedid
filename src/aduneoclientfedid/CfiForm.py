@@ -228,18 +228,19 @@ class CfiForm():
     self.tables[table_id] = table
     
     
-  def add_button(self, label:str, action:str):
+  def add_button(self, label:str, action:str, display:str='all'):
     """ Ajoute un bouton au formulaire
     
     Args:
       label: libellé du bouton
       action: URL pour les formulaire en mode new_page, Javascript en mode api
+      display: mode où le bouton est affiché; all/modify/display
       
     Versions:
       29/12/2024 (mpham) version initiale
     """
     
-    self.buttons.append({'label': label, 'action': action})
+    self.buttons.append({'label': label, 'action': action, 'display': display})
     
 
   def get_html(self, display_only:bool=False):
@@ -381,7 +382,21 @@ class CodeGenerator():
 
     self._end_table()
     
-    if not self.display_only:
+    if self.display_only:
+
+      self.html += '<div id="'+html.escape(self.form.form_uuid)+'_button_bar">'
+      if self.form.mode == 'new_page':
+        for button in self.form.buttons:
+          if button['display'] in ['all', 'display']:
+            self.html += f'<span><a class="middlebutton" href="{button.get("action", "")}" >{button.get("label", "")}</a></span>'
+      else:
+        for button in self.form.buttons:
+          if button['display'] in ['all', 'display']:
+            self.html += f'<span class="middlebutton" onclick="{button.get("action", "")}" >{button.get("label", "")}</span>'
+          
+      self.html += '</div>'
+      
+    else:
       
       self.html += '<div id="'+html.escape(self.form.form_uuid)+'_button_bar">'
       self.html += '<span class="middlebutton" onClick="reinitFormRequest(\''+html.escape(self.form.form_uuid)+'\')">Reinit request</span>'
@@ -393,7 +408,8 @@ class CodeGenerator():
         self.html += f'<span class="middlebutton" onClick="sendToRequester_newPage(\'{html.escape(self.form.form_uuid)}\')">{label}</span>'
         
         for button in self.form.buttons:
-          self.html += f'<span><a class="middlebutton" href="{button.get("action", "")}" >{button.get("label", "")}</a></span>'
+          if button['display'] in ['all', 'modify']:
+            self.html += f'<span><a class="middlebutton" href="{button.get("action", "")}" >{button.get("label", "")}</a></span>'
         
       else:
         label = self.form.submit_label
@@ -402,6 +418,10 @@ class CodeGenerator():
         self.html += f'<span class="middlebutton" onClick="sendToRequester_api(\'{html.escape(self.form.form_uuid)}\')">{label}</span>'
         if self.form.options['/requester/cancel_button']:
           self.html += f'<span class="middlebutton" onClick="cancelRequester_api(\'{html.escape(self.form.form_uuid)}\', \'{self.form.options["/requester/cancel_button"]}\')">Cancel</span>'
+        
+        for button in self.form.buttons:
+          if button['display'] in ['all', 'modify']:
+            self.html += f'<span class="middlebutton" onclick="{button.get("action", "")}" >{button.get("label", "")}</span>'
       
       #self.html += '<span class="middlebutton" onClick="cancelRequest(\''+html.escape(self.form.form_uuid)+'\', \''+html.escape(context)+'\')">Cancel</span>'
       self.html += '</div>'

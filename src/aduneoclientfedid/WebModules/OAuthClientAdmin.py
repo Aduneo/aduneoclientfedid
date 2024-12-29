@@ -467,7 +467,7 @@ class OAuthClientAdmin(BaseHandler):
 
 
   @register_url(url='modifyapi', method='POST')
-  def modify_multi_modify(self):
+  def modify_api_modify(self):
     """ Crée ou modifie une API OAuth 2 pour un IdP existant
     
     Si l'identifiant existe, ajoute un suffixe numérique
@@ -510,6 +510,85 @@ class OAuthClientAdmin(BaseHandler):
     self.send_redirection(f"/client/idp/admin/display?idpid={idp_id}")
 
     
+  @register_page_url(url='removeapi', method='GET', template='page_default.html', continuous=True)
+  def remove_api_display(self):
+    """ Suppression d'une API
+    
+    Versions:
+      29/12/2024 (mpham) version initiale
+    """
+
+    idp_id = self.get_query_string_param('idpid', '')
+    api_id = self.get_query_string_param('apiid', '')
+    if idp_id == '':
+      # l'IdP n'existe pas, on redirige vers la page d'accueil
+      self.send_redirection('/')
+    else:
+      idp = copy.deepcopy(self.conf['idps'][idp_id])
+      if api_id == '':
+        # Création de l'API
+        self.send_redirection(f'/client/idp/admin/display?idpid={idp_id}')
+      else:
+        api_params = idp['oauth2_apis'][api_id]
+        
+        # Affichage de l'IdP
+        self.add_html(f"<h1>IdP {idp['name']}</h1>")
+        idp_panel_uuid = str(uuid.uuid4())
+        self.add_html("""
+          <div>
+            <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide IdP parameters" displayLabel="Display IdP parameters">Display IdP parameters</span>
+          </div>
+          """.format(
+            div_id = idp_panel_uuid,
+            ))
+            
+        from .IdPClientAdmin import IdPClientAdmin
+        idp['id'] = idp_id
+        idp_form = IdPClientAdmin.get_idp_form(self, idp)
+            
+        self.add_html("""
+          <div id="panel_{div_id}" style="display: none;">{form}</div>
+          """.format(
+            div_id = idp_panel_uuid,
+            form = idp_form.get_html(display_only=True),
+            ))
+
+        api_params['idp_id'] = idp_id
+        api_params['api_id'] = api_id
+        api_form = self.get_api_form(api_params)
+        api_form.add_button('Remove', f'removeapiconfirmed?idpid={idp_id}&apiid={api_id}', display='all')
+        api_form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
+
+        self.add_html(api_form.get_html(display_only=True))
+        self.add_javascript(api_form.get_javascript(display_only=True))
+        
+        self.send_page()
+
+
+  @register_url(url='removeapiconfirmed', method='GET')
+  def remove_api_remove(self):
+    """ Suppression d'une API
+    
+    Versions:
+      29/12/2024 (mpham) version initiale
+    """
+
+    idp_id = self.get_query_string_param('idpid', '')
+    api_id = self.get_query_string_param('apiid', '')
+    if idp_id == '':
+      # l'IdP n'existe pas, on redirige vers la page d'accueil
+      self.send_redirection('/')
+    else:
+      idp = self.conf['idps'][idp_id]
+      if api_id == '':
+        # Création de l'API
+        self.send_redirection(f'/client/idp/admin/display?idpid={idp_id}')
+      else:
+        del idp['oauth2_apis'][api_id]
+        Configuration.write_configuration(self.conf)
+        self.send_redirection(f"/client/idp/admin/display?idpid={idp_id}")
+
+
   def get_api_form(handler, api_params:dict):
     """ Retourne un RequesterForm avec la définition d'une API, c'est-à-dire d'un Resource Server (RS) OAuth 2 qui reçoit une jeton et le valide par introspection
     
@@ -553,7 +632,7 @@ class OAuthClientAdmin(BaseHandler):
       .password('secret', label='Secret', clipboard_category='client_secret!')
       
     form.set_title('OAuth 2 API'+('' if form_content['name'] == '' else ': '+form_content['name']))
-    form.add_button('Cancel', f"/client/idp/admin/display?idpid={api_params['idp_id']}")
+    form.add_button('Cancel', f"/client/idp/admin/display?idpid={api_params['idp_id']}", display='modify')
     form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     return form

@@ -384,9 +384,9 @@ class IdPClientAdmin(BaseHandler):
       
     form.set_title('IdP Configuration'+('' if form_content['name'] == '' else ': '+form_content['name']))
     if idp.get('id', '') == '':
-      form.add_button('Cancel', '/')
+      form.add_button('Cancel', '/', display='modify')
     else:
-      form.add_button('Cancel', f"display?idpid={idp['id']}")
+      form.add_button('Cancel', f"display?idpid={idp['id']}", display='modify')
     form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     return form
