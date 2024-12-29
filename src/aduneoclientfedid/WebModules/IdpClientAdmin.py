@@ -162,7 +162,7 @@ class IdPClientAdmin(BaseHandler):
           <span><a href="/client/oidc/admin/modifymulti?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
           <span><a href="/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
           <span><a href="/client/oidc/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
-          <span><a href="/client/oidc/admin/modifymulti?idpid={idp_id}" class="smallbutton">Remove</a></span>
+          <span><a href="/client/oidc/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbutton">Remove</a></span>
         </div>
         """.format(
           name = html.escape(client.get('name', '')),
@@ -199,8 +199,8 @@ class IdPClientAdmin(BaseHandler):
           <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">Display parameters</span>
           <span><a href="/client/oauth2/admin/modifymulti?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
           <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
-          <span><a href="/client/oauth2/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
-          <span><a href="/client/oauth2/admin/removeclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Remove</a></span>
+          <span><a href="/client/oauth2/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Revoke</a></span>
+          <span><a href="/client/oauth2/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbutton">Remove</a></span>
         </div>
         """.format(
           name = html.escape(client.get('name', '')),

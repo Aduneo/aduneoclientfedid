@@ -329,9 +329,9 @@ class OAuthClientAdmin(BaseHandler):
     self.send_redirection(f"/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}")
     
 
-  @register_page_url(url='removeclient', method='GET', template='page_default.html', continuous=True)
+  @register_page_url(url='removeapp', method='GET', template='page_default.html', continuous=True)
   def remove_app_display(self):
-    """ Suppression d'un client
+    """ Page de suppression d'un client
     
     Versions:
       29/12/2024 (mpham) version initiale
@@ -374,7 +374,7 @@ class OAuthClientAdmin(BaseHandler):
       app_params['idp_id'] = idp_id
       app_params['app_id'] = app_id
       app_form = self.get_app_form(app_params)
-      app_form.add_button('Remove', f'removeclientconfirmed?idpid={idp_id}&appid={app_id}', display='all')
+      app_form.add_button('Remove', f'removeappconfirmed?idpid={idp_id}&appid={app_id}', display='all')
       app_form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
 
       self.add_html(app_form.get_html(display_only=True))
@@ -393,7 +393,7 @@ class OAuthClientAdmin(BaseHandler):
         """)
 
 
-  @register_url(url='removeclientconfirmed', method='GET')
+  @register_url(url='removeappconfirmed', method='GET')
   def remove_app_remove(self):
     """
     Supprime un client OAuth 2
