@@ -898,8 +898,10 @@ class AduneoError(Exception):
   """ Exception fonctionnelle
   """
   
-  def __init__(self, message:str, explanation_code:str=None):
+  def __init__(self, message:str, explanation_code:str=None, action:str=None, button_label:str=None):
     self.explanation_code = explanation_code
+    self.action = action
+    self.button_label = button_label
     super().__init__(message)
 
 

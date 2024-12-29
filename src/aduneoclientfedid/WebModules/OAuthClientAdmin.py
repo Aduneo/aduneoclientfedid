@@ -329,21 +329,96 @@ class OAuthClientAdmin(BaseHandler):
     self.send_redirection(f"/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}")
     
 
-  @register_url(url='removeclient', method='GET')
-  def remove(self):
-  
-    """
-    Supprime un client OpenID Connect
+  @register_page_url(url='removeclient', method='GET', template='page_default.html', continuous=True)
+  def remove_app_display(self):
+    """ Suppression d'un client
     
-    mpham 28/12/2021
+    Versions:
+      29/12/2024 (mpham) version initiale
     """
 
-    rp_id = self.get_query_string_param('id')
-    if rp_id is not None:
-      self.conf['oauth_clients'].pop(rp_id, None)
-      Configuration.write_configuration(self.conf)
+    try:
+
+      idp_id = self.get_query_string_param('idpid', '')
+      if idp_id == '':
+        raise AduneoError(f"IdP {idp_id} does not exist", button_label="Return to homepage", action="/")
+      idp = copy.deepcopy(self.conf['idps'][idp_id])
       
-    self.send_redirection('/')
+      app_id = self.get_query_string_param('appid', '')
+      app_params = idp['oauth2_clients'].get(app_id)
+      if not app_params:
+        raise AduneoError(f"OAuth 2 client {app_id} does not exist", button_label="Return to IdP page", action=f"/client/idp/admin/display?idpid={idp_id}")
+      
+      # Affichage de l'IdP
+      self.add_html(f"<h1>IdP {idp['name']}</h1>")
+      idp_panel_uuid = str(uuid.uuid4())
+      self.add_html("""
+        <div>
+          <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide IdP parameters" displayLabel="Display IdP parameters">Display IdP parameters</span>
+        </div>
+        """.format(
+          div_id = idp_panel_uuid,
+          ))
+          
+      from .IdPClientAdmin import IdPClientAdmin
+      idp['id'] = idp_id
+      idp_form = IdPClientAdmin.get_idp_form(self, idp)
+          
+      self.add_html("""
+        <div id="panel_{div_id}" style="display: none;">{form}</div>
+        """.format(
+          div_id = idp_panel_uuid,
+          form = idp_form.get_html(display_only=True),
+          ))
+
+      app_params['idp_id'] = idp_id
+      app_params['app_id'] = app_id
+      app_form = self.get_app_form(app_params)
+      app_form.add_button('Remove', f'removeclientconfirmed?idpid={idp_id}&appid={app_id}', display='all')
+      app_form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
+
+      self.add_html(app_form.get_html(display_only=True))
+      self.add_javascript(app_form.get_javascript())
+      
+      self.send_page()
+
+    except AduneoError as e:
+      self.add_html(f"""
+        <div>
+          Error: {e}
+        </div>
+        <div>
+          <span><a class="smallbutton" href="{e.action}">{e.button_label}</a></span>
+        </div>
+        """)
+
+
+  @register_url(url='removeclientconfirmed', method='GET')
+  def remove_app_remove(self):
+    """
+    Supprime un client OAuth 2
+    
+    29/12/2024 (mpham) version initiale
+    """
+
+    try:
+
+      idp_id = self.get_query_string_param('idpid', '')
+      if idp_id == '':
+        raise AduneoError(f"IdP {idp_id} does not exist", action="/")
+      idp = self.conf['idps'][idp_id]
+      
+      app_id = self.get_query_string_param('appid', '')
+      app_params = idp['oauth2_clients'].get(app_id)
+      if not app_params:
+        raise AduneoError(f"OAuth 2 client {app_id} does not exist", action=f"/client/idp/admin/display?idpid={idp_id}")
+
+      del idp['oauth2_clients'][app_id]
+      Configuration.write_configuration(self.conf)
+      self.send_redirection(f"/client/idp/admin/display?idpid={idp_id}")
+      
+    except AduneoError as e:
+      self.send_redirection(e.action)
 
 
   def get_app_form(handler, app_params:dict):
@@ -408,6 +483,7 @@ class OAuthClientAdmin(BaseHandler):
       .end_section() 
       
     form.set_title('OAuth 2 Authorization'+('' if form_content['name'] == '' else ': '+form_content['name']))
+    form.add_button('Cancel', f"/client/idp/admin/display?idpid={app_params['idp_id']}", display='modify')
     form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     return form
@@ -560,7 +636,7 @@ class OAuthClientAdmin(BaseHandler):
         api_form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
 
         self.add_html(api_form.get_html(display_only=True))
-        self.add_javascript(api_form.get_javascript(display_only=True))
+        self.add_javascript(api_form.get_javascript())
         
         self.send_page()
 

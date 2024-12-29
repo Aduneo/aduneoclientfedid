@@ -200,7 +200,7 @@ class IdPClientAdmin(BaseHandler):
           <span><a href="/client/oauth2/admin/modifymulti?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
           <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
           <span><a href="/client/oauth2/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
-          <span><a href="/client/oauth2/admin/modifymulti?idpid={idp_id}" class="smallbutton">Remove</a></span>
+          <span><a href="/client/oauth2/admin/removeclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Remove</a></span>
         </div>
         """.format(
           name = html.escape(client.get('name', '')),
