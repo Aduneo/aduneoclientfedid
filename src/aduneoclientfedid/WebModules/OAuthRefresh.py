@@ -77,10 +77,11 @@ class OAuth2Refresh(FlowHandler):
         token_wrapper = all_access_tokens[token_wrapper_key]
         if token_wrapper.get('refresh_token'):
           refresh_tokens[token_wrapper['refresh_token']] = token_wrapper['name']
+          print(token_wrapper)
           token_clients[token_wrapper['refresh_token']] = token_wrapper['app_id']
           if default_refresh_token == '__input__':
-              default_refresh_token = token_wrapper['refresh_token']
-              default_app_id = token_wrapper['app_id']
+            default_refresh_token = token_wrapper['refresh_token']
+            default_app_id = token_wrapper['app_id']
 
       # Récupération des client ID et des méthodes d'authentification
       client_ids = {'__input__': 'Direct input'}   # clé : app_id, valeur : client_id

@@ -128,12 +128,13 @@ class Context(dict):
     Versions:
       28/08/2024 (mpham) version initiale
       05/09/2024 (mpham) on retourne aussi le jeton de rafraîchissement
+      30/12/2024 (mpham) on retourne aussi app_id
     """
 
     access_tokens = copy.deepcopy(self['access_tokens'])
     for token_wrapper_key in self['id_tokens'].keys():
       token_wrapper = self['id_tokens'][token_wrapper_key]
-      access_tokens[token_wrapper_key] = {'name': token_wrapper['name'], 'access_token': token_wrapper['access_token']}
+      access_tokens[token_wrapper_key] = {'name': token_wrapper['name'], 'access_token': token_wrapper['access_token'], 'app_id': token_wrapper['app_id']}
       if 'refresh_token' in token_wrapper:
         access_tokens[token_wrapper_key]['refresh_token'] = token_wrapper['refresh_token']
 

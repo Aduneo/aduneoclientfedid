@@ -17,6 +17,7 @@ limitations under the License.
 import html
 import json
 import requests
+import urllib
 import uuid
 
 from .BaseServer import AduneoError
@@ -1251,23 +1252,45 @@ class RequesterForm(CfiForm):
   def send_form(page_handler, hr_data:dict, default_secret=None):
     """ Envoie une requête préparée par un RequesterForm
     
-      Args:
-        hr_data: le formulaire tel qu'il a été reçu depuis un RequesterForm en mode API
-        default_secret: secret à utiliser s'il n'a pas été saisi dans le formulaire
-        
-      Returns:
-        réponse de requests
+    Args:
+      hr_data: le formulaire tel qu'il a été reçu depuis un RequesterForm en mode API
+      default_secret: secret à utiliser s'il n'a pas été saisi dans le formulaire
+      
+    Returns:
+      en mode API, réponse de requests API
+  
+    Versions:
+      30/12/2024 (mpham) version initiale
+    """
+    print('###############')
+    print(hr_data)
     
-      Versions:
-        09/08/2024 (mpham) version initiale adaptée de FlowHandler.send_form_http_request
-        05/09/2024 (mpham) POST ne fonctionnait pas
-        27/11/2024 (mpham) les checkbox, donc en particulier la vérification des certificats, ont le même comportement que les formulaires
-                             l'élement est présent si la case est cochée, absent sinon
+    if hr_data.get('hr_mode', 'new_page') == 'api':
+      return RequesterForm.send_form_api(page_handler, hr_data, default_secret)
+    else:
+      RequesterForm.send_form_new_page(page_handler, hr_data, default_secret)
+    
+    
+  def send_form_api(page_handler, hr_data:dict, default_secret=None):
+    """ Envoie une requête préparée par un RequesterForm en mode API
+    
+    Args:
+      hr_data: le formulaire tel qu'il a été reçu depuis un RequesterForm en mode API
+      default_secret: secret à utiliser s'il n'a pas été saisi dans le formulaire
+      
+    Returns:
+      réponse de requests
+  
+    Versions:
+      09/08/2024 (mpham) version initiale adaptée de FlowHandler.send_form_http_request
+      05/09/2024 (mpham) POST ne fonctionnait pas
+      27/11/2024 (mpham) les checkbox, donc en particulier la vérification des certificats, ont le même comportement que les formulaires
+                           l'élement est présent si la case est cochée, absent sinon
     """
     
     service_endpoint = hr_data.get('hr_request_url')
     if not service_endpoint:
-      raise AduneoError(self.log_error("RequesterForm sender was called without a service URL in hr_request_url field"))
+      raise AduneoError(page_handler.log_error("RequesterForm sender was called without a service URL in hr_request_url field"))
       
     page_handler.log_info(f"Sending HTTP request to {service_endpoint}")
     
@@ -1332,10 +1355,81 @@ class RequesterForm(CfiForm):
       raise AduneoError(page_handler.log_error(('  ' * 1)+'http service error: '+str(error)))
     if response.status_code != 200:
       raise AduneoError(page_handler.log_error('http service error: status code '+str(response.status_code)+", "+response.text))
-      
+    
+    print(response)
+    
     return response
 
     
+  def send_form_new_page(page_handler, hr_data:dict, default_secret=None):
+    """ Envoie une requête préparée par un RequesterForm en mode new_page
+    
+    Args:
+      hr_data: le formulaire tel qu'il a été reçu depuis un RequesterForm en mode new_page
+      default_secret: secret à utiliser s'il n'a pas été saisi dans le formulaire
+      
+    Versions:
+      30/12/2024 (mpham) version initiale
+    """
+    
+    service_endpoint = hr_data.get('hr_request_url')
+    if not service_endpoint:
+      raise AduneoError(page_handler.log_error("RequesterForm sender was called without a service URL in hr_request_url field"))
+    service_endpoint = service_endpoint.strip()
+      
+    page_handler.log_info(f"Sending HTTP request to {service_endpoint}")
+    
+    # méthode HTTP de la requête à envoyer
+    method = hr_data.get('hr_form_method')
+    if not method:
+      raise AduneoError(page_handler.log_error("HTTP method not found in hr_form_method field"))
+    page_handler.log_info("  HTTP method "+method)
+
+    service_data = hr_data.get('hr_request_data', '').strip()
+    page_handler.log_info("  data "+service_data)
+
+    if method == 'redirect':
+      
+      link_url = service_endpoint+'?'+service_data
+      page_handler.send_redirection(link_url)
+      
+    elif method == 'get':
+
+      link_url = service_endpoint+'?'+service_data
+      page_handler.add_html(f"""<a id="autoclick" href="{link_url}">Submit</a>""")
+      page_handler.add_html("""
+        <script>
+          window.onload = function(e) {
+            document.getElementById('autoclick').click();
+          }
+        </script>
+        """)
+      page_handler.send_page_raw()
+
+    elif method == 'post':
+      
+      page_handler.add_html(f"""<form name="autosubmit" action="{service_endpoint}" method="post">""")
+      for item in service_data.split('&'):
+        equals_pos = item.find('=')
+        if equals_pos == -1:
+          name = item
+          value = ''
+        else:
+          name = item[:equals_pos]
+          value = html.escape(urllib.parse.unquote(item[equals_pos+1:]))
+        page_handler.add_html(f"""<input type="hidden" name="{name}" value="{value}">""")
+      page_handler.add_html("""<input type="submit" name="Logout">""")
+      page_handler.add_html("""</form>""")
+      page_handler.add_html("""
+        <script>
+          window.onload = function(e) {
+            document.autosubmit.submit();
+          }
+        </script>
+        """)
+      page_handler.send_page_raw()
+
+
   def _append_requester(self):
     """ Ajoute le requester HTTP
     
@@ -1343,11 +1437,14 @@ class RequesterForm(CfiForm):
         00/12/2023 (mpham) version initiale
         30/08/2024 (mpham) liste des méthodes d'authentification dans l'option /requester/auth_method_options
         03/12/2024 (mpham) les champs auth_login et auth_secret ne sont plus affichés en authentification de type form
+        30/12/2024 (mpham) le mode (new_page / api) est placé dans le champ caché hr_mode
     """
     
     if not self._requester_appened:
 
       self.hidden('hr_context')
+      self.hidden('hr_mode')
+      self.content['hr_mode'] = self.mode
       
       http_methods = {'post': 'POST', 'get': 'GET'}
       if self.mode == 'new_page':

@@ -69,6 +69,7 @@ class OIDCClientAdmin(BaseHandler):
       10/08/2024 (mpham) version initiale
       23/12/2024 (mpham) possibilité de donner la clé de vérification même en Discovery URI (pour entrer la clé HS256 de Keycloak qui n'est pas aux normes : https://github.com/keycloak/keycloak/issues/13823)
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
+      30/12/2024 (mpham) End session endpoint HTTP method
     """
 
     idp_id = self.get_query_string_param('idpid', '')
@@ -104,6 +105,7 @@ class OIDCClientAdmin(BaseHandler):
       'scope': app_params.get('scope', 'openid'),
       'response_type': app_params.get('response_type', 'code'),
       'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+      'end_session_endpoint_method': app_params.get('end_session_endpoint_method', 'post'),
       'display': app_params.get('display', ''),
       'prompt': app_params.get('prompt', ''),
       'max_age': app_params.get('max_age', ''),
@@ -157,9 +159,13 @@ class OIDCClientAdmin(BaseHandler):
           values={'code': 'code'},
           default = 'code'
           ) \
-        .closed_list('token_endpoint_auth_method', label='Token endpoint auth method', 
+        .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
           values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
           default = 'client_secret_basic'
+          ) \
+        .closed_list('end_session_endpoint_method', label='End session endpoint HTTP method', 
+          values={'get': 'GET', 'post': 'POST'},
+          default = 'post'
           ) \
         .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
       .end_section() \
@@ -205,6 +211,7 @@ class OIDCClientAdmin(BaseHandler):
       10/08/2024 (mpham) version 2 de la configuration
       23/08/2024 (mpham) request parameters et strip des données du formulaire
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
+      30/12/2024 (mpham) End session endpoint HTTP method
     """
     
     idp_id = self.post_form['idp_id']
@@ -233,7 +240,7 @@ class OIDCClientAdmin(BaseHandler):
       else:
         oidc_params[item] = self.post_form[item].strip()
       
-    for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'post_logout_redirect_uri',
+    for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'end_session_endpoint_method', 'post_logout_redirect_uri',
     'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values']:
       if self.post_form.get(item, '') == '':
         app_params.pop(item, None)
@@ -320,6 +327,7 @@ class OIDCClientAdmin(BaseHandler):
     
     Versions:
       26/12/2024 (mpham) version initiale
+      30/12/2024 (mpham) End session endpoint HTTP method
     """
     
     idp_id = self.post_form['idp_id']
@@ -341,7 +349,7 @@ class OIDCClientAdmin(BaseHandler):
 
     app_params['name'] = self.post_form['name'].strip()
     
-    for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'post_logout_redirect_uri',
+    for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'end_session_endpoint_method', 'post_logout_redirect_uri',
     'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values']:
       if self.post_form.get(item, '') == '':
         app_params.pop(item, None)
@@ -465,7 +473,8 @@ class OIDCClientAdmin(BaseHandler):
       objet RequesterForm
     
     Versions:
-      26/12/2024 (mpham) version initiale
+      26/12/2024 (mpham) version initiale adaptée de modify_single_display
+      30/12/2024 (mpham) End session endpoint HTTP method
     """
 
     form_content = {
@@ -478,6 +487,7 @@ class OIDCClientAdmin(BaseHandler):
       'scope': app_params.get('scope', 'openid'),
       'response_type': app_params.get('response_type', 'code'),
       'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+      'end_session_endpoint_method': app_params.get('end_session_endpoint_method', 'post'),
       'display': app_params.get('display', ''),
       'prompt': app_params.get('prompt', ''),
       'max_age': app_params.get('max_age', ''),
@@ -506,9 +516,13 @@ class OIDCClientAdmin(BaseHandler):
           values={'code': 'code'},
           default = 'code'
           ) \
-        .closed_list('token_endpoint_auth_method', label='Token endpoint auth method', 
+        .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
           values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
           default = 'client_secret_basic'
+          ) \
+        .closed_list('end_session_endpoint_method', label='End session endpoint HTTP method', 
+          values={'get': 'GET', 'post': 'POST'},
+          default = 'post'
           ) \
         .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
       .end_section() \

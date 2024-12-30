@@ -159,7 +159,7 @@ class OIDCClientLogin(FlowHandler):
     self.set_session_value(state, self.context['context_id'])
 
     form_content = {
-      'contextid': self.context['context_id'],
+      'contextid': self.context['context_id'],  # TODO : remplacer par hr_context ?
       'redirect_uri': app_params.get('redirect_uri', ''),
       'authorization_endpoint': idp_params.get('authorization_endpoint', ''),
       'token_endpoint': idp_params.get('token_endpoint', ''),
@@ -235,7 +235,7 @@ class OIDCClientLogin(FlowHandler):
         .text('acr_values', label='ACR Values', clipboard_category='acr_values') \
       .end_section() \
       .start_section('security_params', title="Security", collapsible=True, collapsible_default=False) \
-        .text('state', label='State', clipboard_category='nonce') \
+        .text('state', label='State', clipboard_category='state') \
         .text('nonce', label='Nonce', clipboard_category='nonce') \
       .end_section() \
 
@@ -432,6 +432,8 @@ class OIDCClientLogin(FlowHandler):
         self.log_info("Connecting to "+token_endpoint)
         verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
         self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+        self.log_info(('  ' * 1)+'Client ID: '+client_id)
+        print(client_secret)
         r = requests.post(token_endpoint, data=data, auth=auth, verify=verify_certificates)
       except Exception as error:
         self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
@@ -673,7 +675,7 @@ class OIDCClientLogin(FlowHandler):
 
       # on considère qu'on est bien loggé
       self.logon('oidc_client_'+idp_id+'/'+app_id, id_token)
-
+      
     except AduneoError as error:
       if self.is_result_in_table():
         self.end_result_table()
