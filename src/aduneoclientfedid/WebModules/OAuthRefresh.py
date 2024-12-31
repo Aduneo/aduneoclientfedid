@@ -64,7 +64,8 @@ class OAuth2Refresh(FlowHandler):
 
       conf_idp = self.conf['idps'][self.context.idp_id]
       
-      conf_apps = conf_idp['oauth2_clients']
+      conf_apps = dict(conf_idp.get('oauth2_clients', {}))
+      conf_apps.update(conf_idp.get('oidc_clients', {}))
 
       idp_params = self.context.idp_params
       all_app_params = self.context.app_params
@@ -209,15 +210,14 @@ class OAuth2Refresh(FlowHandler):
         idp_params['verify_certificates'] = 'off'
     
       conf_idp = self.conf['idps'][self.context.idp_id]
-      conf_apps = conf_idp['oauth2_clients']
+      conf_apps = dict(conf_idp.get('oauth2_clients', {}))
+      conf_apps.update(conf_idp.get('oidc_clients', {}))
       app_id = self.post_form['client_ids']
     
       # On obtient le secret
       client_secret = None
       if app_id != '__input__':
-
         client_secret = conf_apps[self.post_form['client_ids']].get('client_secret!', '')
-        
     
       response = RequesterForm.send_form(self, self.post_form, default_secret=client_secret)
       json_response = response.json()
@@ -244,7 +244,7 @@ class OAuth2Refresh(FlowHandler):
                   token_wrapper['name'] = name + ' (refreshed)'
                   
           app_params = conf_apps[app_id]
-          token_name = 'Authz OAuth2 '+app_params['name']+' - '+time.strftime("%H:%M:%S", time.localtime())
+          token_name = 'Refreshed '+app_params['name']+' - '+time.strftime("%H:%M:%S", time.localtime())
           token = {'name': token_name, 'type': 'access_token', 'app_id': app_id, 'access_token': new_access_token}
           if new_refresh_token:
             token['refresh_token'] = new_refresh_token

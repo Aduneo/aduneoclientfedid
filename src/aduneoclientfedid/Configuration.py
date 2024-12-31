@@ -315,23 +315,6 @@ class Configuration():
     
     return value
   
-  
-  def get_all_apps_ids(self, idp_id:str=None) -> list:
-    """ Retourne les identifiants de toutes les applications
-          d'un IdP ou de tous les IdP
-          
-    Args:
-      idp_id: identifiant de l'IdP choisi, si None, retourne les identifiants de tous les IdP
-      
-    Returns:
-      list des identifiants
-      
-    Versions:
-      31/12/2024 (mpham) version initiale
-    """
-    pass
-    # TODO : et ajouter un paramètre avec les types d'applications (['oidc', 'oauth2'])
-  
 
   def configure_logging(log_method: list):
     global WEB_CONSOLE_BUFFER

@@ -647,20 +647,20 @@ class FlowHandler(BaseHandler):
 
       self.add_html('<div id="'+html.escape(dom_id)+'">')
       if retry_url:
-        self.add_html('<span><a href="'+retry_url+'?contextid='+urllib.parse.quote_plus(context_id)+'&idpid='+urllib.parse.quote_plus(self.context.idp_id)+'&appid='+urllib.parse.quote_plus(self.context.app_id)+'" class="smallbutton">Retry original flow</a></span>')
-      self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/newauth?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="smallbutton">New auth</span>')
+        self.add_html('<span><a href="'+retry_url+'?contextid='+urllib.parse.quote_plus(context_id)+'&idpid='+urllib.parse.quote_plus(self.context.idp_id)+'&appid='+urllib.parse.quote_plus(self.context.app_id)+'" class="middlebutton">Retry original flow</a></span>')
+      self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/newauth?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">New auth</span>')
       if userinfo:
-        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oidc/userinfo/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="smallbutton">Userinfo</span>')
+        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oidc/userinfo/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Userinfo</span>')
       if introspection:
-        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/introspection/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="smallbutton">Introspect AT</span>')
+        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/introspection/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Introspect AT</span>')
       if refresh:
-        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/refresh/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="smallbutton">Refresh AT</span>')
+        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/refresh/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Refresh AT</span>')
       if logout:
-        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/logout?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="smallbutton">Logout</span>')
+        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/logout?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Logout</span>')
       if token_exchange:
-        self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="smallbutton">Exchange Token</span>')
+        self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Exchange Token</span>')
       if oauth_exchange:
-        self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/saml/login/oauthexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+urllib.parse.quote_plus(dom_id)+'\')" class="smallbutton">Exchange SAML -> OAuth</span>')
+        self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/saml/login/oauthexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+urllib.parse.quote_plus(dom_id)+'\')" class="middlebutton">Exchange SAML -> OAuth</span>')
       self.add_html('</div>')
 
 

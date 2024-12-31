@@ -565,7 +565,7 @@ class OAuthClientAdmin(BaseHandler):
       if not idp.get('oauth2_apis'):
         idp['oauth2_apis'] = {}
       
-      api_id = self._generate_idpid(self.post_form['name'].strip(), idp['oauth2_apis'].keys())
+      api_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=idp['oauth2_apis'].keys(), default='op', prefix=f'api_{idp_id[4:]}_')
       idp['oauth2_apis'][api_id] = {}
     
     api_params = idp['oauth2_apis'][api_id]
