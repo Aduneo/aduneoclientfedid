@@ -414,7 +414,7 @@ class IdPClientAdmin(BaseHandler):
             values = {'get': 'GET', 'post': 'POST'},
             default = 'get'
             ) \
-          .closed_list('oauth2_introspection_auth_method', label='Introspect. Authn. Method',
+          .closed_list('oauth2_introspection_auth_method', label='Introspect. Authn. Scheme',
             values = {'none': 'None', 'basic': 'Basic', 'bearer_token': 'Bearer Token'},
             default = 'basic'
             ) \

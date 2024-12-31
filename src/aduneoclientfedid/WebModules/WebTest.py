@@ -108,7 +108,7 @@ class WebTest(BaseHandler):
       'scope': 'openid profile',
       'endpoint_configuration': 'discovery_uri',
       'signature_key_configuration': 'local_configuration',
-      'token_endpoint_auth_method': 'Token endpoint auth method',
+      'token_endpoint_auth_method': 'Token endpoint auth scheme',
       'verify_certificates': True,
       'client_id': 'mylogin',
       'client_secret': 'mypassword',
@@ -253,7 +253,7 @@ class WebTest(BaseHandler):
           values={'code': 'code'},
           default = 'code'
           ) \
-        .closed_list('token_endpoint_auth_method', label='Token endpoint auth method', 
+        .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
           values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
           default = 'client_secret_basic'
           ) \
@@ -335,7 +335,7 @@ class WebTest(BaseHandler):
           values={'code': 'code'},
           default = 'code'
           ) \
-        .closed_list('token_endpoint_auth_method', label='Token endpoint auth method', 
+        .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
           values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
           default = 'client_secret_basic'
           ) \

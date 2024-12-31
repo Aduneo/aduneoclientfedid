@@ -178,33 +178,33 @@ class OAuthClientLogin(FlowHandler):
       
       form = RequesterForm('oauth2auth', form_content, action='/client/oauth2/login/sendrequest', mode='new_page', request_url='@[authorization_endpoint]') \
         .hidden('contextid') \
-        .start_section('clientfedid_params', title="ClientFedID Parameters") \
+        .start_section('clientfedid_params', title="ClientFedID parameters") \
           .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri') \
         .end_section() \
-        .start_section('as_endpoints', title="AS Endpoints", collapsible=True, collapsible_default=False) \
-          .text('authorization_endpoint', label='Authorization Endpoint', clipboard_category='authorization_endpoint') \
+        .start_section('as_endpoints', title="AS endpoints", collapsible=True, collapsible_default=False) \
+          .text('authorization_endpoint', label='Authorization endpoint', clipboard_category='authorization_endpoint') \
           .text('token_endpoint', label='Token Endpoint', clipboard_category='token_endpoint') \
-          .text('introspection_endpoint', label='Introspection Endpoint', clipboard_category='introspection_endpoint') \
-          .closed_list('introspection_http_method', label='Introspection Request Method', 
+          .text('introspection_endpoint', label='Introspection endpoint', clipboard_category='introspection_endpoint') \
+          .closed_list('introspection_http_method', label='Introspection request method', 
             values={'get': 'GET', 'post': 'POST'},
             default = 'get'
             ) \
-          .closed_list('introspection_auth_method', label='Introspection Authn. Method', 
+          .closed_list('introspection_auth_method', label='Introspection authn scheme', 
             values={'none': 'None', 'basic': 'Basic', 'bearer_token': 'Bearer Token'},
             default = 'basic'
             ) \
         .end_section() \
-        .start_section('client_params', title="Client Parameters", collapsible=True, collapsible_default=False) \
-          .closed_list('oauth_flow', label='OAuth Flow', 
+        .start_section('client_params', title="Client parameters", collapsible=True, collapsible_default=False) \
+          .closed_list('oauth_flow', label='OAuth flow', 
             values={'authorization_code': 'Authorization Code', 'authorization_code_pkce': 'Authorization Code with PKCE', 'resource_owner_password_predentials': 'Resource Owner Password Credentials', 'client_credentials': 'Client Credentials'},
             default = 'authorization_code'
             ) \
-          .closed_list('pkce_method', label='PKCE Code Challenge Method', displayed_when="@[oauth_flow] = 'authorization_code_pkce'",
+          .closed_list('pkce_method', label='PKCE code challenge method', displayed_when="@[oauth_flow] = 'authorization_code_pkce'",
             values={'plain': 'plain', 'S256': 'S256'},
             default = 'S256'
             ) \
-          .text('pkce_code_verifier', label='PKCE Code Verifier', displayed_when="@[oauth_flow] = 'authorization_code_pkce'") \
-          .text('pkce_code_challenge', label='PKCE Code Challenge', displayed_when="@[oauth_flow] = 'authorization_code_pkce' and @[pkce_method] = 'S256'") \
+          .text('pkce_code_verifier', label='PKCE code verifier', displayed_when="@[oauth_flow] = 'authorization_code_pkce'") \
+          .text('pkce_code_challenge', label='PKCE code challenge', displayed_when="@[oauth_flow] = 'authorization_code_pkce' and @[pkce_method] = 'S256'") \
           .text('client_id', label='Client ID', clipboard_category='client_id') \
           .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
           .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
@@ -212,12 +212,12 @@ class OAuthClientLogin(FlowHandler):
             values={'code': 'code'},
             default = 'code'
             ) \
-          .closed_list('token_endpoint_auth_method', label='Token endpoint auth method', 
+          .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
             values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
             default = 'client_secret_basic'
             ) \
         .end_section() \
-        .start_section('token_validation', title="Token Validation (if JWT)", collapsible=True, collapsible_default=True) \
+        .start_section('token_validation', title="Token validation (if JWT)", collapsible=True, collapsible_default=True) \
           .text('issuer', label='Issuer', clipboard_category='issuer') \
           .closed_list('signature_key_configuration', label='Signature key configuration',
             values = {'jwks_uri': 'JWKS URI', 'local_configuration': 'Local configuration'},

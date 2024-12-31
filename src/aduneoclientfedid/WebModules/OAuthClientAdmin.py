@@ -152,7 +152,7 @@ class OAuthClientAdmin(BaseHandler):
           values={'code': 'code'},
           default = 'code'
           ) \
-        .closed_list('token_endpoint_auth_method', label='Token endpoint auth method', 
+        .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
           values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
           default = 'client_secret_basic'
           ) \
@@ -479,7 +479,7 @@ class OAuthClientAdmin(BaseHandler):
           values={'code': 'code'},
           default = 'code'
           ) \
-        .closed_list('token_endpoint_auth_method', label='Token endpoint auth method', 
+        .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
           values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
           default = 'client_secret_basic'
           ) \
@@ -701,11 +701,11 @@ class OAuthClientAdmin(BaseHandler):
       .hidden('idp_id') \
       .hidden('api_id') \
       .text('name', label='Name') \
-      .closed_list('introspection_http_method', label='Introspect. Request Method',
+      .closed_list('introspection_http_method', label='Introspect. request method',
         values = {'inherit_from_idp': 'Inherit from IdP', 'get': 'GET', 'post': 'POST'},
         default = 'inherit_from_idp'
         ) \
-      .closed_list('introspection_auth_method', label='Introspect. Authn. Method',
+      .closed_list('introspection_auth_method', label='Introspect. authn scheme',
         values = {'inherit_from_idp': 'Inherit from IdP', 'none': 'None', 'basic': 'Basic', 'bearer_token': 'Bearer Token'},
         default = 'inherit_from_idp'
         ) \

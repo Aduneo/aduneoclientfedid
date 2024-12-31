@@ -547,7 +547,7 @@ class FlowHandler(BaseHandler):
       
     auth_method = call_parameters.get('auth_method')
     if auth_method is None:
-      raise AduneoError(self.log_error("Call authentication method not found in request"))
+      raise AduneoError(self.log_error("Call authentication scheme not found in request"))
     
     auth_login = call_parameters.get('auth_login', '')
     auth_secret = call_parameters.get('auth_secret', '')
@@ -564,7 +564,7 @@ class FlowHandler(BaseHandler):
     elif auth_method.casefold() == 'bearer token':
       request_headers = {'Authorization':"Bearer "+auth_login}
     else:
-      raise AduneoError(self.log_error("authentication method "+auth_method+" not supported"))
+      raise AduneoError(self.log_error("authentication scheme "+auth_method+" not supported"))
 
     verify_cert = call_parameters.get('verify_cert')
     if verify_cert is None:

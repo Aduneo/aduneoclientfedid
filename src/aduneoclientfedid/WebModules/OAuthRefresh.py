@@ -133,7 +133,7 @@ class OAuth2Refresh(FlowHandler):
             }
             """,
           ) \
-        .closed_list('token_endpoint_auth_method', label='Token endpoint auth method', displayed_when="@[client_ids] = '__input__'", 
+        .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', displayed_when="@[client_ids] = '__input__'", 
           values={'none': 'none', 'basic': 'client_secret_basic', 'form': 'client_secret_post'},
           default = 'basic'
           ) \
