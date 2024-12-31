@@ -49,20 +49,22 @@ class OAuth2Refresh(FlowHandler):
       La requête est transmise à sendrequest pour exécution
     
       Versions:
-        03/12/2024 (mpham) : version initiale adaptée de introspection
+        03/12/2024 (mpham) version initiale adaptée de introspection
+        31/12/2024 (mpham) rafraîchissement des AT issus d'OIDC
     """
     
     try:
 
       self.log_info('Refresh flow: preparing the request')
 
-      conf_idp = self.conf['idps'][self.context.idp_id]
-      conf_apps = conf_idp['oauth2_clients']
-
       if not self.context:
         raise AduneoError("Can't retrieve request context from session")
 
       self.log_info(('  ' * 1)+'for context: '+self.context['context_id'])
+
+      conf_idp = self.conf['idps'][self.context.idp_id]
+      
+      conf_apps = conf_idp['oauth2_clients']
 
       idp_params = self.context.idp_params
       all_app_params = self.context.app_params
@@ -77,7 +79,6 @@ class OAuth2Refresh(FlowHandler):
         token_wrapper = all_access_tokens[token_wrapper_key]
         if token_wrapper.get('refresh_token'):
           refresh_tokens[token_wrapper['refresh_token']] = token_wrapper['name']
-          print(token_wrapper)
           token_clients[token_wrapper['refresh_token']] = token_wrapper['app_id']
           if default_refresh_token == '__input__':
             default_refresh_token = token_wrapper['refresh_token']
@@ -189,6 +190,7 @@ class OAuth2Refresh(FlowHandler):
 
       Versions:
         03/12/2024 (mpham) version initiale adaptée de introspection
+        31/12/2024 (mpham) rafraîchissement des AT issus d'OIDC
     """
     
     try:

@@ -216,9 +216,9 @@ class Configuration():
       if 'clientfedid-template.cnf' not in os.listdir(data_dir):
         raise AduneoError('file '+conf_filename+' not in conf directory and and clientfedid-template.cnf not in data directory')
       else:
-        with open(os.path.join(data_dir, 'clientfedid-template.cnf'), 'r') as sample:
+        with open(os.path.join(data_dir, 'clientfedid-template.cnf'), 'r') as template_file:
           with open(conf_filepath, 'w') as file:
-            file.write(sample.read())
+            file.write(template_file.read())
         create_from_template = True
 
     crypto = ConfCrypto()
@@ -315,6 +315,23 @@ class Configuration():
     
     return value
   
+  
+  def get_all_apps_ids(self, idp_id:str=None) -> list:
+    """ Retourne les identifiants de toutes les applications
+          d'un IdP ou de tous les IdP
+          
+    Args:
+      idp_id: identifiant de l'IdP choisi, si None, retourne les identifiants de tous les IdP
+      
+    Returns:
+      list des identifiants
+      
+    Versions:
+      31/12/2024 (mpham) version initiale
+    """
+    pass
+    # TODO : et ajouter un paramètre avec les types d'applications (['oidc', 'oauth2'])
+  
 
   def configure_logging(log_method: list):
     global WEB_CONSOLE_BUFFER
@@ -365,6 +382,7 @@ class Configuration():
       )
 
     return True
+    
 
 class ConfCrypto():
 
@@ -523,6 +541,7 @@ class ConfCrypto():
       08/08/2024 (mpham) version initiale
       23/12/2024 (mpham) changement des valeurs de endpoint_configuration et signature_key_configuration (Discovery URI -> discovery_uri par exemple)
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
+      31/12/2024 (mpham) les identifiants des apps sont maintenant préfixés (oidc_<idp_id>_<app_id>) pour les rendre globalement uniques. Les IdP sont en idp_<ipd_id>
     """
     
     if not self.app_conf.get('idps'):
@@ -550,17 +569,17 @@ class ConfCrypto():
         if v1_client.get(key):
           v2_client[key] = v1_client[key]
       
-      v2_idp_id = self._check_unicity(v1_client_id, self.app_conf['idps'].keys())
+      v2_idp_id = self._check_unicity(f'idp_{v1_client_id}', self.app_conf['idps'].keys())
       
       self.app_conf['idps'][v2_idp_id] = {
         'name': v1_client['name'],
         'idp_parameters': {
           'oidc': v2_idp,
+          'verify_certificates': v1_client.get('verify_certificates', 'on'),
         },
         'oidc_clients': {
-          'client': v2_client
+          f'oidc_{v2_idp_id[4:]}_client': v2_client
         },
-        'verify_certificates': v1_client.get(verify_certificates, 'on')
       }
       
     del self.app_conf['oidc_clients']
@@ -574,6 +593,7 @@ class ConfCrypto():
       23/08/2024 (mpham) en OAuth 2, la valeur Discovery URI de l'aiguillage de configuration des endpoints devient Authorization Server Metadata URI
       23/12/2024 (mpham) changement des valeurs de endpoint_configuration et signature_key_configuration (Discovery URI -> metadata_uri par exemple)
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
+      31/12/2024 (mpham) les identifiants des apps sont maintenant préfixés (oauth2_<idp_id>_<app_id>) pour les rendre globalement uniques. Les IdP sont en idp_<ipd_id>
     """
     
     if not self.app_conf.get('idps'):
@@ -586,6 +606,7 @@ class ConfCrypto():
       v2_idp = {}
       for key in ['endpoint_configuration', 'discovery_uri', 'authorization_endpoint', 'token_endpoint', 'introspect_endpoint', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
         if v1_client.get(key):
+          value = v1_client[key]
         
           v2_key = key
           if key == 'discovery_uri':
@@ -606,17 +627,17 @@ class ConfCrypto():
         if v1_client.get(key):
           v2_client[key] = v1_client[key]
       
-      v2_idp_id = self._check_unicity(v1_client_id, self.app_conf['idps'].keys())
+      v2_idp_id = self._check_unicity(f'idp_{v1_client_id}', self.app_conf['idps'].keys())
       
       self.app_conf['idps'][v2_idp_id] = {
         'name': v1_client['name'],
         'idp_parameters': {
           'oauth2': v2_idp,
+          'verify_certificates': v1_client.get('verify_certificates', 'on'),
         },
         'oauth2_clients': {
-          'client': v2_client
+          f'oauth2_{v2_idp_id[4:]}_client': v2_client
         },
-        'verify_certificates': v1_client.get(verify_certificates, 'on')
       }
       
       if v1_client.get('rs_client_id'):
@@ -634,6 +655,7 @@ class ConfCrypto():
     
     Versions
       08/08/2024 (mpham) version initiale
+      31/12/2024 (mpham) les identifiants des apps sont maintenant préfixés (oauth2_<idp_id>_<app_id>) pour les rendre globalement uniques. Les IdP sont en idp_<ipd_id>
     """
     
     if not self.app_conf.get('idps'):
@@ -653,7 +675,7 @@ class ConfCrypto():
         if v1_client.get(key):
           v2_client[key] = v1_client[key]
       
-      v2_idp_id = self._check_unicity(v1_client_id, self.app_conf['idps'].keys())
+      v2_idp_id = self._check_unicity(f'idp_{v1_client_id}', self.app_conf['idps'].keys())
       
       self.app_conf['idps'][v2_idp_id] = {
         'name': v1_client['name'],
@@ -661,7 +683,7 @@ class ConfCrypto():
           'saml': v2_idp,
         },
         'saml_clients': {
-          'client': v2_client
+          f'saml_{v2_idp_id[4:]}_client': v2_client
         }
       }
       

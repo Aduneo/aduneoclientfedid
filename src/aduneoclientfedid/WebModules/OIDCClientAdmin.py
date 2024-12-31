@@ -212,15 +212,16 @@ class OIDCClientAdmin(BaseHandler):
       23/08/2024 (mpham) request parameters et strip des données du formulaire
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
       30/12/2024 (mpham) End session endpoint HTTP method
+      31/12/2024 (mpham) les identifiants des apps sont maintenant préfixés (oidc_<idp_id>_<app_id>) pour les rendre globalement uniques. Les IdP sont en idp_<ipd_id>
     """
     
     idp_id = self.post_form['idp_id']
     app_id = self.post_form['app_id']
     if idp_id == '':
       # Création
-      idp_id = self._generate_idpid(self.post_form['name'].strip(), self.conf['idps'].keys())
-      app_id = 'client'
-      self.conf['idps'][idp_id] = {'idp_parameters': {'oidc': {}}, 'oidc_clients': {'client': {}}}
+      idp_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
+      app_id = f'oidc_{idp_id[4:]}_client'
+      self.conf['idps'][idp_id] = {'idp_parameters': {'oidc': {}}, 'oidc_clients': {app_id: {}}}
     
     idp = self.conf['idps'][idp_id]
     idp_params = idp['idp_parameters']
@@ -328,6 +329,7 @@ class OIDCClientAdmin(BaseHandler):
     Versions:
       26/12/2024 (mpham) version initiale
       30/12/2024 (mpham) End session endpoint HTTP method
+      31/12/2024 (mpham) les identifiants des apps sont maintenant préfixés (<idp_id>_oidc_) pour les rendre globalement uniques
     """
     
     idp_id = self.post_form['idp_id']
@@ -339,7 +341,7 @@ class OIDCClientAdmin(BaseHandler):
       if not idp.get('oidc_clients'):
         idp['oidc_clients'] = {}
       
-      app_id = self._generate_idpid(self.post_form['name'].strip(), idp['oidc_clients'].keys())
+      app_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=idp['oidc_clients'].keys(), default='op', prefix=f'oidc_{idp_id[4:]}_')
       idp['oidc_clients'][app_id] = {}
     
     app_params = idp['oidc_clients'][app_id]
@@ -548,32 +550,3 @@ class OIDCClientAdmin(BaseHandler):
     return form
     
 
-  def _generate_idpid(self, name, existing_names):
-    
-    """
-    Génère un identifiant à partir d'un nom
-    en ne retenant que les lettres et les chiffres
-    et en vérifiant que l'identifiant n'existe pas déjà
-    
-    S'il existe, ajoute un suffixe numérique
-    
-    mpham 28/02/2021
-    """
-    
-    base = name
-    ok = False
-    rank = 0
-    
-    while not ok:
-      id = ''.join(c for c in base.casefold() if c.isalnum())
-      if id == '':
-        id = 'oidc_op'
-      if rank > 0:
-        id = id+str(rank)
-      
-      if id in existing_names:
-        rank = rank+1
-      else:
-        ok = True
-        
-    return id

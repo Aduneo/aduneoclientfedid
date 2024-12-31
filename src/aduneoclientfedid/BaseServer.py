@@ -894,6 +894,46 @@ class BaseHandler:
     return string.replace("'", r"\'").replace('"', r'\"').replace("\\", "\\\\")
 
     
+  def _generate_unique_id(self, name:str, existing_ids:list, default:str='id', prefix=''):
+    
+    """
+    Génère un identifiant à partir d'un nom
+    en ne retenant que les lettres et les chiffres
+    et en vérifiant que l'identifiant n'existe pas déjà
+    
+    S'il existe, ajoute un suffixe numérique
+
+    Args:
+      name: Nom à partir duquel l'identifiant est généré
+      existing_ids: liste des identifiants qui existent déjà
+      default: nom par défaut si aucun n'est donné
+      prefix: préfixe de l'identifiant, qui sera donc de la forme <prefixe><nom> dans le cas général
+      
+    Returns:
+      identifiant unique parmi une liste, de la forme <prefixe><nom> et avec ajout d'un indice pour gérer les doublons
+
+    Versions:
+      28/02/2021 (mpham) version initiale
+      31/12/2024 (mpham) gestion des préfixes, pour obtenir des identifiants globalement uniques pour les IdP et les apps
+    """
+    
+    name = default if name == '' else name
+    base = prefix + ''.join(c for c in name.casefold() if c.isalnum())
+    ok = False
+    rank = 0
+    
+    while not ok:
+
+      candidate_id = base + ('' if rank == 0 else str(rank))
+      if candidate_id in existing_ids:
+        rank = rank+1
+      else:
+        ok = True
+        
+    return candidate_id
+
+
+
 class AduneoError(Exception):
   """ Exception fonctionnelle
   """

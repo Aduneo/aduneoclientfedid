@@ -66,12 +66,13 @@ class IdPClientAdmin(BaseHandler):
     
     Versions:
       25/12/2024 (mpham)
+      31/12/2024 (mpham) les identifiants des IdP sont maintenant préfixés (idp_<idp_id>)
     """
     
     idp_id = self.post_form['idp_id']
     if idp_id == '':
       # Création
-      idp_id = self._generate_idpid(self.post_form['name'].strip(), self.conf['idps'].keys())
+      idp_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
       self.conf['idps'][idp_id] = {'idp_parameters': {'oidc': {}, 'oauth2': {}}}
     
     idp = self.conf['idps'][idp_id]
@@ -432,36 +433,3 @@ class IdPClientAdmin(BaseHandler):
     form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     return form
-    
-
-  def _generate_idpid(self, name, existing_names):
-    
-    """
-    Génère un identifiant à partir d'un nom
-    en ne retenant que les lettres et les chiffres
-    et en vérifiant que l'identifiant n'existe pas déjà
-    
-    S'il existe, ajoute un suffixe numérique
-    
-    Versions:
-      28/02/2021 (mpham) version initiale
-      25/12/2024 (mpham) idp est l'identifiant par défaut (si pas donné)
-    """
-    
-    base = name
-    ok = False
-    rank = 0
-    
-    while not ok:
-      id = ''.join(c for c in base.casefold() if c.isalnum())
-      if id == '':
-        id = 'idp'
-      if rank > 0:
-        id = id+str(rank)
-      
-      if id in existing_names:
-        rank = rank+1
-      else:
-        ok = True
-        
-    return id

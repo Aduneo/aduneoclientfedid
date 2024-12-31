@@ -62,207 +62,227 @@ class OAuthClientLogin(FlowHandler):
 
     self.log_info('--- Start OAuth 2 flow ---')
 
-    idp_id = self.get_query_string_param('idpid')
-    app_id = self.get_query_string_param('appid')
+    try:
 
-    fetch_configuration_document = False
+      idp_id = self.get_query_string_param('idpid')
+      app_id = self.get_query_string_param('appid')
 
-    new_auth = True
-    if self.context is None:
-      if idp_id is None or app_id is None:
-        self.send_redirection('/')
-        return
-    else:
-      new_auth = False
-    
-    if self.get_query_string_param('newauth'):
+      fetch_configuration_document = False
+
       new_auth = True
-
-    if new_auth:
-      # Nouvelle requête
-      idp = copy.deepcopy(self.conf['idps'][idp_id])
-      idp_params = idp['idp_parameters']['oauth2']
-      app_params = idp['oauth2_clients'][app_id]
-
-      # On récupère name et verify_certificates des paramètres de l'IdP
-      idp_params['name'] = idp['name']
-      idp_params['verify_certificates'] = idp['idp_parameters']['verify_certificates']
-
-      # si le contexte existe, on le conserve (cas newauth)
       if self.context is None:
-        self.context = Context()
-      self.context['idp_id'] = idp_id
-      self.context['app_id'] = app_id
-      self.context['flow_type'] = 'OAuth2'
-      self.context['idp_params'] = idp_params
-      self.context['app_params'][app_id] = app_params
-      self.set_session_value(self.context['context_id'], self.context)
+        if idp_id is None or app_id is None:
+          self.send_redirection('/')
+          return
+      else:
+        new_auth = False
+      
+      if self.get_query_string_param('newauth'):
+        new_auth = True
 
-      if idp_params.get('endpoint_configuration', 'local_configuration') == 'metadata_uri':
-        fetch_configuration_document = True
+      if new_auth:
+        # Nouvelle requête
+        idp = copy.deepcopy(self.conf['idps'][idp_id])
+        idp_params = idp['idp_parameters'].get('oauth2')
+        if not idp_params:
+          raise AduneoError(f"OAuth2 IdP parameters have not been defined for IdP {idp_id}", button_label="IdP parameters", action=f"/client/idp/admin/modify?idpid={idp_id}")
+        
+        app_params = idp['oauth2_clients'][app_id]
 
-    else:
-      # Rejeu de requête (conservée dans la session)
-      idp_id = self.context['idp_id']
-      app_id = self.context['app_id']
-      idp_params = self.context.idp_params
-      app_params = self.context.last_app_params
-    
-    self.log_info(('  ' * 1) + f"for client {app_params['name']} of IdP {idp_params['name']}")
-    self.add_html(f"<h1>IdP {idp_params['name']} OAuth2 Client {app_params['name']}</h1>")
+        # On récupère name et verify_certificates des paramètres de l'IdP
+        idp_params['name'] = idp['name']
+        idp_params['verify_certificates'] = idp['idp_parameters']['verify_certificates']
 
-    if fetch_configuration_document:
-      self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=idp_params['metadata_uri']))
-      try:
-        self.log_info('Starting metadata retrieval')
-        self.log_info('metadata_uri: '+idp_params['metadata_uri'])
-        verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
-        self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-        r = requests.get(idp_params['metadata_uri'], verify=verify_certificates)
-        self.log_info(r.text)
-        meta_data = r.json()
-        idp_params.update(meta_data)
-        self.add_html("""<div class="intertable">Success</div>""")
-      except Exception as error:
-        self.log_error(traceback.format_exc())
-        self.add_html(f"""<div class="intertable">Failed: {error}</div>""")
-        self.send_page()
-        return
-      if r.status_code != 200:
-        self.log_error('Server responded with code '+str(r.status_code))
-        self.add_html(f"""<div class="intertable">Failed. Server responded with code {status_code}</div>""")
-        self.send_page()
-        return
+        # si le contexte existe, on le conserve (cas newauth)
+        if self.context is None:
+          self.context = Context()
+        self.context['idp_id'] = idp_id
+        self.context['app_id'] = app_id
+        self.context['flow_type'] = 'OAuth2'
+        self.context['idp_params'] = idp_params
+        self.context['app_params'][app_id] = app_params
+        self.set_session_value(self.context['context_id'], self.context)
 
-    
-    state = str(uuid.uuid4())
+        if idp_params.get('endpoint_configuration', 'local_configuration') == 'metadata_uri':
+          fetch_configuration_document = True
 
-    # pour récupérer le contexte depuis le state (puisque c'est la seule information exploitable retournée par l'IdP)
-    self.set_session_value(state, self.context['context_id'])
+      else:
+        # Rejeu de requête (conservée dans la session)
+        idp_id = self.context['idp_id']
+        app_id = self.context['app_id']
+        idp_params = self.context.idp_params
+        app_params = self.context.last_app_params
+      
+      self.log_info(('  ' * 1) + f"for client {app_params['name']} of IdP {idp_params['name']}")
+      self.add_html(f"<h1>IdP {idp_params['name']} OAuth2 Client {app_params['name']}</h1>")
 
-    # Paramètres pour PKCE
-    self.log_info(('  ' * 1)+'Code challenge generation in case Authorization code with PKCE flow is used')
-    pkce_code_verifier = ''.join(random.choice(string.ascii_letters+string.digits) for i in range(50))   # La RFC recommande de produire une suite de 32 octets encodés en base64url-encoded
-    self.log_info(('  ' * 2)+'Code verifier: '+pkce_code_verifier)
-    sha = hashlib.sha256()
-    sha.update(pkce_code_verifier.encode('utf-8'))
-    pkce_code_challenge = base64.urlsafe_b64encode(sha.digest()).decode('utf-8').replace('=', '')        
-    self.log_info(('  ' * 2)+'Code challenge: '+pkce_code_challenge)
+      if fetch_configuration_document:
+        self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=idp_params['metadata_uri']))
+        try:
+          self.log_info('Starting metadata retrieval')
+          self.log_info('metadata_uri: '+idp_params['metadata_uri'])
+          verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
+          self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+          r = requests.get(idp_params['metadata_uri'], verify=verify_certificates)
+          self.log_info(r.text)
+          meta_data = r.json()
+          idp_params.update(meta_data)
+          self.add_html("""<div class="intertable">Success</div>""")
+        except Exception as error:
+          self.log_error(traceback.format_exc())
+          self.add_html(f"""<div class="intertable">Failed: {error}</div>""")
+          self.send_page()
+          return
+        if r.status_code != 200:
+          self.log_error('Server responded with code '+str(r.status_code))
+          self.add_html(f"""<div class="intertable">Failed. Server responded with code {status_code}</div>""")
+          self.send_page()
+          return
 
-    form_content = {
-      'contextid': self.context['context_id'],
-      'redirect_uri': app_params.get('redirect_uri', ''),
-      'authorization_endpoint': idp_params.get('authorization_endpoint', ''),
-      'token_endpoint': idp_params.get('token_endpoint', ''),
-      'introspection_endpoint': idp_params.get('introspection_endpoint', ''),
-      'introspection_http_method': idp_params.get('introspection_http_method', 'post'),
-      'introspection_auth_method': idp_params.get('introspection_auth_method', 'basic'),
-      'issuer': idp_params.get('issuer', ''),
-      'signature_key_configuration': idp_params.get('signature_key_configuration', 'jwks_uri'),
-      'jwks_uri': idp_params.get('jwks_uri', ''),
-      'signature_key': idp_params.get('signature_key', ''),
-      'oauth_flow': app_params.get('oauth_flow', 'authorization_code'),
-      'pkce_method': app_params.get('pkce_method', 'S256'),
-      'pkce_code_verifier': pkce_code_verifier,
-      'pkce_code_challenge': pkce_code_challenge,
-      'client_id': app_params.get('client_id', ''),
-      'scope': app_params.get('scope', ''),
-      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
-      'state': state,
-    }
-    
-    form = RequesterForm('oauth2auth', form_content, action='/client/oauth2/login/sendrequest', mode='new_page', request_url='@[authorization_endpoint]') \
-      .hidden('contextid') \
-      .start_section('clientfedid_params', title="ClientFedID Parameters") \
-        .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri') \
-      .end_section() \
-      .start_section('as_endpoints', title="AS Endpoints", collapsible=True, collapsible_default=False) \
-        .text('authorization_endpoint', label='Authorization Endpoint', clipboard_category='authorization_endpoint') \
-        .text('token_endpoint', label='Token Endpoint', clipboard_category='token_endpoint') \
-        .text('introspection_endpoint', label='Introspection Endpoint', clipboard_category='introspection_endpoint') \
-        .closed_list('introspection_http_method', label='Introspection Request Method', 
-          values={'get': 'GET', 'post': 'POST'},
-          default = 'get'
-          ) \
-        .closed_list('introspection_auth_method', label='Introspection Authn. Method', 
-          values={'none': 'None', 'basic': 'Basic', 'bearer_token': 'Bearer Token'},
-          default = 'basic'
-          ) \
-      .end_section() \
-      .start_section('client_params', title="Client Parameters", collapsible=True, collapsible_default=False) \
-        .closed_list('oauth_flow', label='OAuth Flow', 
-          values={'authorization_code': 'Authorization Code', 'authorization_code_pkce': 'Authorization Code with PKCE', 'resource_owner_password_predentials': 'Resource Owner Password Credentials', 'client_credentials': 'Client Credentials'},
-          default = 'authorization_code'
-          ) \
-        .closed_list('pkce_method', label='PKCE Code Challenge Method', displayed_when="@[oauth_flow] = 'authorization_code_pkce'",
-          values={'plain': 'plain', 'S256': 'S256'},
-          default = 'S256'
-          ) \
-        .text('pkce_code_verifier', label='PKCE Code Verifier', displayed_when="@[oauth_flow] = 'authorization_code_pkce'") \
-        .text('pkce_code_challenge', label='PKCE Code Challenge', displayed_when="@[oauth_flow] = 'authorization_code_pkce' and @[pkce_method] = 'S256'") \
-        .text('client_id', label='Client ID', clipboard_category='client_id') \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
-        .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
-        .closed_list('response_type', label='Reponse type', 
-          values={'code': 'code'},
-          default = 'code'
-          ) \
-        .closed_list('token_endpoint_auth_method', label='Token endpoint auth method', 
-          values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
-          default = 'client_secret_basic'
-          ) \
-      .end_section() \
-      .start_section('token_validation', title="Token Validation (if JWT)", collapsible=True, collapsible_default=True) \
-        .text('issuer', label='Issuer', clipboard_category='issuer') \
-        .closed_list('signature_key_configuration', label='Signature key configuration',
-          values = {'jwks_uri': 'JWKS URI', 'local_configuration': 'Local configuration'},
-          default = 'jwks_uri'
-          ) \
-        .text('jwks_uri', label='JWKS URI', displayed_when="@[signature_key_configuration] = 'jwks_uri'") \
-        .text('signature_key', label='Signature key', displayed_when="@[signature_key_configuration] = 'local_configuration'") \
-      .end_section() \
-      .start_section('security_params', title="Security", collapsible=True, collapsible_default=False) \
-        .text('state', label='State', clipboard_category='nonce') \
-      .end_section() \
+      
+      state = str(uuid.uuid4())
 
-    form.set_request_parameters({
-        'client_id': '@[client_id]',
-        'redirect_uri': '@[redirect_uri]',
-        'scope': '@[scope]',
-        'response_type': '@[response_type]',
-        'state': '@[state]',
-        'pkce_method': '@[pkce_method]',
-        'pkce_code_challenge': '@[pkce_code_challenge]',
-      }, 
-      modifying_fields = ['oauth_flow', 'pkce_code_verifier'])
-    form.modify_http_parameters({
-      'form_method': 'redirect',
-      'body_format': 'x-www-form-urlencoded',
-      'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
-      })
-    form.modify_visible_requester_fields({
-      'request_url': True,
-      'request_data': True,
-      'body_format': False,
-      'form_method': False,
-      'auth_method': False,
-      'verify_certificates': True,
-      })
-    form.set_data_generator_code("""
-      if (cfiForm.getField('oauth_flow').value == 'authorization_code_pkce') {
-        if (cfiForm.getField('pkce_method').value == 'plain') {
-          paramValues['pkce_code_challenge'] = cfiForm.getField('pkce_code_verifier').value;
-        }
-      } else {
-        delete paramValues['pkce_method'];
-        delete paramValues['pkce_code_challenge'];
+      # pour récupérer le contexte depuis le state (puisque c'est la seule information exploitable retournée par l'IdP)
+      self.set_session_value(state, self.context['context_id'])
+
+      # Paramètres pour PKCE
+      self.log_info(('  ' * 1)+'Code challenge generation in case Authorization code with PKCE flow is used')
+      pkce_code_verifier = ''.join(random.choice(string.ascii_letters+string.digits) for i in range(50))   # La RFC recommande de produire une suite de 32 octets encodés en base64url-encoded
+      self.log_info(('  ' * 2)+'Code verifier: '+pkce_code_verifier)
+      sha = hashlib.sha256()
+      sha.update(pkce_code_verifier.encode('utf-8'))
+      pkce_code_challenge = base64.urlsafe_b64encode(sha.digest()).decode('utf-8').replace('=', '')        
+      self.log_info(('  ' * 2)+'Code challenge: '+pkce_code_challenge)
+
+      form_content = {
+        'contextid': self.context['context_id'],
+        'redirect_uri': app_params.get('redirect_uri', ''),
+        'authorization_endpoint': idp_params.get('authorization_endpoint', ''),
+        'token_endpoint': idp_params.get('token_endpoint', ''),
+        'introspection_endpoint': idp_params.get('introspection_endpoint', ''),
+        'introspection_http_method': idp_params.get('introspection_http_method', 'post'),
+        'introspection_auth_method': idp_params.get('introspection_auth_method', 'basic'),
+        'issuer': idp_params.get('issuer', ''),
+        'signature_key_configuration': idp_params.get('signature_key_configuration', 'jwks_uri'),
+        'jwks_uri': idp_params.get('jwks_uri', ''),
+        'signature_key': idp_params.get('signature_key', ''),
+        'oauth_flow': app_params.get('oauth_flow', 'authorization_code'),
+        'pkce_method': app_params.get('pkce_method', 'S256'),
+        'pkce_code_verifier': pkce_code_verifier,
+        'pkce_code_challenge': pkce_code_challenge,
+        'client_id': app_params.get('client_id', ''),
+        'scope': app_params.get('scope', ''),
+        'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+        'state': state,
       }
-      return paramValues;
-    """)
-    form.set_option('/requester/include_empty_items', False)
+      
+      form = RequesterForm('oauth2auth', form_content, action='/client/oauth2/login/sendrequest', mode='new_page', request_url='@[authorization_endpoint]') \
+        .hidden('contextid') \
+        .start_section('clientfedid_params', title="ClientFedID Parameters") \
+          .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri') \
+        .end_section() \
+        .start_section('as_endpoints', title="AS Endpoints", collapsible=True, collapsible_default=False) \
+          .text('authorization_endpoint', label='Authorization Endpoint', clipboard_category='authorization_endpoint') \
+          .text('token_endpoint', label='Token Endpoint', clipboard_category='token_endpoint') \
+          .text('introspection_endpoint', label='Introspection Endpoint', clipboard_category='introspection_endpoint') \
+          .closed_list('introspection_http_method', label='Introspection Request Method', 
+            values={'get': 'GET', 'post': 'POST'},
+            default = 'get'
+            ) \
+          .closed_list('introspection_auth_method', label='Introspection Authn. Method', 
+            values={'none': 'None', 'basic': 'Basic', 'bearer_token': 'Bearer Token'},
+            default = 'basic'
+            ) \
+        .end_section() \
+        .start_section('client_params', title="Client Parameters", collapsible=True, collapsible_default=False) \
+          .closed_list('oauth_flow', label='OAuth Flow', 
+            values={'authorization_code': 'Authorization Code', 'authorization_code_pkce': 'Authorization Code with PKCE', 'resource_owner_password_predentials': 'Resource Owner Password Credentials', 'client_credentials': 'Client Credentials'},
+            default = 'authorization_code'
+            ) \
+          .closed_list('pkce_method', label='PKCE Code Challenge Method', displayed_when="@[oauth_flow] = 'authorization_code_pkce'",
+            values={'plain': 'plain', 'S256': 'S256'},
+            default = 'S256'
+            ) \
+          .text('pkce_code_verifier', label='PKCE Code Verifier', displayed_when="@[oauth_flow] = 'authorization_code_pkce'") \
+          .text('pkce_code_challenge', label='PKCE Code Challenge', displayed_when="@[oauth_flow] = 'authorization_code_pkce' and @[pkce_method] = 'S256'") \
+          .text('client_id', label='Client ID', clipboard_category='client_id') \
+          .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+          .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
+          .closed_list('response_type', label='Reponse type', 
+            values={'code': 'code'},
+            default = 'code'
+            ) \
+          .closed_list('token_endpoint_auth_method', label='Token endpoint auth method', 
+            values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
+            default = 'client_secret_basic'
+            ) \
+        .end_section() \
+        .start_section('token_validation', title="Token Validation (if JWT)", collapsible=True, collapsible_default=True) \
+          .text('issuer', label='Issuer', clipboard_category='issuer') \
+          .closed_list('signature_key_configuration', label='Signature key configuration',
+            values = {'jwks_uri': 'JWKS URI', 'local_configuration': 'Local configuration'},
+            default = 'jwks_uri'
+            ) \
+          .text('jwks_uri', label='JWKS URI', displayed_when="@[signature_key_configuration] = 'jwks_uri'") \
+          .text('signature_key', label='Signature key', displayed_when="@[signature_key_configuration] = 'local_configuration'") \
+        .end_section() \
+        .start_section('security_params', title="Security", collapsible=True, collapsible_default=False) \
+          .text('state', label='State', clipboard_category='nonce') \
+        .end_section() \
 
-    self.add_html(form.get_html())
-    self.add_javascript(form.get_javascript())
+      form.set_request_parameters({
+          'client_id': '@[client_id]',
+          'redirect_uri': '@[redirect_uri]',
+          'scope': '@[scope]',
+          'response_type': '@[response_type]',
+          'state': '@[state]',
+          'pkce_method': '@[pkce_method]',
+          'pkce_code_challenge': '@[pkce_code_challenge]',
+        }, 
+        modifying_fields = ['oauth_flow', 'pkce_code_verifier'])
+      form.modify_http_parameters({
+        'form_method': 'redirect',
+        'body_format': 'x-www-form-urlencoded',
+        'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
+        })
+      form.modify_visible_requester_fields({
+        'request_url': True,
+        'request_data': True,
+        'body_format': False,
+        'form_method': False,
+        'auth_method': False,
+        'verify_certificates': True,
+        })
+      form.set_data_generator_code("""
+        if (cfiForm.getField('oauth_flow').value == 'authorization_code_pkce') {
+          if (cfiForm.getField('pkce_method').value == 'plain') {
+            paramValues['pkce_code_challenge'] = cfiForm.getField('pkce_code_verifier').value;
+          }
+        } else {
+          delete paramValues['pkce_method'];
+          delete paramValues['pkce_code_challenge'];
+        }
+        return paramValues;
+      """)
+      form.set_option('/requester/include_empty_items', False)
+
+      self.add_html(form.get_html())
+      self.add_javascript(form.get_javascript())
+
+    except AduneoError as error:
+      self.add_html('<h4>Error: '+html.escape(str(error))+'</h4>')
+      self.add_html(f"""
+        <div>
+          <span><a class="middlebutton" href="{error.action}">{error.button_label}</a></span>
+        </div>
+        """)
+      self.add_menu()
+      self.send_page()
+    except Exception as error:
+      self.log_error(('  ' * 1)+traceback.format_exc())
+      self.add_html('<h4>Refresh error: '+html.escape(str(error))+'</h4>')
+      self.add_menu()
+      self.send_page()
 
     self.send_page()
 
