@@ -174,20 +174,12 @@ class SAMLClientAdmin(BaseHandler):
 
   @register_url(url='modifyclientsingle', method='POST')
   def modify_single_modify(self):
-    """ Crée ou modifie un IdP + App OIDC (mode single) dans la configuration
+    """ Crée ou modifie un IdP + SP SAML (mode single) dans la configuration
     
     Si l'identifiant existe, ajoute un suffixe numérique
     
     Versions:
-      28/02/2021 (mpham)
-      24/12/2021 (mpham) ajout de redirect_uri
-      09/12/2022 (mpham) ajout de token_endpoint_auth_method
-      22/02/2023 (mpham) suppression des références à fetch_userinfo puisque l'appel à userinfo est désormais manuel
-      10/08/2024 (mpham) version 2 de la configuration
-      23/08/2024 (mpham) request parameters et strip des données du formulaire
-      25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
-      30/12/2024 (mpham) End session endpoint HTTP method
-      31/12/2024 (mpham) les identifiants des apps sont maintenant préfixés (oidc_<idp_id>_<app_id>) pour les rendre globalement uniques. Les IdP sont en idp_<ipd_id>
+      01/01/2025 (mpham) version initiale adaptée de OIDCClientAdmin
     """
     
     idp_id = self.post_form['idp_id']
@@ -195,47 +187,42 @@ class SAMLClientAdmin(BaseHandler):
     if idp_id == '':
       # Création
       idp_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
-      app_id = f'oidc_{idp_id[4:]}_client'
-      self.conf['idps'][idp_id] = {'idp_parameters': {'oidc': {}}, 'oidc_clients': {app_id: {}}}
+      app_id = f'saml_{idp_id[4:]}_sp'
+      self.conf['idps'][idp_id] = {'idp_parameters': {'saml': {}}, 'saml_clients': {app_id: {}}}
     
     idp = self.conf['idps'][idp_id]
     idp_params = idp['idp_parameters']
-    oidc_params = idp_params['oidc']
-    app_params = idp['oidc_clients'][app_id]
+    saml_params = idp_params['saml']
+    app_params = idp['saml_clients'][app_id]
     
     if self.post_form['name'] == '':
       self.post_form['name'] = idp_id
 
     idp['name'] = self.post_form['name'].strip()
-    app_params['name'] = 'OIDC Client'
+    app_params['name'] = 'SAML SP'
     
-    for item in ['endpoint_configuration', 'discovery_uri', 'issuer', 'authorization_endpoint', 'token_endpoint', 
-    'end_session_endpoint', 'userinfo_endpoint', 'userinfo_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
+    for item in ['idp_entity_id', 'idp_sso_url', 'idp_slo_url', 'idp_certificate']:
       if self.post_form.get(item, '') == '':
-        oidc_params.pop(item, None)
+        saml_params.pop(item, None)
       else:
-        oidc_params[item] = self.post_form[item].strip()
+        saml_params[item] = self.post_form[item].strip()
       
-    for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'end_session_endpoint_method', 'post_logout_redirect_uri',
-    'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values']:
+    for item in ['sp_entity_id', 'sp_acs_url', 'sp_slo_url', 'sp_key_configuration', 'sp_private_key', 'sp_certificate', 'nameid_policy',
+      'authentication_binding', 'logout_binding']:
       if self.post_form.get(item, '') == '':
         app_params.pop(item, None)
       else:
         app_params[item] = self.post_form[item].strip()
       
-    for secret in ['client_secret']:
-      if self.post_form.get(secret, '') != '':
-        app_params[secret+'!'] = self.post_form[secret]
-        
-    for item in ['verify_certificates']:
+    for item in ['sign_auth_request', 'sign_logout_request']:
       if item in self.post_form:
-        idp_params[item] = 'on'
+        app_params[item] = 'on'
       else:
-        idp_params[item] = 'off'
+        app_params[item] = 'off'
 
     Configuration.write_configuration(self.conf)
     
-    self.send_redirection(f"/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}")
+    self.send_redirection(f"/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}")
 
 
   @register_page_url(url='modifymulti', method='GET', template='page_default.html', continuous=True)
