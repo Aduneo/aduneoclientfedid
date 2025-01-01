@@ -183,7 +183,7 @@ class CfiForm():
     return self
 
 
-  def open_list(self, field_id:str, label:str='', hints:list=[], help_button:bool=True, displayed_when:str="True", readonly:bool=False, on_load=None):
+  def open_list(self, field_id:str, label:str='', clipboard_category:str=None, copy_value:bool=True, hints:list=[], help_button:bool=True, displayed_when:str="True", readonly:bool=False, on_load=None):
     """ Champ texte avec une liste de valeurs possibles présentées dans une liste
     
     Args:
@@ -194,6 +194,8 @@ class CfiForm():
     """
 
     open_list = self._add_template_item('open_list', field_id, label, help_button, displayed_when, readonly)
+    open_list['clipboard_category'] = clipboard_category
+    open_list['copy_value'] = copy_value
     open_list['hints'] = hints
     if on_load:
       open_list['on_load'] = on_load
@@ -209,6 +211,23 @@ class CfiForm():
   def check_box(self, field_id:str, label:str='', help_button:bool=True, displayed_when:str="True", readonly:bool=False):
   
     self._add_template_item('check_box', field_id, label, help_button, displayed_when, readonly)
+    return self
+  
+  
+  def upload_button(self, field_id:str, label:str='', help_button:bool=True, displayed_when:str="True", readonly:bool=False, on_upload:str=None):
+    """ Bouton de chargement d'un fichier local_configuration
+    
+    Le bouton appelle le Javascript mis dans on_upload, qui a accès à
+      - upload_content : le content du fichier local_configuration
+      - cfiForm pour accéder au formulaire
+    
+    Versions:
+      01/01/2025 (mpham) version initiale
+    """
+  
+    upload_button = self._add_template_item('upload_button', field_id, label, help_button, displayed_when, readonly)
+    if on_upload:
+      upload_button['on_upload'] = on_upload
     return self
   
   
@@ -360,7 +379,7 @@ class CodeGenerator():
       12/03/2024 (mpham) tables contenant des valeurs accessibles au Javascript
       25/12/2024 (mpham) ajout de display_only
       29/12/2024 (mpham) boutons supplémentaires dans self.buttons
-      01/01/2025 (mpham) open list
+      01/01/2025 (mpham) open list et upload_button
     """
 
     self.html = ''
@@ -388,10 +407,12 @@ class CodeGenerator():
         self._generate_code_closed_list(template_item)
       elif template_item['type'] == 'open_list':
         self._generate_code_open_list(template_item)
-      elif template_item['type'] == 'check_box':
-        self._generate_code_check_box(template_item)
       elif template_item['type'] == 'hidden':
         self._generate_code_hidden(template_item)
+      elif template_item['type'] == 'check_box':
+        self._generate_code_check_box(template_item)
+      elif template_item['type'] == 'upload_button':
+        self._generate_code_upload_button(template_item)
       elif template_item['type'] == 'start_section':
         self._generate_code_start_section(template_item)
       elif template_item['type'] == 'end_section':
@@ -488,6 +509,24 @@ class CodeGenerator():
       for template_item in self.form.template:
         if template_item.get('on_change'):
           self.javascript += "document.getElementById('"+self.form.form_uuid+'_d_'+template_item['id']+"').addEventListener('change', () => { cfiForm = new CfiForm('"+self.form.form_uuid+"', '"+template_item['id']+"'); "+template_item['on_change']+"      });";
+          
+      # Ajoute les listener onchange pour le paramètre on_upload (pour upload_button)
+      for template_item in self.form.template:
+        if template_item.get('on_upload'):
+          self.javascript += "document.getElementById('"+self.form.form_uuid+'_d_'+template_item['id']+"').addEventListener('change', (event) => { cfiForm = new CfiForm('"+self.form.form_uuid+"', '"+template_item['id']+"'); "+ \
+          """
+          input = event.target
+  
+          var reader = new FileReader();
+          reader.onload = function() {
+            var upload_content = reader.result;
+          """ + \
+          template_item['on_upload'] + \
+          """
+          };
+          reader.readAsText(input.files[0]);
+          });
+          """
  
  
   def _generate_code_text(self, template_item:str):
@@ -729,6 +768,21 @@ class CodeGenerator():
           )
 
 
+  def _generate_code_hidden(self, template_item:str):
+    """
+    Versions:
+      25/12/2024 (mpham) ajout de display_only
+    """
+
+    if not self.display_only:
+      self.html += '<input type="hidden" name="{field_id}" value="{value}" id="{input_uuid}" class="intable {form_uuid}" />'.format(
+        form_uuid = self.form.form_uuid,
+        input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
+        field_id = html.escape(template_item['id']),
+        value = html.escape(self.form.content.get(template_item['id'], '')),
+        )
+      
+      
   def _generate_code_check_box(self, template_item:str):
     """
     Versions:
@@ -759,22 +813,38 @@ class CodeGenerator():
         disabled = 'disabled ' if not display else '',
         readonly = 'readonly' if template_item.get('readonly', False) else '',
         )
+
   
-  def _generate_code_hidden(self, template_item:str):
+  def _generate_code_upload_button(self, template_item:str):
     """
     Versions:
-      25/12/2024 (mpham) ajout de display_only
+      01/01/2025 (mpham) version initiale
     """
 
+    self._start_table()
+  
+    display = self._evaluate_display(template_item['displayed_when'])
     if not self.display_only:
-      self.html += '<input type="hidden" name="{field_id}" value="{value}" id="{input_uuid}" class="intable {form_uuid}" />'.format(
-        form_uuid = self.form.form_uuid,
-        input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
-        field_id = html.escape(template_item['id']),
-        value = html.escape(self.form.content.get(template_item['id'], '')),
-        )
-      
-      
+      self._add_display_javascript(template_item['id'], template_item['displayed_when'])
+
+    # le button n'est pas affiché en consultation
+    if not self.display_only:
+      self.html += """<tr id="{tr_uuid}" style="display: {display};"><td>{row_label}</td><td>
+        <label for="{input_uuid}" class="middlebutton">{button_label}</label>
+        <input id="{input_uuid}" type="file" style="display: none" class="{form_uuid}" {disabled}{readonly}>
+        </td><td></td><td></td></tr>
+        """.format(
+          form_uuid = self.form.form_uuid,
+          tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
+          input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
+          row_label = self._row_label('', template_item['help_button'], template_item['id']), 
+          button_label = html.escape(template_item.get('label', '')), 
+          display = 'table-row' if display else 'none',
+          disabled = 'disabled ' if not display else '',
+          readonly = 'readonly' if template_item.get('readonly', False) else '',
+          )
+
+  
   def _generate_code_start_section(self, template_item:str):
     """
     Versions:
@@ -861,6 +931,11 @@ class CodeGenerator():
     
     
   def _add_display_javascript(self, field_id:str, condition:dict, element_type:str='tr') -> str:
+    """ Ajoute le code Javascript affichant / masquant des champs en fonction des valeurs d'autres champs
+    
+    Versions:
+      01/01/2025 (mpham) ajout de textarea
+    """
   
     if condition != 'True' and condition != 'False' :
 
@@ -890,6 +965,9 @@ class CodeGenerator():
           element.disabled = disabled;
         });
         Array.from(document.getElementById(el_id).getElementsByTagName('select')).forEach(element => {
+          element.disabled = disabled;
+        });
+        Array.from(document.getElementById(el_id).getElementsByTagName('textarea')).forEach(element => {
           element.disabled = disabled;
         });
 

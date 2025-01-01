@@ -46,6 +46,7 @@ class WebTest(BaseHandler):
     self.add_html('<a href="tables">Tables</a><br>')
     self.add_html('<a href="openlisthtml">Open List Field HTML</a><br>')
     self.add_html('<a href="openlistcfiform">Open List Field CfiForm</a><br>')
+    self.add_html('<a href="uploadbutton">Upload button</a><br>')
 
 
   @register_page_url(url='cfiform', method='GET', template='page_default.html')
@@ -767,12 +768,10 @@ class WebTest(BaseHandler):
     self.add_html('</div>')
     
     
-    
-    
   @register_page_url(url='openlistcfiform', method='GET', template='page_default.html', continuous=True)
   def openlistform(self):
 
-    self.add_html('<h3>Open List Select, CfiForm version')
+    self.add_html('<h3>Open List Select, CfiForm version</h3>')
     
     form_content = {
       'nameid_policy': 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
@@ -798,6 +797,29 @@ class WebTest(BaseHandler):
             'black',
             'blue',
             ]) \
+      .end_section() \
+
+    self.add_html(form.get_html())
+    self.add_javascript(form.get_javascript())
+    
+    
+  @register_page_url(url='uploadbutton', method='GET', template='page_default.html', continuous=True)
+  def uploadbutton(self):
+
+    self.add_html('<h3>Upload button</h3>')
+    
+    form_content = {
+      'name': 'Upload button',
+      'certificate': '',
+      }
+    
+    form = CfiForm('samladmin', form_content, action='cfiformaction') \
+      .start_section('section_general', title="General configuration") \
+        .text('name', label='Name') \
+        .upload_button('upload_button', label='Upload certificate', on_upload="""
+          cfiForm.setFieldValue('certificate', upload_content);
+          """) \
+        .textarea('certificate', label='Certificate') \
       .end_section() \
 
     self.add_html(form.get_html())
