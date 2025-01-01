@@ -183,6 +183,23 @@ class CfiForm():
     return self
 
 
+  def open_list(self, field_id:str, label:str='', hints:list=[], help_button:bool=True, displayed_when:str="True", readonly:bool=False, on_load=None):
+    """ Champ texte avec une liste de valeurs possibles présentées dans une liste
+    
+    Args:
+      hints: liste des valeurs possibles
+    
+    Versions:
+      01/01/2025 (mpham) version initiale
+    """
+
+    open_list = self._add_template_item('open_list', field_id, label, help_button, displayed_when, readonly)
+    open_list['hints'] = hints
+    if on_load:
+      open_list['on_load'] = on_load
+    return self
+
+
   def hidden(self, field_id:str):
   
     self._add_template_item('hidden', field_id)
@@ -343,6 +360,7 @@ class CodeGenerator():
       12/03/2024 (mpham) tables contenant des valeurs accessibles au Javascript
       25/12/2024 (mpham) ajout de display_only
       29/12/2024 (mpham) boutons supplémentaires dans self.buttons
+      01/01/2025 (mpham) open list
     """
 
     self.html = ''
@@ -368,6 +386,8 @@ class CodeGenerator():
         self._generate_code_textarea(template_item)
       elif template_item['type'] == 'closed_list':
         self._generate_code_closed_list(template_item)
+      elif template_item['type'] == 'open_list':
+        self._generate_code_open_list(template_item)
       elif template_item['type'] == 'check_box':
         self._generate_code_check_box(template_item)
       elif template_item['type'] == 'hidden':
@@ -644,6 +664,69 @@ class CodeGenerator():
           selected = ' selected'
         self.html += '<option value="'+value+'"'+selected+'>'+html.escape(option_label)+'</value>'
       self.html += '</td><td></td><td></td></tr>'
+
+
+  def _generate_code_open_list(self, template_item:str):
+    """
+    Versions:
+      01/01/2025 (mpham) version initiale
+    """
+
+    self._start_table()
+
+    display = self._evaluate_display(template_item['displayed_when'])
+    if not self.display_only:
+      self._add_display_javascript(template_item['id'], template_item['displayed_when'])
+
+    clipboard_data = ''
+    clipboard_html = ''
+    if template_item.get('clipboard_category'):
+      clipboard_data = ' data-clipboardcategory="'+html.escape(template_item['clipboard_category'])+'"'
+      clipboard_html = """<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>"""
+
+    copy_value_html = ''
+    if template_item.get('copy_value'):
+      copy_value_html = """<span class="cellimg"><img title="Copy value" onclick="copyFieldValue(this)" src="/images/copy.png"></span>"""
+    
+    if self.display_only:
+      self.html += '<tr style="display: {display}"><td>{label}</td><td>{value}</td><td></td><td></td></tr>'.format(
+        label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+        value = html.escape(self.form.content.get(template_item['id'], '')),
+        display = 'table-row' if display else 'none',
+        )
+    else:
+      
+      hints = ""
+      for hint in template_item['hints']:
+        hints += f'<option value="{html.escape(hint)}">{html.escape(hint)}</option>'
+      
+      self.html += """
+        <tr id={tr_uuid} style="display: {display}">
+          <td>{label}</td>
+          <td><div class="select-editable" style="width: 520px;">
+            <select onchange="openlist_change(event)" style="width: 520px;" {disabled_select}>
+              <option value="#type_value">Type value</option>
+              {hints}
+            </select>
+            <input type="text" style="width: 500px;" name="{field_id}" value="{value}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" {disabled_text}{clipboard_data}{readonly}/>
+          </div><td>{clipboard_html}</td><td>{copy_value_html}</td></td>
+        </tr>
+        """.format(
+          form_uuid = self.form.form_uuid,
+          tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
+          input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
+          label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+          field_id = html.escape(template_item['id']),
+          value = html.escape(self.form.content.get(template_item['id'], '')),
+          hints = hints,
+          display = 'table-row' if display else 'none',
+          disabled_select = 'disabled ' if (not display) or template_item.get('readonly', False) else '', # on désactive le select si le champ est en readonly
+          disabled_text = 'disabled ' if not display else '',
+          clipboard_data = clipboard_data,
+          clipboard_html = clipboard_html,
+          copy_value_html = copy_value_html,
+          readonly = 'readonly' if template_item.get('readonly', False) else '',
+          )
 
 
   def _generate_code_check_box(self, template_item:str):

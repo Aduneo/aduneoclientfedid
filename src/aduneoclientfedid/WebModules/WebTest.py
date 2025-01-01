@@ -44,6 +44,8 @@ class WebTest(BaseHandler):
     self.add_html('<a href="textonload">Text on load</a><br>')
     self.add_html('<a href="datagenerator">Request Data Generator</a><br>')
     self.add_html('<a href="tables">Tables</a><br>')
+    self.add_html('<a href="openlisthtml">Open List Field HTML</a><br>')
+    self.add_html('<a href="openlistcfiform">Open List Field CfiForm</a><br>')
 
 
   @register_page_url(url='cfiform', method='GET', template='page_default.html')
@@ -725,3 +727,79 @@ class WebTest(BaseHandler):
     self.add_html(form.get_html())
     self.add_javascript(form.get_javascript())
     self.send_page()
+    
+    
+  @register_page_url(url='openlisthtml', method='GET', template='page_default.html', continuous=True)
+  def openlisthtml(self):
+
+    self.add_html('<h3>Open List Select, raw HTML version')
+
+    self.add_javascript("""
+      function openlist_change(event) {
+        console.log(event);
+        selectEl = event.target;
+        if (selectEl.value == '#type_value') {
+          selectEl.nextElementSibling.value = '';
+          selectEl.nextElementSibling.focus();
+        } else {
+          selectEl.nextElementSibling.value = selectEl.value; 
+        }
+      }
+      """)
+
+    self.add_html('<div class="select-editable" style="width: 520px;">')
+    self.add_html('<select onchange="openlist_change(event)" style="width: 520px;">')
+    nameid_list = [
+      'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
+      'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
+      'urn:oasis:names:tc:SAML:1.1:nameid-format:X509SubjectName',
+      'urn:oasis:names:tc:SAML:1.1:nameid-format:WindowsDomainQualifiedName',
+      'urn:oasis:names:tc:SAML:2.0:nameid-format:kerberos',
+      'urn:oasis:names:tc:SAML:2.0:nameid-format:entity',
+      'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
+      'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
+      ]
+    self.add_html('<option value="#type_value">Type value</option>')
+    for option in nameid_list:
+      self.add_html('<option value="'+option+'">'+option+'</option>')
+    self.add_html('</select>')
+    self.add_html('<input name="nameid_policy" value="'+html.escape('urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified')+'" class="intable" type="text" style="width: 500px;">')
+    self.add_html('</div>')
+    
+    
+    
+    
+  @register_page_url(url='openlistcfiform', method='GET', template='page_default.html', continuous=True)
+  def openlistform(self):
+
+    self.add_html('<h3>Open List Select, CfiForm version')
+    
+    form_content = {
+      'nameid_policy': 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
+      'testlist': 'red',
+      }
+    
+    form = CfiForm('samladmin', form_content, action='cfiformaction') \
+      .start_section('section_general', title="General configuration") \
+        .text('name', label='Name') \
+        .open_list('nameid_policy', label='NameID policy', 
+          hints = [
+            'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
+            'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
+            'urn:oasis:names:tc:SAML:1.1:nameid-format:X509SubjectName',
+            'urn:oasis:names:tc:SAML:1.1:nameid-format:WindowsDomainQualifiedName',
+            'urn:oasis:names:tc:SAML:2.0:nameid-format:kerberos',
+            'urn:oasis:names:tc:SAML:2.0:nameid-format:entity',
+            'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
+            'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
+            ]) \
+        .open_list('testlist', label='Read only list', readonly=True,
+          hints = [
+            'black',
+            'blue',
+            ]) \
+      .end_section() \
+
+    self.add_html(form.get_html())
+    self.add_javascript(form.get_javascript())
+    

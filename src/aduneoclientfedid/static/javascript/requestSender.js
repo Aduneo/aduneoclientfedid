@@ -565,6 +565,19 @@ function togglePanel(buttonEl, panelId) {
 }
 
 
+// Appelée par open_list pour copier, quand elle change, la valeur du select vers l'input text
+function openlist_change(event) {
+  selectEl = event.target;
+  if (selectEl.value == '#type_value') {
+    selectEl.nextElementSibling.value = '';
+    selectEl.nextElementSibling.focus();
+  } else {
+    selectEl.nextElementSibling.value = selectEl.value; 
+  }
+}
+
+
+
 function CfiForm(formId, thisFieldId) {
   this.formId = formId;
   this.thisFieldId = thisFieldId;
