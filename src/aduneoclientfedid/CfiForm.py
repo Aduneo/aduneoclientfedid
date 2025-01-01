@@ -158,12 +158,29 @@ class CfiForm():
     return self
 
 
-  def textarea(self, field_id:str, label:str='', rows=4, clipboard_category:str=None, copy_value:bool=True, help_button:bool=True, displayed_when:str="True", readonly:bool=False):
+  def textarea(self, field_id:str, label:str='', rows=4, clipboard_category:str=None, copy_value:bool=True, help_button:bool=True, displayed_when:str="True", readonly:bool=False, upload_button:str=None, on_upload:str=None):
+    """
+    Args:
+      upload_button: affiche un bouton téléchargeant un fichier
+                       le comportement par défaut est de mettre le contenu brut du fichier dans le textarea
+                       mais il peut être modifié en donnant le code Javascript dans on_upload
+      on_upload: action à réaliser après un chargement de fichier
+                   le code a accès à
+                    - upload_content : le contenu du fichier
+                    - cfiForm : le formulaire en cours
+    
+    Versions:
+      01/01/2025 (mpham) bouton de chargement (upload_button et on_upload)
+    """
   
     textarea = self._add_template_item('textarea', field_id, label, help_button, displayed_when, readonly)
     textarea['rows'] = rows
     textarea['clipboard_category'] = clipboard_category
     textarea['copy_value'] = copy_value
+    if upload_button:
+      textarea['upload_button'] = upload_button
+    if on_upload:
+      textarea['on_upload'] = on_upload
     return self
 
 
@@ -513,7 +530,7 @@ class CodeGenerator():
       # Ajoute les listener onchange pour le paramètre on_upload (pour upload_button)
       for template_item in self.form.template:
         if template_item.get('on_upload'):
-          self.javascript += "document.getElementById('"+self.form.form_uuid+'_d_'+template_item['id']+"').addEventListener('change', (event) => { cfiForm = new CfiForm('"+self.form.form_uuid+"', '"+template_item['id']+"'); "+ \
+          self.javascript += "document.getElementById('"+self.form.form_uuid+'_upload_'+template_item['id']+"').addEventListener('change', (event) => { cfiForm = new CfiForm('"+self.form.form_uuid+"', '"+template_item['id']+"'); "+ \
           """
           input = event.target
   
@@ -525,6 +542,7 @@ class CodeGenerator():
           """
           };
           reader.readAsText(input.files[0]);
+          input.value = ''
           });
           """
  
@@ -624,6 +642,7 @@ class CodeGenerator():
     Versions:
       03/12/2024 (mpham) la valeur était toujours vide
       25/12/2024 (mpham) ajout de display_only
+      01/01/2025 (mpham) bouton de chargement (upload_button et on_upload)
     """
 
     self._start_table()
@@ -642,6 +661,22 @@ class CodeGenerator():
     if template_item.get('copy_value'):
       copy_value_html = """<span class="cellimg"><img title="Copy value" onclick="copyFieldValue(this)" src="/images/copy.png"></span>"""
 
+    upload_button_html = ''
+    if template_item.get('upload_button'):
+      upload_button_html = """
+        <label for="{input_uuid}" class="middlebutton">{button_label}</label>
+        <input id="{input_uuid}" type="file" style="display: none" class="{form_uuid}" {disabled}{readonly}>
+        """.format(
+          form_uuid = self.form.form_uuid,
+          input_uuid = self.form.form_uuid+'_upload_'+template_item['id'],
+          button_label = html.escape(template_item['upload_button']),
+          disabled = 'disabled ' if not display else '',
+          readonly = 'readonly' if template_item.get('readonly', False) else '',
+          )
+      if not template_item.get('on_upload'):
+        # comportement non donné, on ajoute le comportement par défaut
+        template_item['on_upload'] = "cfiForm.setFieldValue('certificate', upload_content);"
+
     if self.display_only:
       self.html += '<tr style="display: {display}"><td>{label}</td><td>{value}</td><td></td><td></td></tr>'.format(
         label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
@@ -649,7 +684,7 @@ class CodeGenerator():
         display = 'table-row' if display else 'none',
         )
     else:
-      self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><textarea name="{field_id}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" rows={rows} {disabled}{clipboard_data}{readonly}>{value}</textarea></td><td>{clipboard_html}</td><td>{copy_value_html}</td></tr>'.format(
+      self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><textarea name="{field_id}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" rows={rows} {disabled}{clipboard_data}{readonly}>{value}</textarea>{upload_button}</td><td>{clipboard_html}</td><td>{copy_value_html}</td></tr>'.format(
         form_uuid = self.form.form_uuid,
         tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
         input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
@@ -663,6 +698,7 @@ class CodeGenerator():
         clipboard_html = clipboard_html,
         copy_value_html = copy_value_html,
         readonly = 'readonly' if template_item.get('readonly', False) else '',
+        upload_button = upload_button_html,
         )
   
   
@@ -836,7 +872,7 @@ class CodeGenerator():
         """.format(
           form_uuid = self.form.form_uuid,
           tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
-          input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
+          input_uuid = self.form.form_uuid+'_upload_'+template_item['id'],
           row_label = self._row_label('', template_item['help_button'], template_item['id']), 
           button_label = html.escape(template_item.get('label', '')), 
           display = 'table-row' if display else 'none',

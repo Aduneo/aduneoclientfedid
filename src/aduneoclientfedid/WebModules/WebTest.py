@@ -806,7 +806,7 @@ class WebTest(BaseHandler):
   @register_page_url(url='uploadbutton', method='GET', template='page_default.html', continuous=True)
   def uploadbutton(self):
 
-    self.add_html('<h3>Upload button</h3>')
+    self.add_html('<h3>Upload button and textarea with upload button</h3>')
     
     form_content = {
       'name': 'Upload button',
@@ -819,7 +819,8 @@ class WebTest(BaseHandler):
         .upload_button('upload_button', label='Upload certificate', on_upload="""
           cfiForm.setFieldValue('certificate', upload_content);
           """) \
-        .textarea('certificate', label='Certificate') \
+        .textarea('certificate', label='Certificate', upload_button='Upload certificate') \
+        .textarea('file', label='File', upload_button='Upload file', on_upload="alert(upload_content);") \
       .end_section() \
 
     self.add_html(form.get_html())
