@@ -615,6 +615,12 @@ CfiForm.prototype.setFieldValue = function (fieldId, value) {
 };
 
 
+CfiForm.prototype.getFieldValue = function (fieldId) {
+  field = this.getField(fieldId)
+  return field.value;
+};
+
+
 CfiForm.prototype.getTable = function (tableId) {
   eval("var tables = tables_"+this.formId);
   return tables[tableId];

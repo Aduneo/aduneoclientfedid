@@ -383,8 +383,39 @@ class BaseServer(BaseHTTPRequestHandler):
       in_file.close()
 
 
+  def download_file(self, path:str, content_type:str='application/octet-stream', filename:str=None):
+    """ Télécharge un fichier
+    
+    Args:
+      path: chemin sur le serveur ClientFedID, qui doit être dans le dossier de configuration
+      content_type: sans commentaire
+      filename: prend par défaut le nom du fichier sur le disque
+      
+    Versions:
+      01/01/2025 (mpham) version initiale
+    """
+    
+    from .Configuration import Configuration
+    if not BaseServer.check_path_traversal(Configuration.conf_dir, path):
+      self.send_page('404 !', code=404, clear_buffer=True)
+
+    if not filename:
+      filename = os.path.basename(path)
+
+    self.send_response(200)
+    self.send_header('Content-type', content_type)
+    self.send_header('Content-disposition', 'filename='+filename)
+    self.end_headers()
+    
+    in_file = open(path, 'rb')
+    chunk = in_file.read(1024)
+    while chunk:
+      self.wfile.write(chunk)
+      chunk = in_file.read(1024)
+    in_file.close()
+    
+
   def send_template(self, template_name:str, **parameters):
-  
     """
     Mécanisme de template simplifié
     Fourniture du template par un nom de fichier dans le dossier templates
@@ -402,6 +433,7 @@ class BaseServer(BaseHTTPRequestHandler):
         template_content = in_file.read()
         
       self.send_page(self.apply_template(template_content, **parameters))
+      
 
   def send_template_raw(self, template_name:str, **parameters):
   
@@ -422,6 +454,7 @@ class BaseServer(BaseHTTPRequestHandler):
         template_content = in_file.read()
         
       self.send_page_raw(self.apply_template(template_content, **parameters))
+      
 
   def _send_page_headers(self, send_cookie:bool=True):
     """ Envoie les en-têtes d'une page :
@@ -686,7 +719,9 @@ class BaseHandler:
   def send_redirection(self, url):
     self.hreq.send_redirection(url)
     
-    
+  def download_file(self, path:str, content_type:str='application/octet-stream', filename:str=None):
+    self.hreq.download_file(path, content_type, filename)
+ 
   def send_json_page(self, html:str='', javascript:str=''):
     self.hreq.send_json_page(html, javascript)
     

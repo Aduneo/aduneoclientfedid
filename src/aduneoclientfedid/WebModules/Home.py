@@ -40,6 +40,7 @@ class Home(BaseHandler):
       <div>
         <span><a href="/client/oidc/admin/modifyclient" class="middlebutton">Add OIDC Client</a></span>
         <span><a href="/client/oauth2/admin/modifyclient" class="middlebutton">Add OAuth 2 Client</a></span>
+        <span><a href="/client/saml/admin/modifyclient" class="middlebutton">Add SAML SP</a></span>
       </div>
     """)
 

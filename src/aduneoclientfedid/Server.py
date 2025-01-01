@@ -703,6 +703,8 @@ class Server(BaseServer):
   def check_saml_certificate_exists(self) -> str:
     """ Vérifie que le certificat SAML par défaut existe
     
+    DEPLACE VERS SAMLCLIENTADMIN
+    
     dans les fichiers
     - conf/aduneo_saml.key pour la clé privée
     - conf/aduneo_saml.crt pour le certificat
@@ -730,6 +732,8 @@ class Server(BaseServer):
     
     """
     Retourne le certificat du serveur (utilisé pour SAML)
+
+    DEPLACE VERS SAMLCLIENTADMIN
     
     Le crée s'il n'existe pas
     
