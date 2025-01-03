@@ -14,16 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from ..BaseServer import AduneoError
-from ..BaseServer import BaseHandler
-from ..BaseServer import register_web_module, register_url
-from ..Configuration import Configuration
-from ..Help import Help
-from .Clipboard import Clipboard
-from .FlowHandler import FlowHandler
-from datetime import datetime
-from lxml import etree
 import base64
+import copy
 import html
 import json
 import os
@@ -33,6 +25,19 @@ import urllib.parse
 import uuid
 import xmlsec
 import zlib
+
+from ..BaseServer import AduneoError
+from ..BaseServer import BaseHandler
+from ..BaseServer import register_web_module, register_url, register_page_url
+from ..CfiForm import CfiForm
+from ..Configuration import Configuration
+from ..Context import Context
+from ..Help import Help
+from .Clipboard import Clipboard
+from .FlowHandler import FlowHandler
+from datetime import datetime
+from lxml import etree
+
 
 """
   Un contexte de chaque cinématique est conservé dans la session.
@@ -64,9 +69,143 @@ import zlib
 
 @register_web_module('/client/saml/login')
 class SAMLClientLogin(FlowHandler):
- 
-  @register_url(url='preparerequest', method='GET')
+
+  @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=True)
   def prepare_request(self):
+    """
+      Prépare la requête d'autorisation SAML
+
+    Versions:
+      02/01/2025 (mpham) version initiale copiée d'OAuth 2 et de l'ancienne version de SAML
+    """
+
+    self.log_info('--- Start SAML flow ---')
+
+    try:
+
+      idp_id = self.get_query_string_param('idpid')
+      app_id = self.get_query_string_param('appid')
+
+      fetch_configuration_document = False
+
+      new_auth = True
+      if self.context is None:
+        if idp_id is None or app_id is None:
+          raise AduneoError(f"Missing idpip or appid in URL", button_label="Homepage", action="/")
+      else:
+        new_auth = False
+      
+      if self.get_query_string_param('newauth'):
+        new_auth = True
+
+      if new_auth:
+        # Nouvelle requête
+        idp = copy.deepcopy(self.conf['idps'][idp_id])
+        idp_params = idp['idp_parameters'].get('saml')
+        if not idp_params:
+          raise AduneoError(f"SAML IdP parameters have not been defined for IdP {idp_id}", button_label="IdP parameters", action=f"/client/idp/admin/modify?idpid={idp_id}")
+        
+        app_params = idp['saml_clients'][app_id]
+
+        # On récupère name des paramètres de l'IdP
+        idp_params['name'] = idp['name']
+
+        # si le contexte existe, on le conserve (cas newauth)
+        if self.context is None:
+          self.context = Context()
+        self.context['idp_id'] = idp_id
+        self.context['app_id'] = app_id
+        self.context['flow_type'] = 'SAML'
+        self.context['idp_params'] = idp_params
+        self.context['app_params'][app_id] = app_params
+        self.set_session_value(self.context['context_id'], self.context)
+
+      else:
+        # Rejeu de requête (conservée dans la session)
+        idp_id = self.context['idp_id']
+        app_id = self.context['app_id']
+        idp_params = self.context.idp_params
+        app_params = self.context.last_app_params
+      
+      self.log_info(('  ' * 1) + f"for SP {app_params['name']} of IdP {idp_params['name']}")
+      self.add_html(f"<h1>IdP {idp_params['name']} SAML SP {app_params['name']}</h1>")
+      
+      relay_state = str(uuid.uuid4())
+
+      # pour récupérer le contexte depuis le state (puisque c'est la seule information exploitable retournée par l'IdP)
+      self.set_session_value(relay_state, self.context['context_id'])
+
+      form_content = {
+        'hr_context': self.context['context_id'],
+        'name': app_params.get('name', ''),
+        'idp_entity_id': idp_params.get('idp_entity_id', ''),
+        'idp_certificate': idp_params.get('idp_certificate', ''),
+        'idp_sso_url': idp_params.get('idp_sso_url', ''),
+        'sp_entity_id': app_params.get('sp_entity_id', ''),
+        'sp_acs_url': app_params.get('sp_acs_url', ''),
+        'nameid_policy': app_params.get('nameid_policy', 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'),
+        'authentication_binding': app_params.get('authentication_binding', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'),
+        'sign_auth_request': Configuration.is_on(app_params.get('sign_auth_request', 'off')),
+        'relay_state': relay_state,
+        'authentication_request': '',
+      }
+      
+      form = CfiForm('samlauth', form_content, action='/client/saml/login/sendrequest', mode='new_page') \
+        .hidden('name') \
+        .start_section('idp_params', title="IdP parameters") \
+          .text('idp_entity_id', label='IdP entity ID', clipboard_category='idp_entity_id') \
+          .text('idp_sso_url', label='IdP SSO URL', clipboard_category='idp_sso_url', on_change='updateAuthenticationRequest(cfiForm)') \
+          .textarea('idp_certificate', label='IdP certificate', rows=10, clipboard_category='idp_certificate', upload_button='Upload IdP certificate') \
+        .end_section() \
+        .start_section('sp_parameters', title="SP parameters") \
+          .text('sp_entity_id', label='SP entity ID', clipboard_category='sp_entity_id', on_change='updateAuthenticationRequest(cfiForm)') \
+          .text('sp_acs_url', label='SP Assertion Consumer Service URL', clipboard_category='sp_acs_url', on_change='updateAuthenticationRequest(cfiForm)') \
+          .open_list('nameid_policy', label='NameID policy', clipboard_category='nameid_policy', on_change='updateAuthenticationRequest(cfiForm)', 
+            hints = [
+              'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
+              'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
+              'urn:oasis:names:tc:SAML:1.1:nameid-format:X509SubjectName',
+              'urn:oasis:names:tc:SAML:1.1:nameid-format:WindowsDomainQualifiedName',
+              'urn:oasis:names:tc:SAML:2.0:nameid-format:kerberos',
+              'urn:oasis:names:tc:SAML:2.0:nameid-format:entity',
+              'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
+              'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
+              ]) \
+          .closed_list('authentication_binding', label='Authentication binding', on_change='updateAuthenticationRequest(cfiForm)',
+            values = {'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'},
+            default = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+            ) \
+          .check_box('sign_auth_request', label='Sign authentication request') \
+          .textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sign_auth_request]") \
+          .textarea('sp_certificate', label='SP certificate', rows=10, clipboard_category='sp_certificate', upload_button='Upload SP certificate', displayed_when="@[sign_auth_request]") \
+        .end_section() \
+        .start_section('authn_params', title="Authentication request") \
+          .text('relay_state', label='Relay state', clipboard_category='relay_state') \
+          .textarea('authentication_request', label='SAML authentication request', rows=10, clipboard_category='authentication_request', upload_button='Upload XML', on_load='updateAuthenticationRequest(cfiForm)') \
+        .end_section() \
+
+      self.add_javascript_include('/javascript/SAMLClientLogin.js')
+      self.add_html(form.get_html())
+      self.add_javascript(form.get_javascript())
+
+    except AduneoError as error:
+      self.add_html('<h4>Error: '+html.escape(str(error))+'</h4>')
+      self.add_html(f"""
+        <div>
+          <span><a class="middlebutton" href="{error.action}">{error.button_label}</a></span>
+        </div>
+        """)
+      self.send_page()
+    except Exception as error:
+      self.log_error(('  ' * 1)+traceback.format_exc())
+      self.add_html('<h4>Refresh error: '+html.escape(str(error))+'</h4>')
+      self.send_page()
+
+    self.send_page()
+
+ 
+  @register_url(url='preparerequest_old', method='GET')
+  def prepare_request_old(self):
 
     self.log_info('--- Start SAML flow ---')
 

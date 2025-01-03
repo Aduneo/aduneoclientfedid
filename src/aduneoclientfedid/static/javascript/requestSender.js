@@ -574,6 +574,7 @@ function openlist_change(event) {
   } else {
     selectEl.nextElementSibling.value = selectEl.value; 
   }
+  selectEl.nextElementSibling.dispatchEvent(new Event('keyup'));
 }
 
 
@@ -605,8 +606,11 @@ CfiForm.prototype.getField = function (fieldId) {
 
 
 CfiForm.prototype.setFieldValue = function (fieldId, value) {
+  
   field = this.getField(fieldId)
+  
   field.value = value;
+  
   if (field.type == 'text' || field.type == 'textarea') {
     field.dispatchEvent(new Event('keyup'));
   } else {

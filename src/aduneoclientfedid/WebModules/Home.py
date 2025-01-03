@@ -73,9 +73,10 @@ class Home(BaseHandler):
         )
       )
 
+      # clients (OP) OpenID Connect
       if idp.get('oidc_clients'):
         
-        self.add_html("""<div>OIDC Clients</div>""")          
+        self.add_html("""<div>OIDC OP (clients)</div>""")          
         for client_id in sorted(idp['oidc_clients'].keys()):
           
           client = idp['oidc_clients'][client_id]
@@ -92,6 +93,7 @@ class Home(BaseHandler):
             )
           )
 
+      # clients OAuth 2
       if idp.get('oauth2_clients'):
         
         self.add_html("""<div>OAuth 2 Clients</div>""")          
@@ -108,6 +110,26 @@ class Home(BaseHandler):
               name = html.escape(client.get('name', 'Client')),
               idp_id = urllib.parse.quote_plus(idp_id),
               app_id = urllib.parse.quote_plus(client_id),
+            )
+          )
+
+      # SP SAML
+      if idp.get('saml_clients'):
+        
+        self.add_html("""<div>SAML SP</div>""")          
+        for app_id in sorted(idp['saml_clients'].keys()):
+          
+          app_params = idp['saml_clients'][app_id]
+          self.add_html("""
+            <div>
+              <span>{name}</span>
+              <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+              <span><a href="/client/saml/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
+            </div>
+            """.format(
+              name = html.escape(app_params.get('name', 'SP')),
+              idp_id = urllib.parse.quote_plus(idp_id),
+              app_id = urllib.parse.quote_plus(app_id),
             )
           )
 

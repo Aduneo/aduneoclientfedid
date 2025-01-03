@@ -59,7 +59,7 @@ from .FlowHandler import FlowHandler
 @register_web_module('/client/oidc/login')
 class OIDCClientLogin(FlowHandler):
 
-  @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=True)
+  @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=False)
   def prepare_request(self):
     """
       Prépare la requête d'authentification OIDC

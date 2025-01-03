@@ -27,7 +27,7 @@ import uuid
 @register_web_module('/client/oidc/admin')
 class OIDCClientAdmin(BaseHandler):
 
-  @register_page_url(url='modifyclient', method='GET', template='page_default.html', continuous=True)
+  @register_page_url(url='modifyclient', method='GET', template='page_default.html', continuous=False)
   def modify_client_router(self):
     """ Sélection du mode de modification du client :
       

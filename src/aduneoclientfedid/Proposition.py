@@ -27,6 +27,12 @@ class Proposition:
     
     dans la proposition, les variables sont préfixées par une arobase et entourées de crochets, par exemple @[var]
     
+    Une proposition élémentaire peut être
+      - True
+      - False
+      - opérande = opérande (opérande étant une variable ou une constante)
+      - variable (pour les variables booléennes)
+    
     lors de l'évaluation, les valeurs des variables sont transmises dans un dict :
       - clé : nom de la variable (sans l'arobase ni les crochets)
       - valeur
@@ -50,7 +56,17 @@ class Proposition:
     return self._eval_proposition(self.proposition, variables)
     
   
-  def transpose_javascript(self, transpose_function) -> str:
+  def transpose_javascript(self, transpose_function, variable_types={}) -> str:
+    """ Retourne le code Javascript d'une proposition mathématique
+    
+    Args:
+      transpose_function: fonction qui prend un nom de variable et le convertit en code Javascript en retournant la valeur
+      variable_types: meta informations sur les variables pour aider à la construction du code Javascript de conversion
+    
+    Versions:
+      29/12/2023 (mpham) version initiale
+      02/01/2025 (mpham) on a besoin des types des champs pour les checkbox
+    """
        
     js = self.proposition
     js = js.replace('=', '==').replace(' and ', ' && ').replace(' or ', ' || ')
@@ -62,7 +78,7 @@ class Proposition:
       transposed += js[current_pos:arobase_pos]
       variable_end_pos = self._find_variable_end(js, arobase_pos)
       variable = js[arobase_pos+2:variable_end_pos]
-      transposed += transpose_function(variable)
+      transposed += transpose_function(variable, variable_types)
       current_pos = variable_end_pos+1
       arobase_pos = js.find('@[', current_pos)
     transposed += js[current_pos:]
@@ -91,7 +107,12 @@ class Proposition:
   
   
   def _eval_proposition(self, proposition:str, variables:dict) -> bool:
-  
+    """
+    Versions:
+      29/12/2023 (mpham) version initiale
+      02/01/2025 (mpham) variables booléennes (pour les checkbox)
+    """
+
     # On commence par isoler les expressions entre parenthèses
     flat_expression = ''
     current_pos = 0
@@ -130,10 +151,12 @@ class Proposition:
       else:
         equals_pos = sub_expression.find('=')
         if equals_pos == -1:
-          raise DesignError("condition not found in {expression}".format(expression=sub_expression))
-        left_term = sub_expression[0:equals_pos].strip()
-        right_term = sub_expression[equals_pos+1:].strip()
-        result = (self._compute(left_term, variables) == self._compute(right_term, variables))
+          # Variable booléenne
+          result = self._compute(sub_expression, variables)
+        else:
+          left_term = sub_expression[0:equals_pos].strip()
+          right_term = sub_expression[equals_pos+1:].strip()
+          result = (self._compute(left_term, variables) == self._compute(right_term, variables))
     
     return result
     

@@ -141,12 +141,15 @@ class CfiForm():
     self.title = title
 
 
-  def text(self, field_id:str, label:str='', clipboard_category:str=None, copy_value:bool=True, help_button:bool=True, displayed_when:str="True", readonly:bool=False, on_load=None):
+  def text(self, field_id:str, label:str='', clipboard_category:str=None, copy_value:bool=True, help_button:bool=True, displayed_when:str="True", readonly:bool=False, on_load=None, on_change=None):
   
     text = self._add_template_item('text', field_id, label, help_button, displayed_when, readonly)
     text['clipboard_category'] = clipboard_category
     text['copy_value'] = copy_value
-    text['on_load'] = on_load
+    if on_load:
+      text['on_load'] = on_load
+    if on_change:
+      text['on_change'] = on_change
     return self
 
 
@@ -158,7 +161,7 @@ class CfiForm():
     return self
 
 
-  def textarea(self, field_id:str, label:str='', rows=4, clipboard_category:str=None, copy_value:bool=True, help_button:bool=True, displayed_when:str="True", readonly:bool=False, upload_button:str=None, on_upload:str=None):
+  def textarea(self, field_id:str, label:str='', rows=4, clipboard_category:str=None, copy_value:bool=True, help_button:bool=True, displayed_when:str="True", readonly:bool=False, on_load=None, upload_button:str=None, on_upload:str=None):
     """
     Args:
       upload_button: affiche un bouton téléchargeant un fichier
@@ -177,6 +180,8 @@ class CfiForm():
     textarea['rows'] = rows
     textarea['clipboard_category'] = clipboard_category
     textarea['copy_value'] = copy_value
+    if on_load:
+      textarea['on_load'] = on_load
     if upload_button:
       textarea['upload_button'] = upload_button
     if on_upload:
@@ -200,7 +205,7 @@ class CfiForm():
     return self
 
 
-  def open_list(self, field_id:str, label:str='', clipboard_category:str=None, copy_value:bool=True, hints:list=[], help_button:bool=True, displayed_when:str="True", readonly:bool=False, on_load=None):
+  def open_list(self, field_id:str, label:str='', clipboard_category:str=None, copy_value:bool=True, hints:list=[], help_button:bool=True, displayed_when:str="True", readonly:bool=False, on_load=None, on_change=None):
     """ Champ texte avec une liste de valeurs possibles présentées dans une liste
     
     Args:
@@ -216,6 +221,8 @@ class CfiForm():
     open_list['hints'] = hints
     if on_load:
       open_list['on_load'] = on_load
+    if on_change:
+      open_list['on_change'] = on_change
     return self
 
 
@@ -417,6 +424,7 @@ class CodeGenerator():
       25/12/2024 (mpham) ajout de display_only
       29/12/2024 (mpham) boutons supplémentaires dans self.buttons
       01/01/2025 (mpham) open list, button et upload_button
+      02/01/2025 (mpham) on_change pour text
     """
 
     self.html = ''
@@ -547,7 +555,10 @@ class CodeGenerator():
       # Ajoute les listener onchange
       for template_item in self.form.template:
         if template_item.get('on_change'):
-          self.javascript += "document.getElementById('"+self.form.form_uuid+'_d_'+template_item['id']+"').addEventListener('change', () => { cfiForm = new CfiForm('"+self.form.form_uuid+"', '"+template_item['id']+"'); "+template_item['on_change']+"      });";
+          event = 'change'
+          if template_item['type'] in ['text', 'password', 'textarea', 'open_list']:
+            event = 'keyup'
+          self.javascript += "document.getElementById('"+self.form.form_uuid+'_d_'+template_item['id']+"').addEventListener('"+event+"', () => { cfiForm = new CfiForm('"+self.form.form_uuid+"', '"+template_item['id']+"'); "+template_item['on_change']+"      });";
           
       # Ajoute les listener onchange pour le paramètre on_upload (pour upload_button)
       for template_item in self.form.template:
@@ -1032,8 +1043,29 @@ class CodeGenerator():
         self.selects_with_triggers.append(select_id)
     
     return display
+
     
+  def _transpose_variable_for_javascript(self, variable, variable_types={}):
+    """ Fonction passée à Proposition.transpose_javascript pour convertir un nom de variable en code Javascript de récupération de la valeur de la variable
     
+    retourne en gros document.getElementById('" + self.form.form_uuid+'_d_'+variable+ "').value
+    
+    sauf que pour checkbox, c'est .checked
+    
+    On doit définir une methode parce que les lambda Python sont trop restreintes.
+    
+    A besoin d'un champ self.field_types (key : variable, value : type du template) pour déterminer le type de l'INPUT
+    
+    Versions:
+      02/01/2025 (mpham) version initiale
+    """
+    
+    value_getter = '.value'
+    if variable_types.get(variable) == 'check_box':
+      value_getter = '.checked'
+    return "document.getElementById('" + self.form.form_uuid+'_d_'+variable+ "')"+value_getter
+
+   
   def _add_display_javascript(self, field_id:str, condition:dict, element_type:str='tr') -> str:
     """ Ajoute le code Javascript affichant / masquant des champs en fonction des valeurs d'autres champs
     
@@ -1043,8 +1075,13 @@ class CodeGenerator():
   
     if condition != 'True' and condition != 'False' :
 
+      # On indexe les champs pour les passer à Proposition qui a besoin de connaître le type des INPUT pour en récupérer la valeur (cas particulier ses checkbox dont la valeur n'est pas dans .value)
+      field_types = {}
+      for template in self.form.template:
+        field_types[template['id']] = template['type']
+
       proposition = Proposition(condition)
-      js_condition = proposition.transpose_javascript(lambda var: "document.getElementById('" + self.form.form_uuid+'_d_'+var + "').value")
+      js_condition = proposition.transpose_javascript(self._transpose_variable_for_javascript, field_types)
 
       if element_type == 'tr':
         display_value = 'table-row'
@@ -1346,7 +1383,7 @@ class RequesterForm(CfiForm):
         if template_item is None:
           raise DesignError("unknown field {field_id}".format(field_id=field_id))
         event = 'change'
-        if template_item['type'] in ['text', 'password', 'textarea']:
+        if template_item['type'] in ['text', 'password', 'textarea', 'open_list']:
           event = 'keyup'
         js = """document.getElementById('"""+self.form_uuid+'_d_'+html.escape(field_id)+"""').addEventListener('"""+event+"""', () => {
           updateRequest_"""+self.form_uuid+"""();

@@ -101,9 +101,9 @@ class SAMLClientAdmin(BaseHandler):
       'sp_certificate': app_params.get('sp_certificate', self._get_clientfedid_certificate()),
       'nameid_policy': app_params.get('nameid_policy', 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'),
       'authentication_binding': app_params.get('authentication_binding', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'),
-      'sign_auth_request': app_params.get('sign_auth_request', 'off'),
+      'sign_auth_request': Configuration.is_on(app_params.get('sign_auth_request', 'off')),
       'logout_binding': app_params.get('logout_binding', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'),
-      'sign_logout_request': app_params.get('sign_logout_request', 'off'),
+      'sign_logout_request': Configuration.is_on(app_params.get('sign_logout_request', 'off')),
       }
     
     form = CfiForm('samladminsingle', form_content, action='modifyclientsingle', submit_label='Save') \
@@ -139,7 +139,7 @@ class SAMLClientAdmin(BaseHandler):
         .button('download_sp_specific_certificate', label='Download specific certificate', on_click='downloadSpecificCertificate(cfiForm)', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
       .end_section() \
       .start_section('flow_parameters', title="Flow parameters") \
-        .open_list('nameid_policy', label='NameID policy', clipboard_category='sp_certificate', 
+        .open_list('nameid_policy', label='NameID policy', clipboard_category='nameid_policy', 
           hints = [
             'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
             'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
