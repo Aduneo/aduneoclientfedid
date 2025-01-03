@@ -307,12 +307,12 @@ class OAuthClientLogin(FlowHandler):
         self.log_error("""context_id not found in form data {data}""".format(data=self.post_form))
         raise AduneoError("Context not found in request")
 
-      # Mise à jour dansle contexte des paramètres liés à l'IdP
+      # Mise à jour dans le contexte des paramètres liés à l'IdP
       idp_params = self.context.idp_params
       for item in ['authorization_endpoint', 'token_endpoint', 'introspection_endpoint', 'introspection_http_method', 'introspection_auth_method', 'issuer', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
         idp_params[item] = self.post_form.get(item, '').strip()
 
-      # Mise à jour dansle contexte des paramètres liés au client courant
+      # Mise à jour dans le contexte des paramètres liés au client courant
       app_params = self.context.last_app_params
       for item in ['redirect_uri', 'oauth_flow', 'pkce_method', 'client_id', 'scope', 'token_endpoint_auth_method']:
         app_params[item] = self.post_form.get(item, '').strip()
