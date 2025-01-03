@@ -412,7 +412,7 @@ class OIDCClientAdmin(BaseHandler):
       app_params['idp_id'] = idp_id
       app_params['app_id'] = app_id
       app_form = self.get_app_form(app_params)
-      app_form.set_title('Remove Oauth 2 app '+(' '+app_params['name'] if app_params.get('name') else ''))
+      app_form.set_title('Remove OIDC app '+(' '+app_params['name'] if app_params.get('name') else ''))
       app_form.add_button('Remove', f'removeappconfirmed?idpid={idp_id}&appid={app_id}', display='all')
       app_form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
 
@@ -437,8 +437,9 @@ class OIDCClientAdmin(BaseHandler):
     """
     Supprime un client OpenID Connect
     
-    28/12/2021 (mpham) version initiale
-    29/12/2024 (mpham) suppression après page de confirmation
+    Versions:
+      28/12/2021 (mpham) version initiale
+      29/12/2024 (mpham) suppression après page de confirmation
     """
 
     try:

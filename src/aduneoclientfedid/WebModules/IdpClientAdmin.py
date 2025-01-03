@@ -21,6 +21,7 @@ from ..CfiForm import CfiForm
 from ..Configuration import Configuration
 from .OIDCClientAdmin import OIDCClientAdmin
 from .OAuthClientAdmin import OAuthClientAdmin
+from .SAMLClientAdmin import SAMLClientAdmin
 import copy
 import html
 import uuid
@@ -123,10 +124,9 @@ class IdPClientAdmin(BaseHandler):
   def display(self):
     """ Affichage des paramètres de l'IdP
     
-    TODO : ajouter SAML
-    
     Versions:
       25/12/2024 (mpham) version initiale
+      03/01/2025 (mpham) SAML SP
     """
 
 
@@ -249,15 +249,52 @@ class IdPClientAdmin(BaseHandler):
           
       api['idp_id'] = idp_id
       api['api_id'] = api_id
-      #client_form = OAuthClientAdmin.get_app_form(self, client)
+      api_form = OAuthClientAdmin.get_api_form(self, api)
           
       self.add_html("""
         <div id="panel_{div_id}" style="display: none;">{form}</div>
         """.format(
           div_id = param_uuid,
-          form = 'TEST',
+          form = api_form.get_html(display_only=True),
           ))
 
+    # SAML SP
+    self.add_html(f""" 
+      <h2>SAML service providers (SP)</h2>
+      <div>
+        <span><a href="/client/saml/admin/modifymulti?idpid={idp_id}" class="smallbutton">Add SAML SP</a></span>
+      </div>
+    """)
+    
+    for sp_id in idp.get('saml_clients', {}):
+      sp = idp['saml_clients'][sp_id]
+      param_uuid = str(uuid.uuid4())
+      self.add_html("""
+        <div style="width: 1140px; display: flex; align-items: center; background-color: #fbe1686b; padding: 3px 3px 3px 6px; margin-top: 2px; margin-bottom: 2px;">
+          <span style="flex-grow: 1; font-size: 12px;">{name}</span>
+          <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">Display parameters</span>
+          <span><a href="/client/saml/admin/modifymulti?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
+          <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+          <span><a href="/client/saml/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
+          <span><a href="/client/saml/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbutton">Remove</a></span>
+        </div>
+        """.format(
+          name = html.escape(sp.get('name', '')),
+          idp_id = idp_id,
+          app_id = sp_id,
+          div_id = param_uuid,
+          ))
+          
+      sp['idp_id'] = idp_id
+      sp['app_id'] = sp_id
+      sp_form = SAMLClientAdmin.get_app_form(self, sp)
+          
+      self.add_html("""
+        <div id="panel_{div_id}" style="display: none;">{form}</div>
+        """.format(
+          div_id = param_uuid,
+          form = sp_form.get_html(display_only=True),
+          ))
     
     self.send_page()
     
