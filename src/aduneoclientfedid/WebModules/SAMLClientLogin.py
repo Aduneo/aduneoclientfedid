@@ -746,9 +746,13 @@ class SAMLClientLogin(FlowHandler):
         self.add_result_row('NameID', 'Not found in subject')
         raise AduneoError('NameID element not found in subject')
         
-      nameid = nameid_el.text
-      self.log_info('NameID: '+nameid)
-      self.add_result_row('NameID', nameid, 'name_id')
+      name_id = nameid_el.text
+      self.log_info('NameID: '+name_id)
+      self.add_result_row('NameID', name_id, 'name_id')
+      
+      name_id_format = nameid_el.attrib.get('Format', 'unspecified')
+      self.log_info('NameID format: '+name_id_format)
+      self.add_result_row('NameID format', name_id_format, 'name_id_format')
           
       # Validation du subject
       subjectconfirmation_el = subject_el.find('{urn:oasis:names:tc:SAML:2.0:assertion}SubjectConfirmation')
@@ -833,12 +837,14 @@ class SAMLClientLogin(FlowHandler):
       # enregistrement de l'assertion dans la session pour manipulation ultérieure (échange contre un jeton OAuth 2)
       #   les assertions sont indexés par timestamp d'obtention
       assertion_name = 'Authn SAML '+app_params['name']+' - '+time.strftime("%H:%M:%S", time.localtime())
-      assertion_wrapper = {'name': assertion_name, 'type': 'saml_assertion', 'app_id': app_id, 'saml_assertion': etree.tostring(assertion_el).decode()}
+      assertion_wrapper = {'name': assertion_name, 'type': 'saml_assertion', 'app_id': app_id, 'saml_assertion': etree.tostring(assertion_el).decode(),
+        'name_id': name_id, 'name_id_format': name_id_format, 'session_index': session_index}
+      self.context['saml_assertions'][str(time.time())] = assertion_wrapper
 
       # on considère qu'on est bien loggé
-      #   on place dans la session le NameID, son format et le SessionIndex, utilisés ensuite pour le logout
+      #   on place dans la session le NameID, son format et le SessionIndex, utilisés ensuite pour le logout (notice : on va maintenant chercher les infos de logout dans le contexte)
       self.logon('saml_client_'+idp_id+'/'+app_id, 
-        {'NameID': nameid, 'Format': nameid_el.attrib.get('Format'), 'SessionIndex': session_index})
+        {'NameID': name_id, 'Format': nameid_el.attrib.get('Format'), 'SessionIndex': session_index})
 
     except AduneoError as error:
       if self.is_result_in_table():
@@ -1035,198 +1041,3 @@ class SAMLClientLogin(FlowHandler):
       date = datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%SZ')
 
     return date
-    
-    
-    
-    
-    
-  @register_url(url='preparerequest_old', method='GET')
-  def prepare_request_old(self):
-
-    self.log_info('--- Start SAML flow ---')
-
-    app_id = self.get_query_string_param('id')
-    context_id = self.get_query_string_param('contextid')
-    
-    context = None
-    if context_id:
-      context = self.get_session_value(context_id)
-    
-    if context is None:
-      if app_id is None:
-        self.send_redirection('/')
-      else:
-        # Nouvelle requête
-        if app_id not in self.conf['saml_clients']:
-          self.send_redirection('/')
-        client = self.conf['saml_clients'][app_id]
-        self.log_info('  '*1 + 'for IdP '+client['name'])
-
-        # récupération des clés
-        if client.get('sp_key_configuration').casefold() == 'server keys':
-          self.log_info('Fetching default SAML keys as SP keys')
-          
-          try:
-            cert_path = self.hreq.check_saml_certificate_exists()
-            with open(cert_path) as cert_file:
-              client['sp_certificate'] = ''.join(cert_file.readlines()[1:-1]).replace('\n', '')
-            
-            (cert_path_without_ext, ext) = os.path.splitext(cert_path)
-            key_path = cert_path_without_ext+'.key'
-            with open(key_path) as key_file:
-              client['sp_private_key'] = ''.join(key_file.readlines()[1:-1]).replace('\n', '')
-              
-          except Exception as e:
-            self.log_info("  Default SAML certificate not found or read error")
-            client['sp_certificate'] = ''
-            client['sp_private_key'] = ''
-      
-    else:
-      # Rejeu de requête (conservée dans la session)
-      client = context['request']
-      app_id = context['initial_flow']['app_id']
-      #self.del_session_value(context_id)   TODO
-      
-      conf_client = self.conf['saml_clients'][app_id]
-      client['name'] = conf_client['name']
-      self.log_info('  '*1 + 'for IdP '+client['name'])
-      
-    relay_state = str(uuid.uuid4())
-                                          
-    self.add_content("<h1>SAML SP: "+client["name"]+"</h1>")
-    self.add_content('<form name="request" action="/client/saml/login/sendrequest" method="post">')
-    self.add_content('<input name="app_id" value="'+html.escape(app_id)+'" type="hidden" />')
-    self.add_content('<table class="fixed">')
-     
-    self.add_content('<tr><td>IdP Entity ID</td><td><input name="idp_entity_id" value="'+html.escape(client.get('idp_entity_id', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>IdP Certificate</td><td><textarea name="idp_certificate" rows="10" class="intable">'+html.escape(client.get('idp_certificate', ''))+'</textarea></td></tr>')
-    self.add_content('<tr><td>IdP Single Sign-On URL</td><td><input name="idp_sso_url" value="'+html.escape(client.get('idp_sso_url', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>SP Entity ID</td><td><input name="sp_entity_id" value="'+html.escape(client.get('sp_entity_id', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>SP Assertion Consumer Service URL</td><td><input name="sp_acs_url" value="'+html.escape(client.get('sp_acs_url', ''))+'" class="intable" type="text"></td></tr>')
-
-    self.add_content('<tr><td>NameID Policy</td><td>')
-    self.add_content('<div class="select-editable" style="width: 520px;">')
-    self.add_content('<select onchange="this.nextElementSibling.value=this.value" style="width: 520px;">')
-    nameid_list = [
-      'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
-      'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
-      'urn:oasis:names:tc:SAML:1.1:nameid-format:X509SubjectName',
-      'urn:oasis:names:tc:SAML:1.1:nameid-format:WindowsDomainQualifiedName',
-      'urn:oasis:names:tc:SAML:2.0:nameid-format:kerberos',
-      'urn:oasis:names:tc:SAML:2.0:nameid-format:entity',
-      'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
-      'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
-      ]
-    for option in nameid_list:
-      self.add_content('<option value="'+option+'">'+option+'</option>')
-    self.add_content('</select>')
-    self.add_content('<input name="nameid_policy" value="'+html.escape(client.get('nameid_policy', ''))+'" class="intable" type="text" style="width: 500px;">')
-    self.add_content('</div>')
-    self.add_content('</td></tr>')
-    
-    self.add_content('<tr><td>Authentication binding</td><td><select name="authentication_binding" class="intable" onchange="reset_keys_fields()">')
-    for value in ('urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'):
-      selected = ''
-      if value == client.get('authentication_binding', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'):
-        selected = ' selected'
-      self.add_content('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
-    self.add_content('</select></td></tr>')
-
-    checked = ''
-    if Configuration.is_on(client.get('sign_auth_request', 'off')):
-      checked = ' checked'
-    self.add_content('<tr><td>Sign authentication request</td><td><input name="sign_auth_request" type="checkbox"'+checked+' onchange="reset_keys_fields()"></td></tr>')
-
-    display_sp_private_key = 'none'
-    display_sp_certificate = 'none'
-    if Configuration.is_on(client.get('sign_auth_request', 'off')):
-      display_sp_private_key = 'table-row'
-      if client.get('authentication_binding') == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Post':
-        display_sp_certificate = 'table-row'
-
-    self.add_content('<tr id="sp_private_key_row" style="display: '+display_sp_private_key+'"><td>SP Private Key</td><td><textarea name="sp_private_key" rows="10" class="intable">'+html.escape(client['sp_private_key'])+'</textarea></td></tr>')
-    self.add_content('<tr id="sp_certificate_row" style="display: '+display_sp_certificate+'"><td>SP Certificate</td><td><textarea name="sp_certificate" rows="10" class="intable">'+html.escape(client['sp_certificate'])+'</textarea></td></tr>')
-      
-    self.add_content('</table>')
-    
-    self.add_content('<div style="padding-top: 20px; padding-bottom: 12px;"><div style="padding-bottom: 6px;"><strong>Authentication request</strong> <img title="Copy request" class="smallButton" src="/images/copy.png" onClick="copyRequest()"/></div>')
-    self.add_content('<span id="auth_request" style="font-family: Consolas; font-size: 12px; white-space: pre;"></span></div>')
-    self.add_content('<input name="authentication_request" type="hidden">')
-    self.add_content('<input name="relay_state" value="'+html.escape(relay_state)+'" type="hidden">')
-    
-    self.add_content('<button type="submit" class="button" onclick="openConsole();">Send to IdP</button>')
-    self.add_content('</form>')
-
-    self.add_content("""
-      <script>
-      function updateAuthRequest() {
-
-        var request = "<samlp:AuthnRequest\\r\\n"
-        request += "  xmlns:samlp=\\\"urn:oasis:names:tc:SAML:2.0:protocol\\\" \\r\\n"
-        request += "  xmlns:saml=\\\"urn:oasis:names:tc:SAML:2.0:assertion\\\" \\r\\n"
-        request += "  ID=\\\"<ID>\\\" \\r\\n"
-        request += "  Version=\\\"2.0\\\" \\r\\n"
-        request += "  ProviderName=\\\"{provider_name}\\\" \\r\\n"
-        request += "  IssueInstant=\\\"{timestamp}\\\" \\r\\n"
-        request += "  Destination=\\\"{destination}\\\" \\r\\n"
-        request += "  ProtocolBinding=\\\"{protocol_binding}\\\" \\r\\n"
-        request += "  AssertionConsumerServiceURL=\\\"{acs_url}\\\"> \\r\\n"
-        request += "\\r\\n"
-        request += "  <saml:Issuer>{sp_id}</saml:Issuer> \\r\\n"
-        request += "  <samlp:NameIDPolicy Format=\\\"{nameid_policy}\\\" AllowCreate=\\\"true\\\"/> \\r\\n"
-        request += "</samlp:AuthnRequest>"
-      
-        request = request.replace('{provider_name}', '"""+client['name']+"""')
-        request = request.replace('{timestamp}', (new Date()).toISOString())
-        request = request.replace('{destination}', document.request.idp_sso_url.value)
-        request = request.replace('{protocol_binding}', document.request.authentication_binding.value)
-        request = request.replace('{acs_url}', document.request.sp_acs_url.value)
-        request = request.replace('{sp_id}', document.request.sp_entity_id.value)
-        request = request.replace('{nameid_policy}', document.request.nameid_policy.value)
-
-        document.getElementById('auth_request').textContent = request;
-        document.request.authentication_request.value = request;
-      }
-      var input = document.request.getElementsByTagName('input');
-      Array.prototype.slice.call(input).forEach(function(item, index) {
-        if (item.type == 'text') { item.addEventListener("input", updateAuthRequest); }
-      });
-      var select = document.request.getElementsByTagName('select');
-      Array.prototype.slice.call(select).forEach(function(item, index) {
-        if (item.name != 'signature_key_configuration') {
-          item.addEventListener("change", updateAuthRequest);
-        }
-      });
-      updateAuthRequest();
-      
-      function copyRequest() {
-        copyTextToClipboard(document.request.authentication_request.value);
-      }
-      function copyTextToClipboard(text) {
-        alert(text)
-        var tempArea = document.createElement('textarea')
-        tempArea.value = text
-        document.body.appendChild(tempArea)
-        tempArea.select()
-        tempArea.setSelectionRange(0, 99999)
-        document.execCommand("copy")
-        document.body.removeChild(tempArea)
-      }
-      
-      function reset_keys_fields() {
-        if (document.request.sign_auth_request.checked) {
-          document.getElementById('sp_private_key_row').style.display = 'table-row';
-          if (document.request.authentication_binding.value == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST') {
-            document.getElementById('sp_certificate_row').style.display = 'table-row';
-          } else {
-            document.getElementById('sp_certificate_row').style.display = 'none';
-          }
-        } else {
-          document.getElementById('sp_private_key_row').style.display = 'none';
-          document.getElementById('sp_certificate_row').style.display = 'none';
-        }
-      }
-      </script>
-    """)
-      
-    self.send_page()    

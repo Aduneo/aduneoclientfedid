@@ -68,9 +68,8 @@ class OIDCClientLogout(FlowHandler):
       id_tokens = {'__none__': 'None', '__input__': 'Direct Input'}
       default_id_token = None
       for token_wrapper_key in sorted(self.context['id_tokens'].keys(), reverse=True):
-        wrapper = self.context['id_tokens'][token_wrapper_key]
-        if wrapper['app_id'] == app_id:
-          token_wrapper = self.context['id_tokens'][token_wrapper_key]
+        token_wrapper = self.context['id_tokens'][token_wrapper_key]
+        if token_wrapper['app_id'] == app_id:
           id_tokens[token_wrapper['id_token']] = token_wrapper['name']
           if not default_id_token:
               default_id_token = token_wrapper['id_token']  

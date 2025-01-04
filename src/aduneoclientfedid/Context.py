@@ -59,7 +59,7 @@ class Context(dict):
       'api_params': { paramètres liés à la dernière introspection },
       'id_tokens': {
         '<timestamp de l'obtention du jeton>': {
-          'name': '<nom du jeton';
+          'name': '<nom du jeton>';
           'type': 'id_token', 
           'app_id': '<app id du client ayant obtenu les jetons>',
           'id_token': '<jeton d'identité>',
@@ -69,11 +69,22 @@ class Context(dict):
       },
       'access_tokens': {
         '<timestamp de l'obtention du jeton>': {
-          'name': '<nom du jeton';
+          'name': '<nom du jeton>';
           'type': 'access_token', 
           'app_id': '<app id du client ayant obtenu les jetons>',
           'access_token': '<jeton d'accès associé, s'il est retourné>',
           'refresh_token': '<jeton de rafraîchissement du jeton d'accès associé, s'il est retourné>',
+        }
+      },
+      'saml_assertions': {
+        '<timestamp de l'obtention de l'assertion>': {
+          'name': '<nom de l'assertion>';
+          'type': 'saml_assertion', 
+          'app_id': '<app id du client ayant obtenu les jetons>',
+          'saml_assertion': '<assertion en XML>',
+          'name_id': '<name_id retourné par l'IdP, utilisé pour le logout>',
+          'name_id_format': '<format du name_id, retourné par l'IdP, utilisé pour le logout>',
+          'session_index': '<index de session retourné par l'IdP, utilisé pour le logout>'
         }
       }
     }

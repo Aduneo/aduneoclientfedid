@@ -146,12 +146,14 @@ class FlowHandler(BaseHandler):
     
     Versions:
       30/12/2024 (mpham) version initiale
+      04/01/2025 (mpham) SAML logout
     """
     self.add_html("""<h2>Logout</h2>""")
     
     idp_id = self.context.idp_id
     idp = self.conf['idps'][idp_id]
 
+    # OpenID Connect
     if idp.get('oidc_clients'):
       
       self.add_html("""<div>OIDC Clients</div>""")          
@@ -167,6 +169,26 @@ class FlowHandler(BaseHandler):
             name = html.escape(client.get('name', 'Client')),
             idp_id = urllib.parse.quote_plus(idp_id),
             app_id = urllib.parse.quote_plus(client_id),
+            context_id = self.context.context_id,
+          )
+        )
+
+    # SAML
+    if idp.get('saml_clients'):
+      
+      self.add_html("""<div>SAML service providers (SP)</div>""")          
+      for app_id in sorted(idp['saml_clients'].keys()):
+        
+        app_params = idp['saml_clients'][app_id]
+        self.add_html("""
+          <div>
+            <span>{name}</span>
+            <span><a href="/client/saml/logout/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}" class="smallbutton">Logout</a></span>
+          </div>
+          """.format(
+            name = html.escape(app_params.get('name', 'Client')),
+            idp_id = urllib.parse.quote_plus(idp_id),
+            app_id = urllib.parse.quote_plus(app_id),
             context_id = self.context.context_id,
           )
         )
@@ -638,6 +660,9 @@ class FlowHandler(BaseHandler):
 
       if len(self.context['access_tokens']) > 0:
         oauth_exchange = True
+
+      for saml_assertion_wrapper in self.context['saml_assertions'].values():
+        logout = True
       
       retry_url = {
         'OIDC': '/client/oidc/login/preparerequest',
