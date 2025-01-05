@@ -1146,7 +1146,7 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
     (l'enregistrement se fait pas car func n'est pas la page mais le décorateur suivant)
   
   Args:
-    method: méthode HTTP
+    method: méthode HTTP, avec possibilité d'en donner plusieurs, dans une list (['GET', 'POST'] par exemple)
     url: URL relative par rapport à la racine déclarée au niveau de la classe par le décorateur register_web_module
     template: nom (optionnel) d'un fichier de modèle (du dossier templates) où le mot-clé {{content}} indique où insérer le contenu
     continuous: indique si la page est de type continu (envoi progressif du contenu pour affichage partiel lors des opérations prenant du temps)
@@ -1155,6 +1155,7 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
     30/09/2022 (mpham) version initiale
     24/03/2023 (mpham) ajout de la fonction wrapper pour pouvoir ajouter d'autres décorateurs aux méthodes (en particulier @continuous_page)
     29/03/2023 (mpham) ajout des paramètres template et continuous
+    05/01/2025 (mpham) possibilité de définir plusieurs méthodes
   """
   def decorator(func):
   
@@ -1167,9 +1168,14 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
 
     if relative_url is None:
       relative_url = method_name
-    if module_name not in WebRouter.temp_urls[method.casefold()]:
-      WebRouter.temp_urls[method.casefold()][module_name] = {}
-    WebRouter.temp_urls[method.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name}
+    
+    methods = method
+    if isinstance(methods, str):
+      methods = [methods]
+    for met in methods:  
+      if module_name not in WebRouter.temp_urls[met.casefold()]:
+        WebRouter.temp_urls[met.casefold()][module_name] = {}
+      WebRouter.temp_urls[met.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name}
     
     # Traitement de la page
     def wrapper(*args, **kwargs):
