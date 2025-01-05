@@ -178,7 +178,7 @@ class SAMLClientLogout(FlowHandler):
 
       # Mise à jour dans le contexte des paramètres liés au client courant
       app_params = self.context.last_app_params
-      for item in ['sp_entity_id', 'sp_acs_url', 'nameid_policy', 'logout_binding', 'sp_private_key', 'sp_certificate', 'request_id']:
+      for item in ['sp_entity_id', 'logout_binding', 'sp_private_key', 'sp_certificate', 'request_id']:
         app_params[item] = self.post_form.get(item, '').strip()
         
       if 'sign_logout_request' in self.post_form:
@@ -389,15 +389,14 @@ class SAMLClientLogout(FlowHandler):
     self.send_redirection(url)
     
     
-  @register_url(url='callback', method='GET')
-  @register_url(url='callback', method='POST')
+  @register_page_url(url='callback', method=['GET','POST'], template='page_default.html', continuous=True)
   def callback(self):
+    """ Retour de logout
     
-    """
-    Retour de logout
-    
-    mpham 15/03/2021
-    mpham 20/01/2023 méthode HTTP-Redirect
+    Versions:
+      15/03/2021 (mpham) version initiale
+      20/01/2023 (mpham) méthode HTTP-Redirect
+      05/01/2025 (mpham) adaptation continuous page
     """
 
     logging.info('Logout call back')
@@ -409,10 +408,10 @@ class SAMLClientLogout(FlowHandler):
 
       # Problème cookie SameSite=Lax
       if self.hreq.headers.get('Cookie') is None:
-        logging.error('Session cookie not sent')
-        self.send_page_top(200, template=False, send_cookie=False)
-        
+        self.log_error('Session cookie not sent by brower (SameSite problem), form is sent to brower and autosubmitted')
+      
         self.add_content('<html><body onload="document.saml.submit()">')
+        self.add_content('<div>SameSite workaround, submitting response form from ClientFedID</div>')
         self.add_content('<form name="saml" method="post">')
         for item in self.post_form:
           self.add_content('<input type="hidden" name="'+html.escape(item)+'" value="'+html.escape(self.post_form[item])+'" />')
@@ -420,13 +419,15 @@ class SAMLClientLogout(FlowHandler):
         self.add_content('</form></body></html>')
         return
 
-      logging.info(str(self.post_form))
+      self.log_info(str(self.post_form))
 
       base64_resp = self.post_form.get('SAMLResponse', None)
       if base64_resp is None:
         raise AduneoError('SAMLResponse not found in POST data')
       xml_resp = base64.b64decode(base64_resp).decode()
       relay_state = self.post_form.get('RelayState')
+      if not relay_state:
+        raise AduneoError(self.log_error(f"Can't retrieve request context from state because state in not present in callback body {self.post_form}"))
       
     elif self.hreq.command == 'GET':
       
@@ -434,6 +435,8 @@ class SAMLClientLogout(FlowHandler):
       if quoted_resp is None:
         raise AduneoError('SAMLResponse not found in GET data')
       relay_state = self.get_query_string_param('RelayState')
+      if not relay_state:
+        raise AduneoError(self.log_error(f"Can't retrieve request context from state because state in not present in callback query string {self.hreq.path}"))
       
       # on dézippe la réponse
       base64_resp = urllib.parse.unquote(quoted_resp)
@@ -441,22 +444,34 @@ class SAMLClientLogout(FlowHandler):
       decompressed_resp = zlib.decompress(compressed_resp, -zlib.MAX_WBITS)
       xml_resp = decompressed_resp.decode('iso-8859-1')
 
-    logging.info(xml_resp)
+    # récupération de state pour obtention des paramètres dans la session
+    self.log_info('  for state: '+relay_state)
+
+    context_id = self.get_session_value(relay_state)
+    if not context_id:
+      raise AduneoError(self.log_error(f"Can't retrieve request context from state because context id not found in session for state {relay_state}"))
+
+    self.context = self.get_session_value(context_id)
+    if not self.context:
+      raise AduneoError(self.log_error(f"Can't retrieve request context because context id {context_id} not found in session"))
+
+    self.log_info(xml_resp)
 
     root_el = etree.fromstring(xml_resp.encode())
     
     status_el = root_el.find('{urn:oasis:names:tc:SAML:2.0:protocol}Status')
     status_code_el = status_el.find('{urn:oasis:names:tc:SAML:2.0:protocol}StatusCode')
     status_code = status_code_el.attrib['Value']
-    logging.info('Status code: '+status_code)
+    self.log_info('Status code: '+status_code)
 
-    self.add_content('<h2>Logout callback</h2>')
-    self.add_content(status_code)
+    self.add_html('<h2>Logout callback</h2>')
+    self.add_html(status_code)
+    self.add_menu()
     self.send_page()
     
     if status_code == 'urn:oasis:names:tc:SAML:2.0:status:Success':
       sp_id = relay_state
       if sp_id is not None:
-        logging.info('Removing session for SP '+sp_id)
+        self.log_info('Removing session for SP '+sp_id)
         self.logoff('saml_client_'+sp_id)
 
