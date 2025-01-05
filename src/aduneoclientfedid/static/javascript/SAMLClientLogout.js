@@ -11,11 +11,11 @@ function updateLogoutRequest(cfiForm) {
   request += "  ID=\"{requestId}\" \r\n"
   request += "  Version=\"2.0\" \r\n"
   request += "  IssueInstant=\"{timestamp}\" \r\n"
-  request += "  Destination=\"{destination}\" \r\n"
+  request += "  Destination=\"{destination}\"> \r\n"
   request += "\r\n"
   request += "  <saml:Issuer>{spId}</saml:Issuer> \r\n"
-  request += "  <saml:NameID Format={nameIdFormat}>{nameId}</saml:NameID> \r\n"
-  request += "  <saml:SessionIndex>{sessionIndex}</saml:SessionIndex> \r\n"
+  request += "  <saml:NameID Format=\"{nameIdFormat}\">{nameId}</saml:NameID> \r\n"
+  request += "  <samlp:SessionIndex>{sessionIndex}</samlp:SessionIndex> \r\n"
   request += "</samlp:LogoutRequest>"
 
   request = request.replace('{requestId}', cfiForm.getFieldValue('request_id'));

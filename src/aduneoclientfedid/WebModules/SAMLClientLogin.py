@@ -27,6 +27,8 @@ import uuid
 import xmlsec
 import zlib
 
+from datetime import datetime
+from lxml import etree
 from ..BaseServer import AduneoError
 from ..BaseServer import BaseHandler
 from ..BaseServer import register_web_module, register_url, register_page_url
@@ -36,8 +38,7 @@ from ..Context import Context
 from ..Help import Help
 from .Clipboard import Clipboard
 from .FlowHandler import FlowHandler
-from datetime import datetime
-from lxml import etree
+from .SAMLClientAdmin import SAMLClientAdmin
 
 
 """
@@ -205,9 +206,6 @@ class SAMLClientLogin(FlowHandler):
       self.send_page()
 
     self.send_page()
-
- 
-
       
 
   @register_url(url='sendrequest', method='POST')
@@ -241,7 +239,7 @@ class SAMLClientLogin(FlowHandler):
 
       # Mise à jour dans le contexte des paramètres liés au client courant
       app_params = self.context.last_app_params
-      for item in ['sp_entity_id', 'sp_acs_url', 'nameid_policy', 'authentication_binding', 'request_id']:
+      for item in ['sp_entity_id', 'sp_acs_url', 'nameid_policy', 'authentication_binding', 'sp_private_key', 'sp_certificate', 'request_id']:
         app_params[item] = self.post_form.get(item, '').strip()
         
       if 'sign_auth_request' in self.post_form:
@@ -250,14 +248,20 @@ class SAMLClientLogin(FlowHandler):
         app_params['sign_auth_request'] = 'off'
 
       # récupération de la clé privée dans la configuration
-      app_params['sp_private_key'] = self.post_form.get(item, '').strip()
       if app_params['sp_private_key'] == '':
+        self.log_info("  private key not in form, retrieving it from configuration")
         conf_idp = self.conf['idps'][self.context.idp_id]
         conf_app = conf_idp['saml_clients'][self.context.app_id]
-        app_params['sp_private_key'] = conf_app.get('sp_private_key', '')
+        if conf_app.get('sp_key_configuration', 'clientfedid_keys') == 'specific_keys':
+          self.log_info("  private key was in the SP configuration")
+          app_params['sp_private_key'] = conf_app.get('sp_private_key', '')
+        else:
+          self.log_info("  private key is the default SAML private key")
+          app_params['sp_private_key'] = SAMLClientAdmin._get_clientfedid_private_key()
 
       # détermination de la méthode d'envoi à l'IdP
       authentication_binding = self.post_form.get('authentication_binding', '')
+      self.log_info('  with binding '+authentication_binding)
       if authentication_binding == '':
         raise AduneoError("Authentication binding not found")
       if authentication_binding == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect':
@@ -291,6 +295,7 @@ class SAMLClientLogin(FlowHandler):
     
     self.log_info('  sending request in HTTP Redirect')
 
+    idp_params = self.context.idp_params
     app_params = self.context.last_app_params
     
     request = self.post_form.get('authentication_request', '')
@@ -350,7 +355,7 @@ class SAMLClientLogin(FlowHandler):
       base64_signature = base64.b64encode(signature).decode()
       self.log_info('Signature: '+base64_signature)
 
-      url = self.post_form['idp_sso_url'] + '?' + message + '&signature=' + urllib.parse.quote_plus(base64_signature)
+      url = idp_params['idp_sso_url'] + '?' + message + '&signature=' + urllib.parse.quote_plus(base64_signature)
       self.log_info('URL: '+url)
       self.log_info('Sending redirection')
       self.send_redirection(url)
@@ -369,6 +374,7 @@ class SAMLClientLogin(FlowHandler):
 
     self.log_info('  sending request in HTTP POST')
     
+    idp_params = self.context.idp_params
     app_params = self.context.last_app_params
     
     request = self.post_form.get('authentication_request', '')
@@ -397,7 +403,7 @@ class SAMLClientLogin(FlowHandler):
       issuer_el = template.find('{urn:oasis:names:tc:SAML:2.0:assertion}Issuer')
       issuer_el.addnext(signature_node)
 #      template.append(signature_node)
-      ref = xmlsec.template.add_reference(signature_node, xmlsec.Transform.SHA1, uri='#'+req_id)
+      ref = xmlsec.template.add_reference(signature_node, xmlsec.Transform.SHA1, uri='#'+app_params['request_id'])
       xmlsec.template.add_transform(ref, xmlsec.Transform.ENVELOPED)
       xmlsec.template.add_transform(ref, xmlsec.constants.TransformExclC14N)
       key_info = xmlsec.template.ensure_key_info(signature_node)
@@ -409,7 +415,7 @@ class SAMLClientLogin(FlowHandler):
       sp_private_key = '-----BEGIN PRIVATE KEY-----\n' + app_params['sp_private_key'] + '\n-----END PRIVATE KEY-----'
       if self.post_form.get('sp_certificate', '') == '':
         raise AduneoError("Missing certificate, can't sign request")
-      sp_certificate = '-----BEGIN CERTIFICATE-----\n' + self.post_form['sp_certificate'] + '\n-----END CERTIFICATE-----'
+      sp_certificate = '-----BEGIN CERTIFICATE-----\n' + app_params['sp_certificate'] + '\n-----END CERTIFICATE-----'
 
       ctx = xmlsec.SignatureContext()
       ctx.key = xmlsec.Key.from_memory(sp_private_key, xmlsec.KeyFormat.PEM, None)
@@ -432,7 +438,7 @@ class SAMLClientLogin(FlowHandler):
       <input type="hidden" name="SAMLRequest" value="{saml_request}" />
       <input type="hidden" name="RelayState" value="{relay_state}" />
       </form></body></html>
-    """.format(idp_sso_url=self.post_form['idp_sso_url'], saml_request=html.escape(base64_req), relay_state=html.escape(relay_state))
+    """.format(idp_sso_url=idp_params['idp_sso_url'], saml_request=html.escape(base64_req), relay_state=html.escape(relay_state))
     
     self.log_info("SAML POST form:")
     self.log_info(saml_form)

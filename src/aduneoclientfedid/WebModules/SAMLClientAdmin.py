@@ -590,6 +590,29 @@ class SAMLClientAdmin(BaseHandler):
     return form
 
 
+  def _get_clientfedid_private_key() -> str:
+    """ Retourne la clé privée SAML par défaut de ClientFedID
+    
+    Returns:
+      clé privée au format Base64 (PEM sans les délimiteurs)
+      
+    Versions:
+      05/01/2025 (mpham) version initiale
+    """
+    
+    private_key = None
+    
+    key_file_path = SAMLClientAdmin._check_clientfedid_private_key_exists()
+    with open(key_file_path, 'r') as key_file:
+      pem_private_key = key_file.read()
+      if pem_private_key.startswith('-----BEGIN PRIVATE KEY-----'):
+        private_key = pem_private_key.replace('-----BEGIN PRIVATE KEY-----', '').replace('-----END PRIVATE KEY-----', '').replace('\r', '').replace('\n', '').strip()
+      else:
+        private_key = pem_private_key.strip()
+    
+    return private_key
+    
+
   def _get_clientfedid_certificate() -> str:
     """ Retourne le certificat SAML par défaut de ClientFedID
     
@@ -613,12 +636,29 @@ class SAMLClientAdmin(BaseHandler):
     return certificate
     
 
+  def _check_clientfedid_private_key_exists() -> str:
+    """ Vérifie que la clé privée SAML par défaut existe
+    
+    dans le fichier
+    - conf/aduneo_saml.key
+    
+    Le crée sinon.
+    
+    Returns:
+      Chemin complet vers la fichier contenant la clé
+
+    Versions:
+      05/01/2025 (mpham) version initiale
+    """
+    
+    return SAMLClientAdmin._check_clientfedid_keys_exists().get('private_key_path')
+
+
   def _check_clientfedid_certificate_exists() -> str:
     """ Vérifie que le certificat SAML par défaut existe
     
-    dans les fichiers
-    - conf/aduneo_saml.key pour la clé privée
-    - conf/aduneo_saml.crt pour le certificat
+    dans le fichier
+    - conf/aduneo_saml.crt
     
     Le crée sinon.
     
@@ -628,6 +668,28 @@ class SAMLClientAdmin(BaseHandler):
     Versions:
       21/01/2023 (mpham) version initiale
       01/01/2025 (mpham) déplacé ver SAMLClientAdmin et adapté
+      05/01/2025 (mpham) appel de _check_clientfedid_keys_exists()
+    """
+    
+    return SAMLClientAdmin._check_clientfedid_keys_exists().get('certificate_path')
+
+
+  def _check_clientfedid_keys_exists() -> dict:
+    """ Vérifie que le certificat SAML par défaut existe
+    
+    dans les fichiers
+    - conf/aduneo_saml.key pour la clé privée
+    - conf/aduneo_saml.crt pour le certificat
+    
+    Le crée sinon.
+    
+    Returns:
+      dict avec
+        - private_key_path: chemin complet vers la clé privée
+        - certificate_path: chemin complet vers le certificat
+
+    Versions:
+      05/01/2025 (mpham) adapté de l'ancien _check_clientfedid_certificate_exists()
     """
     
     key_file_path = os.path.join(Configuration.conf_dir, 'aduneo_saml.key')
@@ -638,7 +700,7 @@ class SAMLClientAdmin(BaseHandler):
 
       CryptoTools.generate_self_signed_certificate('https://www.aduneo.com', key_file_path, crt_file_path)
       
-    return crt_file_path
+    return {'certificate_path': crt_file_path, 'private_key_path': key_file_path}
 
 
   @register_url(url='downloadcficertificate', method='GET')
