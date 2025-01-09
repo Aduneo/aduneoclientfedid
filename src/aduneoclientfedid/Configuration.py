@@ -509,6 +509,19 @@ class ConfCrypto():
     """
     
     self.app_conf['meta']['version'] = 2
+    self.app_conf['default'] = {
+      "saml": {
+        "idp_authentication_binding_capabilities": [
+          "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
+          "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+        ],
+        "idp_logout_binding_capabilities": [
+          "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
+          "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+        ]
+      }
+    }
+
     if self.app_conf.get('oidc_clients'):
       self._convert_1to2_oidc()
     if self.app_conf.get('oauth_clients'):
@@ -648,12 +661,12 @@ class ConfCrypto():
       
       v1_client = self.app_conf['saml_clients'][v1_client_id]
       
-      v2_idp = {'name': 'SAML SP'}
+      v2_idp = {}
       for key in ['idp_entity_id', 'idp_certificate', 'idp_sso_url', 'idp_slo_url', 'verify_certificates']:
         if v1_client.get(key):
           v2_idp[key] = v1_client[key]
       
-      v2_client = {}
+      v2_client = {'name': 'SAML SP'}
       for key in ['sp_entity_id', 'sp_acs_url', 'authentication_binding', 'logout_binding', 'sign_auth_request', 'sign_logout_request', 'sp_key_configuration', 'nameid_policy', 'sp_private_key', 'sp_certificate', 'sp_slo_url']:
         if v1_client.get(key):
           v2_client[key] = v1_client[key]
