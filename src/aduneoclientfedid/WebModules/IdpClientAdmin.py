@@ -30,7 +30,7 @@ import uuid
 @register_web_module('/client/idp/admin')
 class IdPClientAdmin(BaseHandler):
 
-  @register_page_url(url='modify', method='GET', template='page_default.html', continuous=True)
+  @register_page_url(url='modify', method='GET', template='page_default.html', continuous=False)
   def modify_display(self):
     """ Modification des paramètres de l'IdP
     
@@ -55,8 +55,6 @@ class IdPClientAdmin(BaseHandler):
     self.add_javascript_include('/javascript/SAMLClientAdmin.js')
     self.add_html(form.get_html())
     self.add_javascript(form.get_javascript())
-    
-    self.send_page()
 
 
   @register_url(url='modify', method='POST')
@@ -138,7 +136,7 @@ class IdPClientAdmin(BaseHandler):
     self.send_redirection(f"/client/idp/admin/display?idpid={html.escape(idp_id)}")
 
 
-  @register_page_url(url='display', method='GET', template='page_default.html', continuous=True)
+  @register_page_url(url='display', method='GET', template='page_default.html', continuous=False)
   def display(self):
     """ Affichage des paramètres de l'IdP
     
@@ -314,10 +312,8 @@ class IdPClientAdmin(BaseHandler):
           form = sp_form.get_html(display_only=True),
           ))
     
-    self.send_page()
-    
 
-  @register_page_url(url='remove', method='GET', template='page_default.html', continuous=True)
+  @register_page_url(url='remove', method='GET', template='page_default.html', continuous=False)
   def remove_idp_display(self):
     """ Page de suppression d'un IdP
     
@@ -341,8 +337,6 @@ class IdPClientAdmin(BaseHandler):
 
       self.add_html(idp_form.get_html(display_only=True))
       self.add_javascript(idp_form.get_javascript())
-      
-      self.send_page()
 
     except AduneoError as e:
       self.add_html(f"""

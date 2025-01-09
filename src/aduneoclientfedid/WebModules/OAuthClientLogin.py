@@ -46,7 +46,7 @@ from .FlowHandler import FlowHandler
 @register_web_module('/client/oauth2/login')
 class OAuthClientLogin(FlowHandler):
 
-  @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=True)
+  @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=False)
   def prepare_request(self):
     """
       Prépare la requête d'autorisation OAuth 2
@@ -131,12 +131,10 @@ class OAuthClientLogin(FlowHandler):
         except Exception as error:
           self.log_error(traceback.format_exc())
           self.add_html(f"""<div class="intertable">Failed: {error}</div>""")
-          self.send_page()
           return
         if r.status_code != 200:
           self.log_error('Server responded with code '+str(r.status_code))
           self.add_html(f"""<div class="intertable">Failed. Server responded with code {status_code}</div>""")
-          self.send_page()
           return
 
       
@@ -277,14 +275,10 @@ class OAuthClientLogin(FlowHandler):
         </div>
         """)
       self.add_menu()
-      self.send_page()
     except Exception as error:
       self.log_error(('  ' * 1)+traceback.format_exc())
       self.add_html('<h4>Refresh error: '+html.escape(str(error))+'</h4>')
       self.add_menu()
-      self.send_page()
-
-    self.send_page()
 
 
   @register_url(url='sendrequest', method='POST')

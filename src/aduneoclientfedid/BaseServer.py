@@ -1156,6 +1156,7 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
     24/03/2023 (mpham) ajout de la fonction wrapper pour pouvoir ajouter d'autres décorateurs aux méthodes (en particulier @continuous_page)
     29/03/2023 (mpham) ajout des paramètres template et continuous
     05/01/2025 (mpham) possibilité de définir plusieurs méthodes
+    09/01/2025 (mpham) comportement identique pages continues et non continues avec CfiForm
   """
   def decorator(func):
   
@@ -1210,6 +1211,7 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
           self.hreq.continuous_page_id = str(uuid.uuid4())
           #print('---- IN DECORATOR', self.hreq.continuous_page_id)
           
+          # TODO : transférer vers le template le presse-papiers et l'include requestSender
           from .WebModules.Clipboard import Clipboard
           content = Clipboard.get_window_definition()
           content += """
@@ -1238,15 +1240,22 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
         content_pos = template_content.find('{{content}}')
         if content_pos == -1:
           raise AduneoError(self.log_error("Le fichier de modèle de page "+template+" ne contient pas de balise de contenu {{content}}"))
-        template_top = template_content[:content_pos]
+        template_top = template_content[:content_pos+11]
         template_bottom = template_content[content_pos+11:]
-        
+
+        from .WebModules.Clipboard import Clipboard
+        content = Clipboard.get_window_definition()
+        content += """
+        <script src="/javascript/requestSender.js"></script>
+        """
+
         self.hreq.send_response(200)
         self.hreq._send_page_headers()
         self.hreq.top_sent = True # TODO, regarder comment le supprimer
-        self.add_content(Template.apply_template(template_top))
+        self.add_content(Template.apply_template(template_top, content=content))
         func(*args, **kwargs)
-        self.add_content(Template.apply_template(template_bottom))
+        self.add_content(template_bottom)
+        #self.add_content(Template.apply_template(template_bottom))
         
     return wrapper
     

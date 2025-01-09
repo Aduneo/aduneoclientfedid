@@ -72,7 +72,7 @@ from .SAMLClientAdmin import SAMLClientAdmin
 @register_web_module('/client/saml/login')
 class SAMLClientLogin(FlowHandler):
 
-  @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=True)
+  @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=False)
   def prepare_request(self):
     """
       Prépare la requête d'autorisation SAML
@@ -206,13 +206,9 @@ class SAMLClientLogin(FlowHandler):
           <span><a class="middlebutton" href="{error.action}">{error.button_label}</a></span>
         </div>
         """)
-      self.send_page()
     except Exception as error:
       self.log_error(('  ' * 1)+traceback.format_exc())
       self.add_html('<h4>Refresh error: '+html.escape(str(error))+'</h4>')
-      self.send_page()
-
-    self.send_page()
       
 
   @register_url(url='sendrequest', method='POST')

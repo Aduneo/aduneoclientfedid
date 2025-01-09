@@ -47,6 +47,7 @@ class WebTest(BaseHandler):
     self.add_html('<a href="openlisthtml">Open List Field HTML</a><br>')
     self.add_html('<a href="openlistcfiform">Open List Field CfiForm</a><br>')
     self.add_html('<a href="uploadbutton">Upload button</a><br>')
+    self.add_html('<a href="noncontinuous">Page non continue</a><br>')
 
 
   @register_page_url(url='cfiform', method='GET', template='page_default.html')
@@ -807,6 +808,30 @@ class WebTest(BaseHandler):
   def uploadbutton(self):
 
     self.add_html('<h3>Upload button and textarea with upload button</h3>')
+    
+    form_content = {
+      'name': 'Upload button',
+      'certificate': '',
+      }
+    
+    form = CfiForm('samladmin', form_content, action='cfiformaction') \
+      .start_section('section_general', title="General configuration") \
+        .text('name', label='Name') \
+        .upload_button('upload_button', label='Upload certificate', on_upload="""
+          cfiForm.setFieldValue('certificate', upload_content);
+          """) \
+        .textarea('certificate', label='Certificate', upload_button='Upload certificate') \
+        .textarea('file', label='File', upload_button='Upload file', on_upload="alert(upload_content);") \
+      .end_section() \
+
+    self.add_html(form.get_html())
+    self.add_javascript(form.get_javascript())
+    
+    
+  @register_page_url(url='noncontinuous', method='GET', template='page_default.html', continuous=False)
+  def noncontinuous(self):
+    
+    self.add_html("Hello")
     
     form_content = {
       'name': 'Upload button',

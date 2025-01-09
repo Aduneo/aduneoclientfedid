@@ -98,7 +98,6 @@ class OIDCClientLogin(FlowHandler):
     if new_auth:
       # Nouvelle requête
       idp = copy.deepcopy(self.conf['idps'][idp_id])
-      print(idp['idp_parameters'])
       idp_params = idp['idp_parameters']['oidc']
       app_params = idp['oidc_clients'][app_id]
 
@@ -273,8 +272,6 @@ class OIDCClientLogin(FlowHandler):
 
     self.add_html(form.get_html())
     self.add_javascript(form.get_javascript())
-
-    self.send_page()
 
 
   @register_url(url='sendrequest', method='POST')
