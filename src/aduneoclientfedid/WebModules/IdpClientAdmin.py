@@ -395,13 +395,13 @@ class IdPClientAdmin(BaseHandler):
     # possibilités de SAML en binding
     idp_authentication_binding_capabilities = saml_params.get('idp_authentication_binding_capabilities')
     if not idp_authentication_binding_capabilities:
-      idp_authentication_binding_capabilities = self.conf.get('/default/saml/idp_authentication_binding_capabilities')
+      idp_authentication_binding_capabilities = handler.conf.get('/default/saml/idp_authentication_binding_capabilities')
       if not idp_authentication_binding_capabilities:
         idp_authentication_binding_capabilities = ['urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST']
 
     idp_logout_binding_capabilities = saml_params.get('idp_logout_binding_capabilities')
     if not idp_logout_binding_capabilities:
-      idp_logout_binding_capabilities = self.conf.get('/default/saml/idp_logout_binding_capabilities')
+      idp_logout_binding_capabilities = handler.conf.get('/default/saml/idp_logout_binding_capabilities')
       if not idp_logout_binding_capabilities:
         idp_logout_binding_capabilities = ['urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST']
         

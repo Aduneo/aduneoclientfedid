@@ -79,199 +79,226 @@ class OIDCClientLogin(FlowHandler):
 
     self.log_info('--- Start OpenID Connect flow ---')
 
-    idp_id = self.get_query_string_param('idpid')
-    app_id = self.get_query_string_param('appid')
+    try:
 
-    fetch_configuration_document = False
+      idp_id = self.get_query_string_param('idpid')
+      app_id = self.get_query_string_param('appid')
 
-    new_auth = True
-    if self.context is None:
-      if idp_id is None or app_id is None:
-        self.send_redirection('/')
-        return
-    else:
-      new_auth = False
-    
-    if self.get_query_string_param('newauth'):
+      fetch_configuration_document = False
+
       new_auth = True
-
-    if new_auth:
-      # Nouvelle requête
-      idp = copy.deepcopy(self.conf['idps'][idp_id])
-      idp_params = idp['idp_parameters']['oidc']
-      app_params = idp['oidc_clients'][app_id]
-
-      # On récupère name et verify_certificates des paramètres de l'IdP
-      idp_params['name'] = idp['name']
-      idp_params['verify_certificates'] = idp['idp_parameters']['verify_certificates']
-
-      # si le contexte existe, on le conserve (cas newauth)
       if self.context is None:
-        self.context = Context()
-      self.context['idp_id'] = idp_id
-      self.context['app_id'] = app_id
-      self.context['flow_type'] = 'OIDC'
-      self.context['idp_params'] = idp_params
-      self.context['app_params'][app_id] = app_params
-      self.set_session_value(self.context['context_id'], self.context)
+        if idp_id is None or app_id is None:
+          self.send_redirection('/')
+          return
+      else:
+        new_auth = False
+      
+      if self.get_query_string_param('newauth'):
+        new_auth = True
 
-      if idp_params.get('endpoint_configuration', 'Local configuration').casefold() == 'discovery_uri':
-        fetch_configuration_document = True
+      if new_auth:
+        # Nouvelle requête
+        idp = copy.deepcopy(self.conf['idps'][idp_id])
+        idp_params = idp['idp_parameters'].get('oidc')
+        if not idp_params:
+          raise AduneoError(f"OIDC IdP configuration missing for {idp.get('name', idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={idp_id}")
+        app_params = idp['oidc_clients'][app_id]
 
-    else:
-      # Rejeu de requête (conservée dans la session)
-      idp_id = self.context['idp_id']
-      app_id = self.context['app_id']
-      idp_params = self.context.idp_params
-      app_params = self.context.last_app_params
-    
-    self.log_info(('  ' * 1) + f"for client {app_params['name']} of IdP {idp_params['name']}")
-    self.add_html(f"<h1>IdP {idp_params['name']} OIDC Client {app_params['name']}</h1>")
+        # On récupère name et verify_certificates des paramètres de l'IdP
+        idp_params['name'] = idp['name']
+        idp_params['verify_certificates'] = idp['idp_parameters']['verify_certificates']
 
-    if fetch_configuration_document:
-      self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=idp_params['discovery_uri']))
-      try:
-        self.log_info('Starting metadata retrieval')
-        self.log_info('discovery_uri: '+idp_params['discovery_uri'])
-        verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
-        self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-        r = requests.get(idp_params['discovery_uri'], verify=verify_certificates)
-        self.log_info(r.text)
-        meta_data = r.json()
-        idp_params.update(meta_data)
-        self.add_html("""<div class="intertable">Success</div>""")
-      except Exception as error:
-        self.log_error(traceback.format_exc())
-        self.add_html(f"""<div class="intertable">Failed: {error}</div>""")
-        self.send_page()
-        return
-      if r.status_code != 200:
-        self.log_error('Server responded with code '+str(r.status_code))
-        self.add_html(f"""<div class="intertable">Failed. Server responded with code {status_code}</div>""")
-        self.send_page()
-        return
+        # si le contexte existe, on le conserve (cas newauth)
+        if self.context is None:
+          self.context = Context()
+        self.context['idp_id'] = idp_id
+        self.context['app_id'] = app_id
+        self.context['flow_type'] = 'OIDC'
+        self.context['idp_params'] = idp_params
+        self.context['app_params'][app_id] = app_params
+        self.set_session_value(self.context['context_id'], self.context)
 
-    
-    state = str(uuid.uuid4())
-    nonce = str(uuid.uuid4())
+        if idp_params.get('endpoint_configuration', 'Local configuration').casefold() == 'discovery_uri':
+          fetch_configuration_document = True
 
-    # pour récupérer le contexte depuis le state (puisque c'est la seule information exploitable retournée par l'IdP)
-    self.set_session_value(state, self.context['context_id'])
+      else:
+        # Rejeu de requête (conservée dans la session)
+        idp_id = self.context['idp_id']
+        app_id = self.context['app_id']
+        idp_params = self.context.idp_params
+        app_params = self.context.last_app_params
+      
+      self.log_info(('  ' * 1) + f"for client {app_params['name']} of IdP {idp_params['name']}")
+      self.add_html(f"<h1>IdP {idp_params['name']} OIDC Client {app_params['name']}</h1>")
 
-    form_content = {
-      'contextid': self.context['context_id'],  # TODO : remplacer par hr_context ?
-      'redirect_uri': app_params.get('redirect_uri', ''),
-      'authorization_endpoint': idp_params.get('authorization_endpoint', ''),
-      'token_endpoint': idp_params.get('token_endpoint', ''),
-      'userinfo_endpoint': idp_params.get('userinfo_endpoint', ''),
-      'userinfo_method': idp_params.get('userinfo_method', 'get'),
-      'issuer': idp_params.get('issuer', ''),
-      'signature_key_configuration': idp_params.get('signature_key_configuration', 'jwks_uri'),
-      'jwks_uri': idp_params.get('jwks_uri', ''),
-      'signature_key': idp_params.get('signature_key', ''),
-      'client_id': app_params.get('client_id', ''),
-      'scope': app_params.get('scope', ''),
-      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
-      'display': app_params.get('display', ''),
-      'prompt': app_params.get('prompt', ''),
-      'max_age': app_params.get('max_age', ''),
-      'ui_locales': app_params.get('ui_locales', ''),
-      'id_token_hint': app_params.get('id_token_hint', ''),
-      'login_hint': app_params.get('login_hint', ''),
-      'acr_values': app_params.get('acr_values', ''),
-      'state': state,
-      'nonce': nonce,
-    }
-    
-    form = RequesterForm('oidcauth', form_content, action='/client/oidc/login/sendrequest', mode='new_page', request_url='@[authorization_endpoint]') \
-      .hidden('contextid') \
-      .start_section('clientfedid_params', title="ClientFedID Parameters") \
-        .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri') \
-      .end_section() \
-      .start_section('op_endpoints', title="OP Endpoints", collapsible=True, collapsible_default=False) \
-        .text('authorization_endpoint', label='Authorization Endpoint', clipboard_category='authorization_endpoint') \
-        .text('token_endpoint', label='Token Endpoint', clipboard_category='token_endpoint') \
-        .text('userinfo_endpoint', label='Userinfo Endpoint', clipboard_category='userinfo_endpoint') \
-        .closed_list('userinfo_method', label='Userinfo Request Method', 
-          values={'get': 'GET', 'post': 'POST'},
-          default = 'get'
-          ) \
-      .end_section() \
-      .start_section('id_token_validation', title="ID token validation", collapsible=True, collapsible_default=False) \
-        .text('issuer', label='Issuer', clipboard_category='issuer') \
-        .closed_list('signature_key_configuration', label='Signature key configuration',
-          values = {'jwks_uri': 'JWKS URI', 'local_configuration': 'Local configuration'},
-          default = 'jwks_uri'
-          ) \
-        .text('jwks_uri', label='JWKS URI', displayed_when="@[signature_key_configuration] = 'jwks_uri'") \
-        .text('signature_key', label='Signature key', displayed_when="@[signature_key_configuration] = 'local_configuration'") \
-      .end_section() \
-      .start_section('client_params', title="Client Parameters", collapsible=True, collapsible_default=False) \
-        .text('client_id', label='Client ID', clipboard_category='client_id') \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
-        .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
-        .closed_list('response_type', label='Reponse type', 
-          values={'code': 'code'},
-          default = 'code'
-          ) \
-        .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
-          values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
-          default = 'client_secret_basic'
-          ) \
-      .end_section() \
-      .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=False) \
-        .closed_list('display', label='Display', 
-          values={'': '', 'page': 'page', 'popup': 'popup', 'touch': 'touch', 'wap': 'wap'},
-          default = ''
-          ) \
-        .closed_list('prompt', label='Prompt', 
-          values={'': '', 'none': 'none', 'login': 'login', 'consent': 'consent', 'select_account': 'select_account'},
-          default = ''
-          ) \
-        .text('max_age', label='Max Age', clipboard_category='max_age') \
-        .text('ui_locales', label='UI Locales', clipboard_category='ui_locales') \
-        .text('id_token_hint', label='ID Token Hint', clipboard_category='id_token_hint') \
-        .text('login_hint', label='Login Hint', clipboard_category='login_hint') \
-        .text('acr_values', label='ACR Values', clipboard_category='acr_values') \
-      .end_section() \
-      .start_section('security_params', title="Security", collapsible=True, collapsible_default=False) \
-        .text('state', label='State', clipboard_category='state') \
-        .text('nonce', label='Nonce', clipboard_category='nonce') \
-      .end_section() \
+      if fetch_configuration_document:
+        self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=idp_params['discovery_uri']))
+        try:
+          self.log_info('Starting metadata retrieval')
+          self.log_info('discovery_uri: '+idp_params['discovery_uri'])
+          verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
+          self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+          r = requests.get(idp_params['discovery_uri'], verify=verify_certificates)
+          self.log_info(r.text)
+          meta_data = r.json()
+          idp_params.update(meta_data)
+          self.add_html("""<div class="intertable">Success</div>""")
+        except Exception as error:
+          self.log_error(traceback.format_exc())
+          self.add_html(f"""<div class="intertable">Failed: {error}</div>""")
+          self.send_page()
+          return
+        if r.status_code != 200:
+          self.log_error('Server responded with code '+str(r.status_code))
+          self.add_html(f"""<div class="intertable">Failed. Server responded with code {status_code}</div>""")
+          self.send_page()
+          return
 
-    form.set_request_parameters({
-        'client_id': '@[client_id]',
-        'redirect_uri': '@[redirect_uri]',
-        'scope': '@[scope]',
-        'response_type': '@[response_type]',
-        'state': '@[state]',
-        'nonce': '@[nonce]',
-        'display': '@[display]',
-        'prompt': '@[prompt]',
-        'max_age': '@[max_age]',
-        'ui_locales': '@[ui_locales]',
-        'id_token_hint': '@[id_token_hint]',
-        'login_hint': '@[login_hint]',
-        'acr_values': '@[acr_values]',
-      })
-    form.modify_http_parameters({
-      'form_method': 'redirect',
-      'body_format': 'x-www-form-urlencoded',
-      'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
-      })
-    form.modify_visible_requester_fields({
-      'request_url': True,
-      'request_data': True,
-      'body_format': False,
-      'form_method': False,
-      'auth_method': False,
-      'verify_certificates': True,
-      })
-    form.set_option('/requester/include_empty_items', False)
+      
+      state = str(uuid.uuid4())
+      nonce = str(uuid.uuid4())
+
+      # pour récupérer le contexte depuis le state (puisque c'est la seule information exploitable retournée par l'IdP)
+      self.set_session_value(state, self.context['context_id'])
+
+      form_content = {
+        'contextid': self.context['context_id'],  # TODO : remplacer par hr_context ?
+        'redirect_uri': app_params.get('redirect_uri', ''),
+        'authorization_endpoint': idp_params.get('authorization_endpoint', ''),
+        'token_endpoint': idp_params.get('token_endpoint', ''),
+        'userinfo_endpoint': idp_params.get('userinfo_endpoint', ''),
+        'userinfo_method': idp_params.get('userinfo_method', 'get'),
+        'issuer': idp_params.get('issuer', ''),
+        'signature_key_configuration': idp_params.get('signature_key_configuration', 'jwks_uri'),
+        'jwks_uri': idp_params.get('jwks_uri', ''),
+        'signature_key': idp_params.get('signature_key', ''),
+        'client_id': app_params.get('client_id', ''),
+        'scope': app_params.get('scope', ''),
+        'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+        'display': app_params.get('display', ''),
+        'prompt': app_params.get('prompt', ''),
+        'max_age': app_params.get('max_age', ''),
+        'ui_locales': app_params.get('ui_locales', ''),
+        'id_token_hint': app_params.get('id_token_hint', ''),
+        'login_hint': app_params.get('login_hint', ''),
+        'acr_values': app_params.get('acr_values', ''),
+        'state': state,
+        'nonce': nonce,
+      }
+      
+      form = RequesterForm('oidcauth', form_content, action='/client/oidc/login/sendrequest', mode='new_page', request_url='@[authorization_endpoint]') \
+        .hidden('contextid') \
+        .start_section('clientfedid_params', title="ClientFedID Parameters") \
+          .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri') \
+        .end_section() \
+        .start_section('op_endpoints', title="OP Endpoints", collapsible=True, collapsible_default=False) \
+          .text('authorization_endpoint', label='Authorization Endpoint', clipboard_category='authorization_endpoint') \
+          .text('token_endpoint', label='Token Endpoint', clipboard_category='token_endpoint') \
+          .text('userinfo_endpoint', label='Userinfo Endpoint', clipboard_category='userinfo_endpoint') \
+          .closed_list('userinfo_method', label='Userinfo Request Method', 
+            values={'get': 'GET', 'post': 'POST'},
+            default = 'get'
+            ) \
+        .end_section() \
+        .start_section('id_token_validation', title="ID token validation", collapsible=True, collapsible_default=False) \
+          .text('issuer', label='Issuer', clipboard_category='issuer') \
+          .closed_list('signature_key_configuration', label='Signature key configuration',
+            values = {'jwks_uri': 'JWKS URI', 'local_configuration': 'Local configuration'},
+            default = 'jwks_uri'
+            ) \
+          .text('jwks_uri', label='JWKS URI', displayed_when="@[signature_key_configuration] = 'jwks_uri'") \
+          .text('signature_key', label='Signature key', displayed_when="@[signature_key_configuration] = 'local_configuration'") \
+        .end_section() \
+        .start_section('client_params', title="Client Parameters", collapsible=True, collapsible_default=False) \
+          .text('client_id', label='Client ID', clipboard_category='client_id') \
+          .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+          .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
+          .closed_list('response_type', label='Reponse type', 
+            values={'code': 'code'},
+            default = 'code'
+            ) \
+          .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
+            values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
+            default = 'client_secret_basic'
+            ) \
+        .end_section() \
+        .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=False) \
+          .closed_list('display', label='Display', 
+            values={'': '', 'page': 'page', 'popup': 'popup', 'touch': 'touch', 'wap': 'wap'},
+            default = ''
+            ) \
+          .closed_list('prompt', label='Prompt', 
+            values={'': '', 'none': 'none', 'login': 'login', 'consent': 'consent', 'select_account': 'select_account'},
+            default = ''
+            ) \
+          .text('max_age', label='Max Age', clipboard_category='max_age') \
+          .text('ui_locales', label='UI Locales', clipboard_category='ui_locales') \
+          .text('id_token_hint', label='ID Token Hint', clipboard_category='id_token_hint') \
+          .text('login_hint', label='Login Hint', clipboard_category='login_hint') \
+          .text('acr_values', label='ACR Values', clipboard_category='acr_values') \
+        .end_section() \
+        .start_section('security_params', title="Security", collapsible=True, collapsible_default=False) \
+          .text('state', label='State', clipboard_category='state') \
+          .text('nonce', label='Nonce', clipboard_category='nonce') \
+        .end_section() \
+
+      form.set_request_parameters({
+          'client_id': '@[client_id]',
+          'redirect_uri': '@[redirect_uri]',
+          'scope': '@[scope]',
+          'response_type': '@[response_type]',
+          'state': '@[state]',
+          'nonce': '@[nonce]',
+          'display': '@[display]',
+          'prompt': '@[prompt]',
+          'max_age': '@[max_age]',
+          'ui_locales': '@[ui_locales]',
+          'id_token_hint': '@[id_token_hint]',
+          'login_hint': '@[login_hint]',
+          'acr_values': '@[acr_values]',
+        })
+      form.modify_http_parameters({
+        'form_method': 'redirect',
+        'body_format': 'x-www-form-urlencoded',
+        'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
+        })
+      form.modify_visible_requester_fields({
+        'request_url': True,
+        'request_data': True,
+        'body_format': False,
+        'form_method': False,
+        'auth_method': False,
+        'verify_certificates': True,
+        })
+      form.set_option('/requester/include_empty_items', False)
 
 
-    self.add_html(form.get_html())
-    self.add_javascript(form.get_javascript())
+      self.add_html(form.get_html())
+      self.add_javascript(form.get_javascript())
+
+    except AduneoError as error:
+      self.add_html('<h4>Error: '+html.escape(str(error))+'</h4>')
+      self.add_html(f"""
+        <div>
+          <span><a class="middlebutton" href="{error.action}">{error.button_label}</a></span>
+        </div>
+        """)
+    except Exception as error:
+      self.log_error(('  ' * 1)+traceback.format_exc())
+      self.add_html('<h4>Technical error: '+html.escape(str(error))+'</h4>')
+      if idp_id:
+        self.add_html(f"""
+          <div>
+            <span><a class="middlebutton" href="/client/idp/admin/display?idpid={idp_id}">IdP homepage</a></span>
+          </div>
+          """)
+      else:
+        self.add_html(f"""
+          <div>
+            <span><a class="middlebutton" href="/">Homepage</a></span>
+          </div>
+          """)
 
 
   @register_url(url='sendrequest', method='POST')

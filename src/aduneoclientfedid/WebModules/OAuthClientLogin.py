@@ -274,11 +274,21 @@ class OAuthClientLogin(FlowHandler):
           <span><a class="middlebutton" href="{error.action}">{error.button_label}</a></span>
         </div>
         """)
-      self.add_menu()
     except Exception as error:
       self.log_error(('  ' * 1)+traceback.format_exc())
-      self.add_html('<h4>Refresh error: '+html.escape(str(error))+'</h4>')
-      self.add_menu()
+      self.add_html('<h4>Technical error: '+html.escape(str(error))+'</h4>')
+      if idp_id:
+        self.add_html(f"""
+          <div>
+            <span><a class="middlebutton" href="/client/idp/admin/display?idpid={idp_id}">IdP homepage</a></span>
+          </div>
+          """)
+      else:
+        self.add_html(f"""
+          <div>
+            <span><a class="middlebutton" href="/">Homepage</a></span>
+          </div>
+          """)
 
 
   @register_url(url='sendrequest', method='POST')

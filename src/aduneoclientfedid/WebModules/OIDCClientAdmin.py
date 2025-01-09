@@ -193,8 +193,6 @@ class OIDCClientAdmin(BaseHandler):
 
     self.add_html(form.get_html())
     self.add_javascript(form.get_javascript())
-    
-    self.send_page()
 
 
   @register_url(url='modifyclientsingle', method='POST')
@@ -263,7 +261,7 @@ class OIDCClientAdmin(BaseHandler):
     self.send_redirection(f"/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}")
 
 
-  @register_page_url(url='modifymulti', method='GET', template='page_default.html', continuous=True)
+  @register_page_url(url='modifymulti', method='GET', template='page_default.html', continuous=False)
   def modify_multi_endpoint(self):
     self.modify_multi_display()
 
@@ -316,8 +314,6 @@ class OIDCClientAdmin(BaseHandler):
 
       self.add_html(app_form.get_html())
       self.add_javascript(app_form.get_javascript())
-      
-      self.send_page()
 
 
   @register_url(url='modifymulti', method='POST')
@@ -367,7 +363,7 @@ class OIDCClientAdmin(BaseHandler):
     self.send_redirection(f"/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}")
 
 
-  @register_page_url(url='removeapp', method='GET', template='page_default.html', continuous=True)
+  @register_page_url(url='removeapp', method='GET', template='page_default.html', continuous=False)
   def remove_app_display(self):
     """ Page de suppression d'un client OpenID Connect
     
@@ -418,8 +414,6 @@ class OIDCClientAdmin(BaseHandler):
 
       self.add_html(app_form.get_html(display_only=True))
       self.add_javascript(app_form.get_javascript())
-      
-      self.send_page()
 
     except AduneoError as e:
       self.add_html(f"""
