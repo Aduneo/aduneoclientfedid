@@ -28,6 +28,12 @@
       "remember_secrets": "off"
     }
   },
+  "default": {
+    "saml": {
+      "idp_authentication_binding_capabilities": ["urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect", "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"],
+      "idp_logout_binding_capabilities": ["urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect", "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"]
+    }
+  },
   "idps": {
   }
 }

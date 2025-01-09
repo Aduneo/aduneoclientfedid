@@ -63,10 +63,10 @@ function parseIdPMetadata(xml, cfiForm) {
   IDPSSODescriptorEl = dom.getElementsByTagNameNS(xmlns, 'IDPSSODescriptor')[0]
   
   // SSO URL
-  fetchServiceUrl(cfiForm, IDPSSODescriptorEl.getElementsByTagNameNS(xmlns, 'SingleSignOnService'), 'idp_sso_url', 'authentication_binding')
+  fetchServiceUrl(cfiForm, IDPSSODescriptorEl.getElementsByTagNameNS(xmlns, 'SingleSignOnService'), 'idp_sso_url', 'authentication_binding', 'idp_authentication_binding_capabilities')
   
   // Logout URL
-  fetchServiceUrl(cfiForm, IDPSSODescriptorEl.getElementsByTagNameNS(xmlns, 'SingleLogoutService'), 'idp_slo_url', 'logout_binding')
+  fetchServiceUrl(cfiForm, IDPSSODescriptorEl.getElementsByTagNameNS(xmlns, 'SingleLogoutService'), 'idp_slo_url', 'logout_binding', 'idp_logout_binding_capabilities')
   
   // Certificate
   certificateEl = IDPSSODescriptorEl.querySelector('X509Certificate')
@@ -76,28 +76,54 @@ function parseIdPMetadata(xml, cfiForm) {
 }
 
 
-function fetchServiceUrl(cfiForm, xmlServices, serviceUrlInput, bindingSelect) {
-  
-  bindingSelectElement = cfiForm.getField(bindingSelect);
-  var preferredBinding = bindingSelectElement.value;
+function fetchServiceUrl(cfiForm, xmlServices, serviceUrlInput, bindingSelect, capabilitiesInput) {
   
   cfiForm.setFieldValue(serviceUrlInput, '')
-  removeSelectOptions(bindingSelectElement)
-  
   for (var i = 0; i < xmlServices.length; i++) {
-    
     xmlService = xmlServices[i];
     bindingAttr = xmlService.attributes.getNamedItem('Binding');
-    var option = document.createElement('option');
-    option.value = option.text = bindingAttr.value;
-    bindingSelectElement.add(option);
     
     var selectBinding = false
     if (i == 0) selectBinding = true
     if (bindingAttr.value == preferredBinding) selectBinding = true
     if (selectBinding) {
-      bindingSelectElement.value = bindingAttr.value
       cfiForm.setFieldValue(serviceUrlInput, xmlService.attributes.getNamedItem('Location').value)
+    }
+  }
+
+  if (capabilitiesInput) {
+    var capabilities = ''
+    for (var i = 0; i < xmlServices.length; i++) {
+      
+      xmlService = xmlServices[i];
+      bindingAttr = xmlService.attributes.getNamedItem('Binding');
+      if (capabilities != '') capabilities += '\t';
+      capabilities += bindingAttr.value;
+    }
+    cfiForm.setFieldValue(capabilitiesInput, capabilities);
+  }
+
+  bindingSelectElement = cfiForm.getField(bindingSelect);
+  if (bindingSelectElement) {
+    var preferredBinding = bindingSelectElement.value;
+    
+    removeSelectOptions(bindingSelectElement)
+    
+    for (var i = 0; i < xmlServices.length; i++) {
+      
+      xmlService = xmlServices[i];
+      bindingAttr = xmlService.attributes.getNamedItem('Binding');
+      var option = document.createElement('option');
+      option.value = option.text = bindingAttr.value;
+      bindingSelectElement.add(option);
+      
+      var selectBinding = false
+      if (i == 0) selectBinding = true
+      if (bindingAttr.value == preferredBinding) selectBinding = true
+      if (selectBinding) {
+        bindingSelectElement.value = bindingAttr.value
+        cfiForm.setFieldValue(serviceUrlInput, xmlService.attributes.getNamedItem('Location').value)
+      }
     }
   }
 }

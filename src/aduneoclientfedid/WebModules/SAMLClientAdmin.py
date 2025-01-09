@@ -72,6 +72,7 @@ class SAMLClientAdmin(BaseHandler):
     
     Versions:
       01/01/2025 (mpham) version initiale adaptée de OIDCClientAdmin
+      09/01/2025 (mpham) possibilités de l'IdP en termes de binding
     """
 
     idp_id = self.get_query_string_param('idpid', '')
@@ -86,6 +87,19 @@ class SAMLClientAdmin(BaseHandler):
     saml_params = idp_params['saml']
     app_params = idp['saml_clients'][app_id]
 
+    # possibilités de l'IdP en binding
+    idp_authentication_binding_capabilities = saml_params.get('idp_authentication_binding_capabilities')
+    if not idp_authentication_binding_capabilities:
+      idp_authentication_binding_capabilities = self.conf.get('/default/saml/idp_authentication_binding_capabilities')
+      if not idp_authentication_binding_capabilities:
+        idp_authentication_binding_capabilities = ['urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST']
+
+    idp_logout_binding_capabilities = saml_params.get('idp_logout_binding_capabilities')
+    if not idp_logout_binding_capabilities:
+      idp_logout_binding_capabilities = self.conf.get('/default/saml/idp_logout_binding_capabilities')
+      if not idp_logout_binding_capabilities:
+        idp_logout_binding_capabilities = ['urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST']
+
     form_content = {
       'idp_id': idp_id,
       'app_id': app_id,
@@ -94,6 +108,8 @@ class SAMLClientAdmin(BaseHandler):
       'idp_sso_url': saml_params.get('idp_sso_url', ''),
       'idp_slo_url': saml_params.get('idp_slo_url', ''),
       'idp_certificate': saml_params.get('idp_certificate', ''),
+      'idp_authentication_binding_capabilities': '\t'.join(idp_authentication_binding_capabilities),
+      'idp_logout_binding_capabilities': '\t'.join(idp_logout_binding_capabilities),
       'sp_entity_id': app_params.get('sp_entity_id', ''),
       'sp_acs_url': app_params.get('sp_acs_url', ''),
       'sp_slo_url': app_params.get('sp_slo_url', ''),
@@ -117,6 +133,8 @@ class SAMLClientAdmin(BaseHandler):
         .text('idp_sso_url', label='IdP SSO URL', clipboard_category='idp_sso_url') \
         .text('idp_slo_url', label='IdP SLO URL', clipboard_category='idp_slo_url') \
         .textarea('idp_certificate', label='IdP certificate', rows=10, clipboard_category='idp_certificate', upload_button='Upload IdP certificate') \
+        .hidden('idp_authentication_binding_capabilities') \
+        .hidden('idp_logout_binding_capabilities') \
       .end_section() \
       .start_section('sp_parameters', title="SP parameters") \
         .button('download_sp_metadata', label='Download SP metadata', on_click='downloadSPMetadata(cfiForm)') \
@@ -152,12 +170,12 @@ class SAMLClientAdmin(BaseHandler):
             'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
             ]) \
         .closed_list('authentication_binding', label='Authentication binding', 
-          values = {'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'},
+          values = {value: value for value in idp_authentication_binding_capabilities},
           default = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
           ) \
         .check_box('sign_auth_request', label='Sign authentication request') \
         .closed_list('logout_binding', label='Logout binding', 
-          values = {'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'},
+          values = {value: value for value in idp_logout_binding_capabilities},
           default = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
           ) \
         .check_box('sign_logout_request', label='Sign logout request') \
@@ -182,6 +200,7 @@ class SAMLClientAdmin(BaseHandler):
     
     Versions:
       01/01/2025 (mpham) version initiale adaptée de OIDCClientAdmin
+      09/01/2025 (mpham) possibilités de l'IdP en termes de binding
     """
     
     idp_id = self.post_form['idp_id']
@@ -208,6 +227,12 @@ class SAMLClientAdmin(BaseHandler):
         saml_params.pop(item, None)
       else:
         saml_params[item] = self.post_form[item].strip()
+
+    for item in ['idp_authentication_binding_capabilities', 'idp_logout_binding_capabilities']:
+      if self.post_form.get(item, '') == '':
+        saml_params.pop(item, None)
+      else:
+        saml_params[item] = self.post_form[item].split('\t')
       
     for item in ['sp_entity_id', 'sp_acs_url', 'sp_slo_url', 'sp_key_configuration', 'sp_private_key', 'sp_certificate', 'nameid_policy',
       'authentication_binding', 'logout_binding']:

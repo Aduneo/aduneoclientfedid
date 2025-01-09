@@ -134,6 +134,13 @@ class SAMLClientLogin(FlowHandler):
       
       relay_state = str(uuid.uuid4())
 
+      # possibilités de SAML en binding
+      idp_authentication_binding_capabilities = idp_params.get('idp_authentication_binding_capabilities')
+      if not idp_authentication_binding_capabilities:
+        idp_authentication_binding_capabilities = self.conf.get('/default/saml/idp_authentication_binding_capabilities')
+        if not idp_authentication_binding_capabilities:
+          idp_authentication_binding_capabilities = ['urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST']
+
       form_content = {
         'hr_context': self.context['context_id'],
         'name': app_params.get('name', ''),
@@ -176,7 +183,7 @@ class SAMLClientLogin(FlowHandler):
               'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
               ]) \
           .closed_list('authentication_binding', label='Authentication binding', on_change='updateAuthenticationRequest(cfiForm)',
-            values = {'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'},
+            values = {value: value for value in idp_authentication_binding_capabilities},
             default = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
             ) \
           .check_box('sign_auth_request', label='Sign authentication request') \

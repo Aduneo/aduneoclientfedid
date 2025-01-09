@@ -36,10 +36,9 @@ class IdPClientAdmin(BaseHandler):
     
     Remarque : on peut aussi modifier ces paramètres dans les pages d'adminisration OIDC et OAuth si l'IdP n'a qu'un unique client
     
-    TODO : ajouter SAML
-    
     Versions:
       25/12/2024 (mpham) version initiale
+      09/01/2025 (mpham) include Javascript pour SAML
     """
 
 
@@ -53,6 +52,7 @@ class IdPClientAdmin(BaseHandler):
     idp['id'] = idp_id
     form = self.get_idp_form(idp)  
 
+    self.add_javascript_include('/javascript/SAMLClientAdmin.js')
     self.add_html(form.get_html())
     self.add_javascript(form.get_javascript())
     
@@ -68,17 +68,19 @@ class IdPClientAdmin(BaseHandler):
     Versions:
       25/12/2024 (mpham)
       31/12/2024 (mpham) les identifiants des IdP sont maintenant préfixés (idp_<idp_id>)
+      09/01/2025 (mpham) paramètres SAML
     """
     
     idp_id = self.post_form['idp_id']
     if idp_id == '':
       # Création
       idp_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
-      self.conf['idps'][idp_id] = {'idp_parameters': {'oidc': {}, 'oauth2': {}}}
+      self.conf['idps'][idp_id] = {'idp_parameters': {'oidc': {}, 'oauth2': {}, 'saml': {}}}
     
     idp = self.conf['idps'][idp_id]
     idp_params = idp['idp_parameters']
     oidc_params = idp_params.get('oidc')
+    saml_params = idp_params.get('saml')
     if not oidc_params:
       idp['idp_parameters']['oidc'] = {}
       oidc_params = idp_params['oidc']
@@ -86,6 +88,9 @@ class IdPClientAdmin(BaseHandler):
     if not oauth2_params:
       idp_params['oauth2'] = {}
       oauth2_params = idp_params['oauth2']
+    if not saml_params:
+      idp_params['saml'] = {}
+      saml_params = idp_params['saml']
     
     if self.post_form['name'] == '':
       self.post_form['name'] = idp_id
@@ -108,6 +113,19 @@ class IdPClientAdmin(BaseHandler):
       else:
         oauth2_params[item] = self.post_form['oauth2_'+item].strip()
       
+    # Paramètres SAML
+    for item in ['idp_entity_id', 'idp_sso_url', 'idp_slo_url', 'idp_certificate']:
+      if self.post_form.get(item, '') == '':
+        saml_params.pop(item, None)
+      else:
+        saml_params[item] = self.post_form[item].strip()
+      
+    for item in ['idp_authentication_binding_capabilities', 'idp_logout_binding_capabilities']:
+      if self.post_form.get(item, '') == '':
+        saml_params.pop(item, None)
+      else:
+        saml_params[item] = self.post_form[item].split('\t')
+        
     # Paramètres communs
     for item in ['verify_certificates']:
       if item in self.post_form:
@@ -362,8 +380,6 @@ class IdPClientAdmin(BaseHandler):
   def get_idp_form(handler, idp:dict):
     """ Retourne un RequesterForm avec un IdP
     
-    TODO : ajouter SAML
-    
     Args:
       handler: objet de type BaseHandler, pour accès à la configuration
       idp: dict avec les paramètres de l'IdP, dans le formalisme du fichier de configuration
@@ -374,12 +390,27 @@ class IdPClientAdmin(BaseHandler):
     
     Versions:
       25/12/2024 (mpham) version initiale
+      09/01/2025 (mpham) paramètres SAML
     """
 
     idp_params = idp['idp_parameters']
     oidc_params = idp_params.get('oidc', {})
     oauth2_params = idp_params.get('oauth2', {})
+    saml_params = idp_params.get('saml', {})
 
+    # possibilités de SAML en binding
+    idp_authentication_binding_capabilities = saml_params.get('idp_authentication_binding_capabilities')
+    if not idp_authentication_binding_capabilities:
+      idp_authentication_binding_capabilities = self.conf.get('/default/saml/idp_authentication_binding_capabilities')
+      if not idp_authentication_binding_capabilities:
+        idp_authentication_binding_capabilities = ['urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST']
+
+    idp_logout_binding_capabilities = saml_params.get('idp_logout_binding_capabilities')
+    if not idp_logout_binding_capabilities:
+      idp_logout_binding_capabilities = self.conf.get('/default/saml/idp_logout_binding_capabilities')
+      if not idp_logout_binding_capabilities:
+        idp_logout_binding_capabilities = ['urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST']
+        
     form_content = {
       'idp_id': idp.get('id', ''),
       'name': idp.get('name', ''),
@@ -405,6 +436,12 @@ class IdPClientAdmin(BaseHandler):
       'oauth2_signature_key_configuration': oauth2_params.get('signature_key_configuration', 'jwks_uri'),
       'oauth2_jwks_uri': oauth2_params.get('jwks_uri', ''),
       'oauth2_signature_key': oauth2_params.get('signature_key', ''),
+      'idp_entity_id': saml_params.get('idp_entity_id', ''),
+      'idp_sso_url': saml_params.get('idp_sso_url', ''),
+      'idp_slo_url': saml_params.get('idp_slo_url', ''),
+      'idp_certificate': saml_params.get('idp_certificate', ''),
+      'idp_authentication_binding_capabilities': '\t'.join(idp_authentication_binding_capabilities),
+      'idp_logout_binding_capabilities': '\t'.join(idp_logout_binding_capabilities),
       'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
       }
     
@@ -457,6 +494,15 @@ class IdPClientAdmin(BaseHandler):
             ) \
           .text('oauth2_revocation_endpoint', label='Revocation endpoint', clipboard_category='revocation_endpoint', displayed_when="@[oauth2_endpoint_configuration] = 'local_configuration'") \
         .end_section() \
+      .end_section() \
+      .start_section('saml_configuration', title="SAML configuration", collapsible=True) \
+        .upload_button('upload_idp_metadata', label='Upload IdP metadata', on_upload="parseIdPMetadata(upload_content, cfiForm);") \
+        .text('idp_entity_id', label='IdP entity ID', clipboard_category='idp_entity_id') \
+        .text('idp_sso_url', label='IdP SSO URL', clipboard_category='idp_sso_url') \
+        .text('idp_slo_url', label='IdP SLO URL', clipboard_category='idp_slo_url') \
+        .textarea('idp_certificate', label='IdP certificate', rows=10, clipboard_category='idp_certificate', upload_button='Upload IdP certificate') \
+        .hidden('idp_authentication_binding_capabilities') \
+        .hidden('idp_logout_binding_capabilities') \
       .end_section() \
       .start_section('common_configuration', title="Common configuration", collapsible=True) \
         .check_box('verify_certificates', label='Verify certificates') \
