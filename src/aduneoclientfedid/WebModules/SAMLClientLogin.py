@@ -835,7 +835,7 @@ class SAMLClientLogin(FlowHandler):
       self.add_result_row('SessionIndex', session_index, 'session_index')
       
       self.end_result_table()
-      self.add_html('<h3>Authentication succcessful</h3>')
+      self.add_html('<h3>Authentication successful</h3>')
       if len(warnings)>0:
         self.add_html('With warnings:')
         self.add_html('<ul>')

@@ -239,8 +239,8 @@ class OIDCClientLogin(FlowHandler):
           .text('acr_values', label='ACR Values', clipboard_category='acr_values') \
         .end_section() \
         .start_section('security_params', title="Security", collapsible=True, collapsible_default=False) \
-          .text('state', label='State', clipboard_category='state') \
-          .text('nonce', label='Nonce', clipboard_category='nonce') \
+          .text('state', label='State') \
+          .text('nonce', label='Nonce') \
         .end_section() \
 
       form.set_request_parameters({
@@ -686,7 +686,7 @@ class OIDCClientLogin(FlowHandler):
         self.log_info('OP refresh token: '+op_refresh_token)
 
       self.end_result_table()
-      self.add_html('<h3>Authentication succcessful</h3>')
+      self.add_html('<h3>Authentication successful</h3>')
       
       # Enregistrement des jetons dans la session pour manipulation ultérieure
       #   Les jetons sont indexés par timestamp d'obtention

@@ -689,7 +689,7 @@ class FlowHandler(BaseHandler):
       self.add_html('</div>')
 
 
-  def _add_footer_menu(self, context):
+  def _add_footer_menu_deprecated(self, context):
     """ DEPRECATED Affiche un menu en fin de cinématique pour
         - relancer une même cinématique
         - manipuler les jetons (introspection, user info, échanges), en fonction des jetons trouvés dans la session

@@ -109,6 +109,7 @@ class BaseServer(BaseHTTPRequestHandler):
     Versions:
       27/01/2021 - 24/02/2021 (mpham) version intiale
       30/03/2023 (mpham) prise en compte des pages continues
+      10/01/2025 (mpham) les templates sont pris en charge par @register_page_url, on n'envoie plus de templates pour les pages non continues
     """
     
     if clear_buffer:
@@ -118,13 +119,8 @@ class BaseServer(BaseHTTPRequestHandler):
       from .WebModules.ContinuousPage import ContinuousPageBuffer
       ContinuousPageBuffer.add_content(self.continuous_page_id, html=self.content+content, stop=True)
     else:
-    
-      self.send_page_top(code)
-      
       page = bytes(self.content + content, "UTF-8")
       self.wfile.write(page)
-      
-      self.send_page_bottom()
 
 
   def send_page_raw(self, content = '', code=200, clear_buffer=False):
