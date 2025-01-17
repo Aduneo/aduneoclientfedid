@@ -45,7 +45,6 @@ and its use with OAuth 2 :
 Not everyone is a Python expert.
 
 If you don't have Python installed on your Windows computer, follow this procedure to quicky run ClientFedID without the need of local administrator rights:
-
 - create a folder for ClientFedID
 - download the latest WinPython distribution from https://winpython.github.io/#releases
   (you only need the dot version, for exemple Winpython64-3.12.8.0dot.7z)
@@ -54,7 +53,7 @@ If you don't have Python installed on your Windows computer, follow this procedu
   (a new Windows Command window will appear)
 - type 
 ```console
-> pip install aduneoclientfedid[saml]
+> pip install aduneoclientfedid
 ```
 - start the app with
 ```console
@@ -64,6 +63,16 @@ If you don't have Python installed on your Windows computer, follow this procedu
 - a warning page will be displayed with a certificate error, which is expected
 - click on *advanced* and then on *Proceed to localhost (unsafe)* or on *Accept the risk and continue* depending on your browser
 - and voilà !
+
+Attention: this version does not have SAML support. Installing SAML capabilies might prove tricky, because of the *xmlsec* library. 
+It is not compatible with all Python versions on Windows.
+
+At the moment, it seems that it's working fine with Python 12 but not with Python 13.
+
+You can try installing ClientFedID with SAML:
+```console
+> pip install aduneoclientfedid[saml]
+```
 
 
 ## Installation
