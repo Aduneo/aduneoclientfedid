@@ -24,6 +24,7 @@ from ..CryptoTools import CryptoTools
 import copy
 import datetime
 import html
+import logging
 import lxml
 import lxml.builder
 import os
