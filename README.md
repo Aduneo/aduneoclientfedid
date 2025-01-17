@@ -40,12 +40,38 @@ and its use with OAuth 2 :
       for OAuth 2.0 Client Authentication and Authorization Grants (https://www.rfc-editor.org/rfc/rfc7522)
 
 
+## Quick install on Windows
+
+Not everyone is a Python expert.
+
+If you don't have Python installed on your Windows computer, follow this procedure to quicky run ClientFedID without the need of local administrator rights:
+
+- create a folder for ClientFedID
+- download the latest WinPython distribution from https://winpython.github.io/#releases
+  (you only need the dot version, for exemple Winpython64-3.12.8.0dot.7z)
+- unzip the file in the folder ; it will create a subfolder with a name starting with WPy64
+- run WinPython Command Prompt.exe in this subfolder
+  (a new Windows Command window will appear)
+- type 
+```console
+> pip install aduneoclientfedid[saml]
+```
+- start the app with
+```console
+> aduneoclientfedid
+```
+- open your favorite browser and go to https://localhost
+- a warning page will be displayed with a certificate error, which is expected
+- click on *advanced* and then on *Proceed to localhost (unsafe)* or on *Accept the risk and continue* depending on your browser
+- and voilà !
+
+
 ## Installation
 
 **aduneoclientfedid** is a web server that is installed locally, most of the time on *localhost* and accessed with a web browser.
 
 Python must be installed on the system which will run the web server.
-It is compatible with Python 3.6 and later (with an exception however: the xmlsec library required for SAML does not exist at the moment for Python 3.11 on Windows).
+It is compatible with Python 3.6 and later.
 
 It has been tested on Windows and various Linux systems. On Windows, it can be executed from a command line prompt
 or in a Powershell window.
