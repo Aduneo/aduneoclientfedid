@@ -21,10 +21,14 @@ from ..CfiForm import CfiForm
 from ..Configuration import Configuration
 from .OIDCClientAdmin import OIDCClientAdmin
 from .OAuthClientAdmin import OAuthClientAdmin
-from .SAMLClientAdmin import SAMLClientAdmin
 import copy
 import html
 import uuid
+
+try:
+  from .SAMLClientAdmin import SAMLClientAdmin
+except:
+  pass
 
 
 @register_web_module('/client/idp/admin')
@@ -67,6 +71,7 @@ class IdPClientAdmin(BaseHandler):
       25/12/2024 (mpham)
       31/12/2024 (mpham) les identifiants des IdP sont maintenant préfixés (idp_<idp_id>)
       09/01/2025 (mpham) paramètres SAML
+      23/01/2025 (mpham) prise en compte des paramètres SAML uniquement si saml_prerequisite vérifié
     """
     
     idp_id = self.post_form['idp_id']
@@ -112,17 +117,18 @@ class IdPClientAdmin(BaseHandler):
         oauth2_params[item] = self.post_form['oauth2_'+item].strip()
       
     # Paramètres SAML
-    for item in ['idp_entity_id', 'idp_sso_url', 'idp_slo_url', 'idp_certificate']:
-      if self.post_form.get(item, '') == '':
-        saml_params.pop(item, None)
-      else:
-        saml_params[item] = self.post_form[item].strip()
-      
-    for item in ['idp_authentication_binding_capabilities', 'idp_logout_binding_capabilities']:
-      if self.post_form.get(item, '') == '':
-        saml_params.pop(item, None)
-      else:
-        saml_params[item] = self.post_form[item].split('\t')
+    if self.hreq.saml_prerequisite:
+      for item in ['idp_entity_id', 'idp_sso_url', 'idp_slo_url', 'idp_certificate']:
+        if self.post_form.get(item, '') == '':
+          saml_params.pop(item, None)
+        else:
+          saml_params[item] = self.post_form[item].strip()
+        
+      for item in ['idp_authentication_binding_capabilities', 'idp_logout_binding_capabilities']:
+        if self.post_form.get(item, '') == '':
+          saml_params.pop(item, None)
+        else:
+          saml_params[item] = self.post_form[item].split('\t')
         
     # Paramètres communs
     for item in ['verify_certificates']:
@@ -275,42 +281,44 @@ class IdPClientAdmin(BaseHandler):
           ))
 
     # SAML SP
-    self.add_html(f""" 
-      <h2>SAML service providers (SP)</h2>
-      <div>
-        <span><a href="/client/saml/admin/modifymulti?idpid={idp_id}" class="smallbutton">Add SAML SP</a></span>
-      </div>
-    """)
-    
-    for sp_id in idp.get('saml_clients', {}):
-      sp = idp['saml_clients'][sp_id]
-      param_uuid = str(uuid.uuid4())
-      self.add_html("""
-        <div style="width: 1140px; display: flex; align-items: center; background-color: #fbe1686b; padding: 3px 3px 3px 6px; margin-top: 2px; margin-bottom: 2px;">
-          <span style="flex-grow: 1; font-size: 12px;">{name}</span>
-          <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">Display parameters</span>
-          <span><a href="/client/saml/admin/modifymulti?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
-          <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
-          <span><a href="/client/saml/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
-          <span><a href="/client/saml/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbutton">Remove</a></span>
+    if self.hreq.saml_prerequisite:
+
+      self.add_html(f""" 
+        <h2>SAML service providers (SP)</h2>
+        <div>
+          <span><a href="/client/saml/admin/modifymulti?idpid={idp_id}" class="smallbutton">Add SAML SP</a></span>
         </div>
-        """.format(
-          name = html.escape(sp.get('name', '')),
-          idp_id = idp_id,
-          app_id = sp_id,
-          div_id = param_uuid,
-          ))
-          
-      sp['idp_id'] = idp_id
-      sp['app_id'] = sp_id
-      sp_form = SAMLClientAdmin.get_app_form(self, sp)
-          
-      self.add_html("""
-        <div id="panel_{div_id}" style="display: none;">{form}</div>
-        """.format(
-          div_id = param_uuid,
-          form = sp_form.get_html(display_only=True),
-          ))
+      """)
+    
+      for sp_id in idp.get('saml_clients', {}):
+        sp = idp['saml_clients'][sp_id]
+        param_uuid = str(uuid.uuid4())
+        self.add_html("""
+          <div style="width: 1140px; display: flex; align-items: center; background-color: #fbe1686b; padding: 3px 3px 3px 6px; margin-top: 2px; margin-bottom: 2px;">
+            <span style="flex-grow: 1; font-size: 12px;">{name}</span>
+            <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">Display parameters</span>
+            <span><a href="/client/saml/admin/modifymulti?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
+            <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+            <span><a href="/client/saml/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
+            <span><a href="/client/saml/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbutton">Remove</a></span>
+          </div>
+          """.format(
+            name = html.escape(sp.get('name', '')),
+            idp_id = idp_id,
+            app_id = sp_id,
+            div_id = param_uuid,
+            ))
+            
+        sp['idp_id'] = idp_id
+        sp['app_id'] = sp_id
+        sp_form = SAMLClientAdmin.get_app_form(self, sp)
+            
+        self.add_html("""
+          <div id="panel_{div_id}" style="display: none;">{form}</div>
+          """.format(
+            div_id = param_uuid,
+            form = sp_form.get_html(display_only=True),
+            ))
     
 
   @register_page_url(url='remove', method='GET', template='page_default.html', continuous=False)
@@ -385,6 +393,7 @@ class IdPClientAdmin(BaseHandler):
     Versions:
       25/12/2024 (mpham) version initiale
       09/01/2025 (mpham) paramètres SAML
+      23/01/2025 (mpham) les paramètres SAML ne sont affichés que si saml_prerequisite est bien vérifié
     """
 
     idp_params = idp['idp_parameters']
@@ -489,7 +498,9 @@ class IdPClientAdmin(BaseHandler):
           .text('oauth2_revocation_endpoint', label='Revocation endpoint', clipboard_category='revocation_endpoint', displayed_when="@[oauth2_endpoint_configuration] = 'local_configuration'") \
         .end_section() \
       .end_section() \
-      .start_section('saml_configuration', title="SAML configuration", collapsible=True) \
+      
+    if handler.hreq.saml_prerequisite:
+      form.start_section('saml_configuration', title="SAML configuration", collapsible=True) \
         .upload_button('upload_idp_metadata', label='Upload IdP metadata', on_upload="parseIdPMetadata(upload_content, cfiForm);") \
         .text('idp_entity_id', label='IdP entity ID', clipboard_category='idp_entity_id') \
         .text('idp_sso_url', label='IdP SSO URL', clipboard_category='idp_sso_url') \
@@ -498,7 +509,8 @@ class IdPClientAdmin(BaseHandler):
         .hidden('idp_authentication_binding_capabilities') \
         .hidden('idp_logout_binding_capabilities') \
       .end_section() \
-      .start_section('common_configuration', title="Common configuration", collapsible=True) \
+      
+    form.start_section('common_configuration', title="Common configuration", collapsible=True) \
         .check_box('verify_certificates', label='Verify certificates') \
       .end_section() 
       

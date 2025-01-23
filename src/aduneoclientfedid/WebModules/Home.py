@@ -32,6 +32,7 @@ class Home(BaseHandler):
 
     Versions:
       08/08/2024 (mpham) version initiale
+      23/01/2024 (mpham) on n'affiche les éléments relatifs à SAML que si les saml_prerequisite sont vérifiés
     """
 
     idps = self.conf['idps']
@@ -40,7 +41,12 @@ class Home(BaseHandler):
       <div>
         <span><a href="/client/oidc/admin/modifyclient" class="middlebutton">Add OIDC Client</a></span>
         <span><a href="/client/oauth2/admin/modifyclient" class="middlebutton">Add OAuth 2 Client</a></span>
+    """)
+    if self.hreq.saml_prerequisite:
+      self.add_html("""
         <span><a href="/client/saml/admin/modifyclient" class="middlebutton">Add SAML SP</a></span>
+      """)
+    self.add_html("""
       </div>
     """)
 
@@ -114,7 +120,7 @@ class Home(BaseHandler):
           )
 
       # SP SAML
-      if idp.get('saml_clients'):
+      if self.hreq.saml_prerequisite and idp.get('saml_clients'):
         
         self.add_html("""<div>SAML SP</div>""")          
         for app_id in sorted(idp['saml_clients'].keys()):
