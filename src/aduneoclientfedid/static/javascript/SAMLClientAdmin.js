@@ -47,7 +47,7 @@ function uploadIdPMetadata(event) {
 }
 
 
-function parseIdPMetadata(xml) {
+function parseIdPMetadata(xml, cfiForm) {
   
   const parser = new DOMParser();
   const dom = parser.parseFromString(xml, "application/xml");
@@ -57,48 +57,73 @@ function parseIdPMetadata(xml) {
   
   // Entity ID
   entityIDAttr = root.attributes.getNamedItem('entityID')
-  document.sp.idp_entity_id.value = entityIDAttr.value
+  cfiForm.setFieldValue('idp_entity_id', entityIDAttr.value)
   
   // IDPSSODescriptor
   IDPSSODescriptorEl = dom.getElementsByTagNameNS(xmlns, 'IDPSSODescriptor')[0]
   
   // SSO URL
-  fetchServiceUrl(IDPSSODescriptorEl.getElementsByTagNameNS(xmlns, 'SingleSignOnService'), document.sp.idp_sso_url, document.sp.authentication_binding)
+  fetchServiceUrl(cfiForm, IDPSSODescriptorEl.getElementsByTagNameNS(xmlns, 'SingleSignOnService'), 'idp_sso_url', 'authentication_binding', 'idp_authentication_binding_capabilities')
   
   // Logout URL
-  fetchServiceUrl(IDPSSODescriptorEl.getElementsByTagNameNS(xmlns, 'SingleLogoutService'), document.sp.idp_slo_url, document.sp.logout_binding)
+  fetchServiceUrl(cfiForm, IDPSSODescriptorEl.getElementsByTagNameNS(xmlns, 'SingleLogoutService'), 'idp_slo_url', 'logout_binding', 'idp_logout_binding_capabilities')
   
   // Certificate
   certificateEl = IDPSSODescriptorEl.querySelector('X509Certificate')
-  //console.log(certificateEl)
-  //console.log(certificateEl.childNodes[0].nodeValue)
   certificate = certificateEl.childNodes[0].nodeValue
-  document.sp.idp_certificate.value = certificate.trim().replaceAll("\n", '').replaceAll("\r", '')
+  cfiForm.setFieldValue('idp_certificate', certificate.trim().replaceAll("\n", '').replaceAll("\r", ''))
 
 }
 
 
-function fetchServiceUrl(xmlServices, serviceUrlInput, bindingSelect) {
+function fetchServiceUrl(cfiForm, xmlServices, serviceUrlInput, bindingSelect, capabilitiesInput) {
   
-  var preferredBinding = bindingSelect.value  
-  
-  serviceUrlInput.value = ''
-  removeSelectOptions(bindingSelect)
-  
+  cfiForm.setFieldValue(serviceUrlInput, '')
   for (var i = 0; i < xmlServices.length; i++) {
-    
-    xmlService = xmlServices[i]
-    bindingAttr = xmlService.attributes.getNamedItem('Binding')
-    var option = document.createElement('option');
-    option.value = option.text = bindingAttr.value;
-    bindingSelect.add(option)
+    xmlService = xmlServices[i];
+    bindingAttr = xmlService.attributes.getNamedItem('Binding');
     
     var selectBinding = false
     if (i == 0) selectBinding = true
     if (bindingAttr.value == preferredBinding) selectBinding = true
     if (selectBinding) {
-      bindingSelect.value = bindingAttr.value
-      serviceUrlInput.value = xmlService.attributes.getNamedItem('Location').value
+      cfiForm.setFieldValue(serviceUrlInput, xmlService.attributes.getNamedItem('Location').value)
+    }
+  }
+
+  if (capabilitiesInput) {
+    var capabilities = ''
+    for (var i = 0; i < xmlServices.length; i++) {
+      
+      xmlService = xmlServices[i];
+      bindingAttr = xmlService.attributes.getNamedItem('Binding');
+      if (capabilities != '') capabilities += '\t';
+      capabilities += bindingAttr.value;
+    }
+    cfiForm.setFieldValue(capabilitiesInput, capabilities);
+  }
+
+  bindingSelectElement = cfiForm.getField(bindingSelect);
+  if (bindingSelectElement) {
+    var preferredBinding = bindingSelectElement.value;
+    
+    removeSelectOptions(bindingSelectElement)
+    
+    for (var i = 0; i < xmlServices.length; i++) {
+      
+      xmlService = xmlServices[i];
+      bindingAttr = xmlService.attributes.getNamedItem('Binding');
+      var option = document.createElement('option');
+      option.value = option.text = bindingAttr.value;
+      bindingSelectElement.add(option);
+      
+      var selectBinding = false
+      if (i == 0) selectBinding = true
+      if (bindingAttr.value == preferredBinding) selectBinding = true
+      if (selectBinding) {
+        bindingSelectElement.value = bindingAttr.value
+        cfiForm.setFieldValue(serviceUrlInput, xmlService.attributes.getNamedItem('Location').value)
+      }
     }
   }
 }
@@ -106,8 +131,100 @@ function fetchServiceUrl(xmlServices, serviceUrlInput, bindingSelect) {
 
 function removeSelectOptions(selectElement) {
   
-   var l = selectElement.options.length - 1;
-   for(var i = l; i >= 0; i--) {
-      selectElement.remove(i);
-   }
+  var l = selectElement.options.length - 1;
+  for(var i = l; i >= 0; i--) {
+    selectElement.remove(i);
+  }
+}
+
+
+function downloadSPMetadata(cfiForm) {
+  
+  filename = cfiForm.getFieldValue('app_id');
+  if (filename == '') {
+    filename = cfiForm.getFieldValue('name');
+  }
+  if (filename == '') {
+    filename = 'spMetadata'
+  }
+
+  let form = document.createElement("form");
+  form.setAttribute("method", "POST");
+  form.setAttribute("action", "downloadSPMetadata");
+
+  
+  let input = document.createElement("input");
+  input.setAttribute("type", "hidden");
+  input.setAttribute("name", "filename");
+  input.setAttribute("value", filename);
+  form.appendChild(input);
+
+  addValueToForm(form, 'sp_entity_id')
+  addValueToForm(form, 'sp_acs_url')
+  addValueToForm(form, 'sp_slo_url')
+  addValueToForm(form, 'sp_key_configuration')
+  addValueToForm(form, 'sp_private_key')
+  addValueToForm(form, 'sp_certificate')
+  addValueToForm(form, 'nameid_policy')
+  addValueToForm(form, 'authentication_binding')
+  addValueToForm(form, 'logout_binding')
+  addCheckedToForm(form, 'sign_auth_request')
+  addCheckedToForm(form, 'sign_logout_request')
+
+  document.body.appendChild(form);
+  form.submit()
+  document.body.removeChild(form);    
+}
+
+function addValueToForm(form, inputName) {
+  let input = document.createElement("input");
+  input.setAttribute("type", "hidden");
+  input.setAttribute("name", inputName);
+  input.setAttribute("value", cfiForm.getFieldValue(inputName));
+  form.appendChild(input);
+}
+
+
+function addCheckedToForm(form, inputName) {
+  let input = document.createElement("input");
+  input.setAttribute("type", "hidden");
+  input.setAttribute("name", inputName);
+  input.setAttribute("value", cfiForm.getField(inputName).checked ? "true" : "false");
+  form.appendChild(input);
+}
+
+
+function generateSPKeys(cfiForm) {
+  
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      jsonResponse = JSON.parse(xhttp.responseText);
+      cfiForm.setFieldValue('sp_private_key', stripPEMHeader(jsonResponse.private_key));
+      cfiForm.setFieldValue('sp_certificate', stripPEMHeader(jsonResponse.certificate));
+    }
+  };
+  xhttp.open("GET", "/generatecertificate", true);
+  xhttp.send();
+}
+
+
+function downloadSpecificCertificate(cfiForm) {
+
+  certificate = cfiForm.getFieldValue('sp_certificate')
+  if (!certificate.startsWith('-----BEGIN CERTIFICATE-----')) {
+    segments = certificate.match(/.{1,64}/g)
+    certificate = '-----BEGIN CERTIFICATE-----\\n'+segments.join('\\n')+'\\n-----END CERTIFICATE-----'
+  }
+  
+  var element = document.createElement('a');
+  element.setAttribute('href', 'data:application/x-pem-file;charset=utf-8,' + encodeURIComponent(certificate));
+  element.setAttribute('download', 'aduneo.crt');
+
+  element.style.display = 'none';
+  document.body.appendChild(element);
+
+  element.click();
+
+  document.body.removeChild(element);
 }

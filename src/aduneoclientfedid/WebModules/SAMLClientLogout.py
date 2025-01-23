@@ -14,13 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from ..BaseServer import AduneoError
-from ..BaseServer import BaseHandler
-from ..BaseServer import BaseServer
-from ..BaseServer import register_web_module, register_url
-from ..Configuration import Configuration
-from datetime import datetime
-from lxml import etree
 import base64
 import html
 import logging
@@ -32,188 +25,232 @@ import uuid
 import xmlsec
 import zlib
 
+from datetime import datetime
+from lxml import etree
+from ..BaseServer import AduneoError
+from ..BaseServer import BaseHandler
+from ..BaseServer import BaseServer
+from ..BaseServer import register_web_module, register_url, register_page_url
+from ..CfiForm import CfiForm
+from ..Configuration import Configuration
+from .FlowHandler import FlowHandler
+from .SAMLClientAdmin import SAMLClientAdmin
+
 
 @register_web_module('/client/saml/logout')
-class SAMLClientLogout(BaseHandler):
+class SAMLClientLogout(FlowHandler):
+  """ SAML Logout
+  
+    Versions:
+      04/01/2024 (mpham) version initiale adaptée de OIDCClientLogout
+  """
  
-  @register_url(url='preparerequest', method='GET')
+  @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=True)
   def prepare_request(self):
 
-    logging.info("Preparation of a SAML logout request")
+    try:
 
-    sp_id = self.get_query_string_param('id')
-    if sp_id is None:
-      raise AduneoError("Client identifier not found in query string")
-    logging.info("for client "+sp_id)
+      self.log_info('--- Start SAML logout flow ---')
 
-    if sp_id not in self.conf['saml_clients']:
-      raise AduneoError("Client identifier not found in configuration")
-    
-    # Récupération du NameID et de son Format dans la session
-    nameid_info = self.get_session_value('session_saml_client_'+sp_id)
-    if nameid_info is None:
-      raise AduneoError("No session found for client "+sp_id)
-    logging.info("and identity "+str(nameid_info))
+      # Récupération du contexte d'authentification
+      if not self.context:
+        idp_id = self.get_query_string_param('idpid', '')
+        raise AduneoError("Can't retrieve request context from session", button_label="Return to IdP page", action=f"/client/idp/admin/display?idpid={idp_id}")
+      self.log_info(('  ' * 1)+'for context: '+self.context['context_id'])
 
-    nameid = nameid_info.get('NameID', '')
-    nameid_format = nameid_info.get('Format', '')
-    session_index = nameid_info.get('SessionIndex', '')
+      # Récupération des paramètres nécessaires à la déconnexion
+      idp_params = self.context.idp_params
 
-    sp = self.conf['saml_clients'][sp_id]
-    
-    # récupération des clés
-    if sp.get('sp_key_configuration').casefold() == 'server keys':
-      self.log_info('Fetching default SAML keys as SP keys')
-      
-      try:
-        cert_path = self.hreq.check_saml_certificate_exists()
-        with open(cert_path) as cert_file:
-          sp['sp_certificate'] = ''.join(cert_file.readlines()[1:-1]).replace('\n', '')
-        
-        (cert_path_without_ext, ext) = os.path.splitext(cert_path)
-        key_path = cert_path_without_ext+'.key'
-        with open(key_path) as key_file:
-          sp['sp_private_key'] = ''.join(key_file.readlines()[1:-1]).replace('\n', '')
-          
-      except Exception as e:
-        print(e)
-        self.log_info("  Default SAML certificate not found or read error")
-        sp['sp_certificate'] = ''
-        sp['sp_private_key'] = ''
-            
-    self.add_content("<h1>SAML logout for SP "+sp["name"]+"</h1>")
-    self.add_content('<form name="request" action="/client/saml/logout/sendrequest" method="post">')
-    self.add_content('<input name="sp_id" value="'+html.escape(sp_id)+'" type="hidden" />')
-    self.add_content('<table class="fixed">')
-     
-    self.add_content('<tr><td>IdP Logout URL</td><td><input name="idp_slo_url" value="'+html.escape(sp.get('idp_slo_url', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>SP Entity ID</td><td><input name="sp_entity_id" value="'+html.escape(sp.get('sp_entity_id', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>NameID</td><td><input name="nameid" value="'+html.escape(nameid)+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>NameID Format</td><td><input name="nameid_format" value="'+html.escape(nameid_format)+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>SessionIndex</td><td><input name="session_index" value="'+html.escape(session_index)+'" class="intable" type="text"></td></tr>')
-      
-    self.add_content('<tr><td>Logout binding</td><td><select name="logout_binding" class="intable" onchange="reset_keys_fields()">')
-    for value in ('urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'):
-      selected = ''
-      if value == sp.get('logout_binding', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'):
-        selected = ' selected'
-      self.add_content('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
-    self.add_content('</select></td></tr>')
+      app_params = None
+      app_id = self.get_query_string_param('appid', '')
+      app_params = self.context.app_params.get(app_id, None)
+      if not app_params:
+        # les paramètres du client ne sont pas dans le contexte, on va les chercher dans la configuration
+        idp_id = self.get_query_string_param('idpid', '')
+        if idp_id == '':
+          raise AduneoError(f"IdP {idp_id} does not exist", button_label="Return to homepage", action="/")
+        idp = copy.deepcopy(self.conf['idps'][idp_id])
+        app_params = idp['saml_clients'].get(app_id)
+        if not app_params:
+          raise AduneoError(f"SAMl service provider {app_id} does not exist for IdP {idp_id}", button_label="Return to IdP page", action=f"/client/idp/admin/display?idpid={idp_id}")
 
-    checked = ''
-    if Configuration.is_on(sp.get('sign_logout_request', 'off')):
-      checked = ' checked'
-    self.add_content('<tr><td>Sign logout request</td><td><input name="sign_logout_request" type="checkbox"'+checked+' onchange="reset_keys_fields()"></td></tr>')
+      # Récupération des assertions pour le client
+      assertions = {'__none__': 'None', '__input__': 'Direct Input'}
+      default_assertion_wrapper = None
+      for assertion_wrapper_key in sorted(self.context['saml_assertions'].keys(), reverse=True):
+        assertion_wrapper = self.context['saml_assertions'][assertion_wrapper_key]
+        if assertion_wrapper['app_id'] == app_id:
+          assertions[assertion_wrapper['saml_assertion']] = assertion_wrapper['name']
+          if not default_assertion_wrapper:
+              default_assertion_wrapper = assertion_wrapper  
 
-    display_sp_private_key = 'none'
-    display_sp_certificate = 'none'
-    if Configuration.is_on(sp.get('sign_logout_request', 'off')):
-      display_sp_private_key = 'table-row'
-      if sp.get('logout_binding') == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST':
-        display_sp_certificate = 'table-row'
+      relay_state = str(uuid.uuid4())
 
-    self.add_content('<tr id="sp_private_key_row" style="display: '+display_sp_private_key+'"><td>SP Private Key</td><td><textarea name="sp_private_key" rows="10" class="intable">'+html.escape(sp['sp_private_key'])+'</textarea></td></tr>')
-    self.add_content('<tr id="sp_certificate_row" style="display: '+display_sp_certificate+'"><td>SP Certificate</td><td><textarea name="sp_certificate" rows="10" class="intable">'+html.escape(sp['sp_certificate'])+'</textarea></td></tr>')
-
-    self.add_content('</table>')
-    
-    self.add_content('<div style="padding-top: 20px; padding-bottom: 12px;"><div style="padding-bottom: 6px;"><strong>Logout request</strong> <img title="Copy request" class="smallButton" src="/images/copy.png" onClick="copyRequest()"/></div>')
-    self.add_content('<span id="logout_request" style="font-size: 14px;"></span></div>')
-    self.add_content('<input name="logout_request" type="hidden">')
-    
-    self.add_content('<button type="submit" class="button">Send to IdP</button>')
-    self.add_content('</form>')
-      
-    self.add_content("""
-      <script>
-      function reset_keys_fields() {
-        if (document.request.sign_logout_request.checked) {
-          document.getElementById('sp_private_key_row').style.display = 'table-row';
-          if (document.request.logout_binding.value == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST') {
-            document.getElementById('sp_certificate_row').style.display = 'table-row';
-          } else {
-            document.getElementById('sp_certificate_row').style.display = 'none';
-          }
-        } else {
-          document.getElementById('sp_private_key_row').style.display = 'none';
-          document.getElementById('sp_certificate_row').style.display = 'none';
-        }
+      form_content = {
+        'hr_context': self.context['context_id'],
+        'idp_slo_url': idp_params.get('idp_slo_url', ''),
+        'sp_entity_id': app_params.get('sp_entity_id', ''),
+        'name_id': default_assertion_wrapper.get('name_id', '') if default_assertion_wrapper else '',
+        'name_id_format': default_assertion_wrapper.get('name_id_format', '') if default_assertion_wrapper else '',
+        'session_index': default_assertion_wrapper.get('session_index', '') if default_assertion_wrapper else '',
+        'logout_binding': app_params.get('logout_binding', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'),
+        'sign_logout_request': Configuration.is_on(app_params.get('sign_logout_request', 'off')),
+        'sp_private_key': '',
+        'sp_certificate': app_params.get('sp_certificate', ''),
+        'relay_state': relay_state,
+        'request_id': 'id'+str(uuid.uuid4()),
+        'logout_request': '',
       }
-      </script>
-    """)
-    
-    self.send_page()
       
+      form = CfiForm('samllogout', form_content, action='/client/saml/logout/sendrequest', mode='new_page') \
+        .hidden('hr_context') \
+        .hidden('request_id') \
+        .start_section('idp_params', title="IdP parameters") \
+          .text('idp_slo_url', label='IdP SLO URL', clipboard_category='idp_slo_url', on_change='updateLogoutRequest(cfiForm)') \
+        .end_section() \
+        .start_section('sp_parameters', title="SP parameters") \
+          .text('sp_entity_id', label='SP entity ID', clipboard_category='sp_entity_id', on_change='updateLogoutRequest(cfiForm)') \
+          .text('name_id', label='NameID', clipboard_category='name_id', on_change='updateLogoutRequest(cfiForm)') \
+          .text('name_id_format', label='NameID format', clipboard_category='name_id_format', on_change='updateLogoutRequest(cfiForm)') \
+          .text('session_index', label='Session index', clipboard_category='session_index', on_change='updateLogoutRequest(cfiForm)') \
+          .closed_list('logout_binding', label='Logout binding',
+            values = {'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST': 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'},
+            default = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+            ) \
+          .check_box('sign_logout_request', label='Sign logout request') \
+          .textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sign_logout_request]") \
+          .textarea('sp_certificate', label='SP certificate', rows=10, clipboard_category='sp_certificate', upload_button='Upload SP certificate', displayed_when="@[sign_logout_request]") \
+        .end_section() \
+        .start_section('logout_params', title="Logout request") \
+          .text('relay_state', label='Relay state', clipboard_category='relay_state') \
+          .textarea('logout_request', label='SAML logout request', rows=10, clipboard_category='logout_request', upload_button='Upload XML', on_load='updateLogoutRequest(cfiForm)') \
+        .end_section() \
+
+      self.add_javascript_include('/javascript/SAMLClientLogout.js')
+      self.add_html(form.get_html())
+      self.add_javascript(form.get_javascript())
+
+    except AduneoError as error:
+      self.add_html('<h4>Error: '+html.escape(str(error))+'</h4>')
+      self.add_html(f"""
+        <div>
+          <span><a class="middlebutton" href="{error.action}">{error.button_label}</a></span>
+        </div>
+        """)
+      self.send_page()
+    except Exception as error:
+      self.log_error(('  ' * 1)+traceback.format_exc())
+      self.add_html('<h4>Refresh error: '+html.escape(str(error))+'</h4>')
+      self.send_page()
+
+    self.send_page()
+
       
   @register_url(url='sendrequest', method='POST')
   def send_request(self):
+    """
+      Prépare la requête de déconnexion SAML
+
+    Versions:
+      02/01/2025 (mpham) version initiale copiée d'OAuth 2 et de l'ancienne version de SAML
+    """
     
-    logging.info('Redirection to SAML IdP requested for logout')
+    try:
     
-    logout_binding = self.post_form.get('logout_binding', '')
-    logging.info('for binding '+logout_binding)
-    if logout_binding == '':
-      error_message = 'Logout binding not found'
-      logging.error(error_message)
-      self.send_page(error_message)
-    elif logout_binding == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect':
-      self._send_request_redirect()
-    elif logout_binding == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST':
-      self._send_request_post()
-    else:
-      error_message = 'Logout binding '+authentication_binding+' not supported'
-      logging.error(error_message)
-      self.send_page(error_message)
+      if not self.context:
+        self.log_error("""context_id not found in form data {data}""".format(data=self.post_form))
+        raise AduneoError("Context not found in request")
+
+      logging.info('Redirection to SAML IdP requested for logout')
+
+      relay_state = self.post_form.get('relay_state', '')
+      if relay_state == '':
+        raise AduneoError("Relay state not found in request")
+      self.log_info(f"  for relay state {relay_state}")
+
+      # pour récupérer le contexte depuis le state (puisque c'est la seule information exploitable retournée par l'IdP)
+      self.set_session_value(relay_state, self.context['context_id'])
+
+      # Mise à jour dans le contexte des paramètres liés à l'IdP
+      idp_params = self.context.idp_params
+      for item in ['idp_slo_url']:
+        idp_params[item] = self.post_form.get(item, '').strip()
+
+      # Mise à jour dans le contexte des paramètres liés au client courant
+      app_params = self.context.last_app_params
+      for item in ['sp_entity_id', 'logout_binding', 'sp_private_key', 'sp_certificate', 'request_id']:
+        app_params[item] = self.post_form.get(item, '').strip()
+        
+      if 'sign_logout_request' in self.post_form:
+        app_params['sign_logout_request'] = 'on'
+      else:
+        app_params['sign_logout_request'] = 'off'
+
+      # récupération de la clé privée dans la configuration
+      if app_params['sp_private_key'] == '':
+        self.log_info("  private key not in form, retrieving it from configuration")
+        conf_idp = self.conf['idps'][self.context.idp_id]
+        conf_app = conf_idp['saml_clients'][self.context.app_id]
+        if conf_app.get('sp_key_configuration', 'clientfedid_keys') == 'specific_keys':
+          self.log_info("  private key was in the SP configuration")
+          app_params['sp_private_key'] = conf_app.get('sp_private_key', '')
+        else:
+          self.log_info("  private key is the default SAML private key")
+          app_params['sp_private_key'] = SAMLClientAdmin._get_clientfedid_private_key()
+      
+      logout_binding = app_params['logout_binding']
+      logging.info('  with binding '+logout_binding)
+      if logout_binding == '':
+        error_message = 'Logout binding not found'
+        logging.error(error_message)
+        self.send_page(error_message)
+      elif logout_binding == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect':
+        self._send_request_redirect()
+      elif logout_binding == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST':
+        self._send_request_post()
+      else:
+        error_message = 'Logout binding '+logout_binding+' not supported'
+        logging.error(error_message)
+        self.send_page(error_message)
+
+    except Exception as error:
+      if not isinstance(error, AduneoError):
+        self.log_error(traceback.format_exc())
+      self.log_error("""Can't send the request to the IdP, technical error {error}""".format(error=error))
+      self.add_html("""<div>Can't send the request to the IdP, technical error {error}</div>""".format(error=error))
+      self.add_html(f"""
+        <div>
+          <span><a class="middlebutton" href="{f"/client/idp/admin/display?idpid={self.context.idp_id}"}">IdP parameters</a></span>
+        </div>
+        """)
+      self.send_page()
 
 
   def _send_request_post(self):
+    """ Envoie la requête de déconnexion SAML en POST
 
-    req_id = 'id'+str(uuid.uuid4())
-    logging.info('Constructing logout request '+req_id)
-    timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')     # 2014-07-16T23:52:45Z
-
-    sp_id = self.post_form.get('sp_id', '')
-    if sp_id == '':
-      raise AduneoError('SP ID not found')
-    logging.info('For SP '+sp_id)
-    
-    sp = self.conf['saml_clients'].get(sp_id)
-    if sp is None:
-      raise AduneoError('SP '+sp_id+' not found in configuration')
-
-    req_template = """
-    <samlp:LogoutRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="{req_id}" Version="2.0" IssueInstant="{timestamp}" Destination="{destination}">
-      <saml:Issuer>{issuer}</saml:Issuer>
-      <saml:NameID{format}>{nameid}</saml:NameID>
-      <samlp:SessionIndex>{session_index}</samlp:SessionIndex>
-    </samlp:LogoutRequest>
+    Versions:
+      05/01/2025 (mpham) version initiale copiée d'OAuth 2 et de l'ancienne version de SAML
     """
-    
-    format = ''
-    nameid_format = self.post_form.get('nameid_format', '')
-    if nameid_format != '':
-      format = ' Format="'+nameid_format+'"'
 
-    xml_req = req_template.format(
-      req_id = req_id, 
-      timestamp = timestamp, 
-      destination = self.post_form['idp_slo_url'], 
-      issuer = self.post_form['sp_entity_id'],
-      format = format,
-      nameid = self.post_form['nameid'],
-      session_index = self.post_form['session_index']
-      )
-    
-    logging.info("Logout request:")
-    logging.info(xml_req)
-    
-    byte_xml_req = xml_req.encode()
+    self.log_info('  sending logout request in HTTP POST')
 
-    sign_logout_request = self.post_form.get('sign_logout_request', 'off')
+    idp_params = self.context.idp_params
+    app_params = self.context.last_app_params
+    
+    request = self.post_form.get('logout_request', '')
+    relay_state = self.post_form.get('relay_state', '')
+
+    self.log_info("Logout request:")
+    self.log_info(request)
+
+    byte_xml_req = request.encode()
+
+    sign_logout_request = app_params.get('sign_logout_request', 'off')
     if Configuration.is_on(sign_logout_request):
     
       # Signature de la requête
-      template = etree.fromstring(xml_req)
+      template = etree.fromstring(request)
       xmlsec.tree.add_ids(template, ["ID"]) 
 
       # on crée le noeud pour la signature
@@ -227,88 +264,67 @@ class SAMLClientLogout(BaseHandler):
       issuer_el = template.find('{urn:oasis:names:tc:SAML:2.0:assertion}Issuer')
       issuer_el.addnext(signature_node)
 #      template.append(signature_node)
-      ref = xmlsec.template.add_reference(signature_node, xmlsec.Transform.SHA1, uri='#'+req_id)
+      ref = xmlsec.template.add_reference(signature_node, xmlsec.Transform.SHA1, uri='#'+app_params['request_id'])
       xmlsec.template.add_transform(ref, xmlsec.Transform.ENVELOPED)
       xmlsec.template.add_transform(ref, xmlsec.constants.TransformExclC14N)
       key_info = xmlsec.template.ensure_key_info(signature_node)
       xmlsec.template.add_x509_data(key_info)  
       
       # Récupération des clés
-      if self.post_form.get('sp_private_key', '') == '':
+      if app_params.get('sp_private_key', '') == '':
         raise AduneoError("Missing private key, can't sign request")
-      sp_private_key = '-----BEGIN PRIVATE KEY-----\n' + self.post_form['sp_private_key'] + '\n-----END PRIVATE KEY-----'
-      if self.post_form.get('sp_certificate', '') == '':
+      sp_private_key = '-----BEGIN PRIVATE KEY-----\n' + app_params['sp_private_key'] + '\n-----END PRIVATE KEY-----'
+      if app_params.get('sp_certificate', '') == '':
         raise AduneoError("Missing certificate, can't sign request")
-      sp_certificate = '-----BEGIN CERTIFICATE-----\n' + self.post_form['sp_certificate'] + '\n-----END CERTIFICATE-----'
+      sp_certificate = '-----BEGIN CERTIFICATE-----\n' + app_params['sp_certificate'] + '\n-----END CERTIFICATE-----'
 
       # on signe le XML
       ctx = xmlsec.SignatureContext()
       ctx.key = xmlsec.Key.from_memory(sp_private_key, xmlsec.KeyFormat.PEM, None)
       ctx.key.load_cert_from_memory(sp_certificate, xmlsec.KeyFormat.CERT_PEM)
       ctx.sign(signature_node)
-      logging.info('Signed request:')
-      logging.info(etree.tostring(template, pretty_print=True).decode())
+      self.log_info('Signed request:')
+      self.log_info(etree.tostring(template, pretty_print=True).decode())
       
       byte_xml_req = etree.tostring(template)
       
     base64_req = base64.b64encode(byte_xml_req).decode()
-    logging.info("Base64 encoded logout request:")
-    logging.info(base64_req)
+    self.log_info("Base64 encoded logout request:")
+    self.log_info(base64_req)
 
     self.send_page_top(200, template=False)
-    
-    self.add_content('<html><body onload="document.saml.submit()">')
-    self.add_content('<html><body>')
-    self.add_content('<form name="saml" action="'+self.post_form['idp_slo_url']+'" method="post">')
-    self.add_content('<input type="hidden" name="SAMLRequest" value="'+html.escape(base64_req)+'" />')
-    self.add_content('<input type="hidden" name="RelayState" value="'+html.escape(sp_id)+'" />')
-    #self.add_content('<input type="submit"/>')
-    self.add_content('</form></body></html>')
-    
-    #print(html.escape(xml_req))
+
+    saml_form = """
+      <html><body onload="document.saml.submit()">
+      <form name="saml" action="{idp_slo_url}" method="post">
+      <input type="hidden" name="SAMLRequest" value="{saml_request}" />
+      <input type="hidden" name="RelayState" value="{relay_state}" />
+      </form></body></html>
+    """.format(idp_slo_url=idp_params['idp_slo_url'], saml_request=html.escape(base64_req), relay_state=html.escape(relay_state))
+
+    self.log_info("SAML POST form:")
+    self.log_info(saml_form)
+
+    self.add_content(saml_form)
 
 
   def _send_request_redirect(self):
+    """ Envoie la requête de déconnexion SAML en REDIRECT
 
-    req_id = 'id'+str(uuid.uuid4())
-    logging.info('Constructing logout request '+req_id)
-    timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')     # 2014-07-16T23:52:45Z
-
-    sp_id = self.post_form.get('sp_id', '')
-    if sp_id == '':
-      raise AduneoError('SP ID not found')
-    logging.info('For SP '+sp_id)
-    
-    sp = self.conf['saml_clients'].get(sp_id)
-    if sp is None:
-      raise AduneoError('SP '+sp_id+' not found in configuration')
-
-    req_template = """
-    <samlp:LogoutRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="{req_id}" Version="2.0" IssueInstant="{timestamp}" Destination="{destination}">
-      <saml:Issuer>{issuer}</saml:Issuer>
-      <saml:NameID{format}>{nameid} NameQualifier="{name_qualifier}"</saml:NameID>
-      <samlp:SessionIndex>{session_index}</samlp:SessionIndex>
-    </samlp:LogoutRequest>
+    Versions:
+      05/01/2025 (mpham) version initiale copiée d'OAuth 2 et de l'ancienne version de SAML
     """
-    
-    format = ''
-    nameid_format = self.post_form.get('nameid_format', '')
-    if nameid_format != '':
-      format = ' Format="'+nameid_format+'"'
 
-    xml_req = req_template.format(
-      req_id = req_id, 
-      timestamp = timestamp, 
-      destination = self.post_form['idp_slo_url'], 
-      issuer = self.post_form['sp_entity_id'],
-      format = format,
-      name_qualifier = self.post_form['sp_entity_id'],
-      nameid = self.post_form['nameid'],
-      session_index = self.post_form['session_index']
-      )
+    self.log_info('  sending logout request in HTTP POST')
+
+    idp_params = self.context.idp_params
+    app_params = self.context.last_app_params
     
-    logging.info("Logout request:")
-    logging.info(xml_req)
+    request = self.post_form.get('logout_request', '')
+    relay_state = self.post_form.get('relay_state', '')
+
+    self.log_info("Logout request:")
+    self.log_info(request)
     
     # on deflate la requête TODO : on pourra utiliser directement zlib.compress() en Python 3.11
     compress = zlib.compressobj(
@@ -326,7 +342,7 @@ class SAMLClientLogout(BaseHandler):
                                   #   3 = Z_RLE
                                   #   4 = Z_FIXED
     )
-    deflated_req = compress.compress(xml_req.encode('iso-8859-1'))
+    deflated_req = compress.compress(request.encode('iso-8859-1'))
     deflated_req += compress.flush()
     
     base64_req = base64.b64encode(deflated_req)
@@ -340,11 +356,11 @@ class SAMLClientLogout(BaseHandler):
     #   (les valeurs doivent être URL-encoded)
     #   que l'on signe
     
-    urlencoded_relay_state = urllib.parse.quote_plus(sp_id)
+    urlencoded_relay_state = urllib.parse.quote_plus(relay_state)
 
     message = 'SAMLRequest='+urlencoded_req+'&RelayState='+urlencoded_relay_state
     
-    sign_logout_request = self.post_form.get('sign_logout_request', 'off')
+    sign_logout_request = app_params.get('sign_logout_request', 'off')
     if Configuration.is_on(sign_logout_request):
     
       urlencoded_sig_alg = urllib.parse.quote_plus('http://www.w3.org/2000/09/xmldsig#rsa-sha1')
@@ -354,9 +370,9 @@ class SAMLClientLogout(BaseHandler):
 
       xmlsec.enable_debug_trace(True)
 
-      if self.post_form.get('sp_private_key', '') == '':
+      if app_params.get('sp_private_key', '') == '':
         raise AduneoError("Missing private key, can't sign request")
-      sp_private_key = '-----BEGIN PRIVATE KEY-----\n' + self.post_form['sp_private_key'] + '\n-----END PRIVATE KEY-----'
+      sp_private_key = '-----BEGIN PRIVATE KEY-----\n' + app_params['sp_private_key'] + '\n-----END PRIVATE KEY-----'
 
       ctx = xmlsec.SignatureContext()
       ctx.key = xmlsec.Key.from_memory(sp_private_key, xmlsec.KeyFormat.PEM, None)
@@ -366,22 +382,21 @@ class SAMLClientLogout(BaseHandler):
 
       message += '&signature=' + urllib.parse.quote_plus(base64_signature)
 
-    url = self.post_form['idp_slo_url'] + '?' + message
+    url = idp_params['idp_slo_url'] + '?' + message
     logging.info('URL: '+url)
     
     logging.info('Sending redirection')
     self.send_redirection(url)
     
     
-  @register_url(url='callback', method='GET')
-  @register_url(url='callback', method='POST')
+  @register_page_url(url='callback', method=['GET','POST'], template='page_default.html', continuous=True)
   def callback(self):
+    """ Retour de logout
     
-    """
-    Retour de logout
-    
-    mpham 15/03/2021
-    mpham 20/01/2023 méthode HTTP-Redirect
+    Versions:
+      15/03/2021 (mpham) version initiale
+      20/01/2023 (mpham) méthode HTTP-Redirect
+      05/01/2025 (mpham) adaptation continuous page
     """
 
     logging.info('Logout call back')
@@ -393,10 +408,10 @@ class SAMLClientLogout(BaseHandler):
 
       # Problème cookie SameSite=Lax
       if self.hreq.headers.get('Cookie') is None:
-        logging.error('Session cookie not sent')
-        self.send_page_top(200, template=False, send_cookie=False)
-        
+        self.log_error('Session cookie not sent by brower (SameSite problem), form is sent to brower and autosubmitted')
+      
         self.add_content('<html><body onload="document.saml.submit()">')
+        self.add_content('<div>SameSite workaround, submitting response form from ClientFedID</div>')
         self.add_content('<form name="saml" method="post">')
         for item in self.post_form:
           self.add_content('<input type="hidden" name="'+html.escape(item)+'" value="'+html.escape(self.post_form[item])+'" />')
@@ -404,13 +419,15 @@ class SAMLClientLogout(BaseHandler):
         self.add_content('</form></body></html>')
         return
 
-      logging.info(str(self.post_form))
+      self.log_info(str(self.post_form))
 
       base64_resp = self.post_form.get('SAMLResponse', None)
       if base64_resp is None:
         raise AduneoError('SAMLResponse not found in POST data')
       xml_resp = base64.b64decode(base64_resp).decode()
       relay_state = self.post_form.get('RelayState')
+      if not relay_state:
+        raise AduneoError(self.log_error(f"Can't retrieve request context from state because state in not present in callback body {self.post_form}"))
       
     elif self.hreq.command == 'GET':
       
@@ -418,6 +435,8 @@ class SAMLClientLogout(BaseHandler):
       if quoted_resp is None:
         raise AduneoError('SAMLResponse not found in GET data')
       relay_state = self.get_query_string_param('RelayState')
+      if not relay_state:
+        raise AduneoError(self.log_error(f"Can't retrieve request context from state because state in not present in callback query string {self.hreq.path}"))
       
       # on dézippe la réponse
       base64_resp = urllib.parse.unquote(quoted_resp)
@@ -425,22 +444,34 @@ class SAMLClientLogout(BaseHandler):
       decompressed_resp = zlib.decompress(compressed_resp, -zlib.MAX_WBITS)
       xml_resp = decompressed_resp.decode('iso-8859-1')
 
-    logging.info(xml_resp)
+    # récupération de state pour obtention des paramètres dans la session
+    self.log_info('  for state: '+relay_state)
+
+    context_id = self.get_session_value(relay_state)
+    if not context_id:
+      raise AduneoError(self.log_error(f"Can't retrieve request context from state because context id not found in session for state {relay_state}"))
+
+    self.context = self.get_session_value(context_id)
+    if not self.context:
+      raise AduneoError(self.log_error(f"Can't retrieve request context because context id {context_id} not found in session"))
+
+    self.log_info(xml_resp)
 
     root_el = etree.fromstring(xml_resp.encode())
     
     status_el = root_el.find('{urn:oasis:names:tc:SAML:2.0:protocol}Status')
     status_code_el = status_el.find('{urn:oasis:names:tc:SAML:2.0:protocol}StatusCode')
     status_code = status_code_el.attrib['Value']
-    logging.info('Status code: '+status_code)
+    self.log_info('Status code: '+status_code)
 
-    self.add_content('<h2>Logout callback</h2>')
-    self.add_content(status_code)
+    self.add_html('<h2>Logout callback</h2>')
+    self.add_html(status_code)
+    self.add_menu()
     self.send_page()
     
     if status_code == 'urn:oasis:names:tc:SAML:2.0:status:Success':
       sp_id = relay_state
       if sp_id is not None:
-        logging.info('Removing session for SP '+sp_id)
+        self.log_info('Removing session for SP '+sp_id)
         self.logoff('saml_client_'+sp_id)
 

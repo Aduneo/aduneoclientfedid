@@ -16,321 +16,532 @@ limitations under the License.
 
 from ..BaseServer import AduneoError
 from ..BaseServer import BaseHandler
-from ..BaseServer import register_web_module, register_url
+from ..BaseServer import register_web_module, register_url, register_page_url
+from ..CfiForm import CfiForm
 from ..Configuration import Configuration
-from ..Help import Help
+import copy
 import html
-import time
+import uuid
 
-"""
-  TODO : je crois qu'on ne peut pas donner la clé publique (drop down list qui ne fonctionne pas)
-"""
 
 @register_web_module('/client/oidc/admin')
 class OIDCClientAdmin(BaseHandler):
-  
-  @register_url(url='modifyclient', method='GET')
-  def display(self):
-    
-    """
-    Ajout/modification d'un client OIDC
-    
-    mpham 12/02/2021 - 27/02/2021 - 28/12/2021 - 13/04/2021
-    mpham 09/12/2022 - ajout de token_endpoint_auth_method
-    mpham 22/02/2023 - désactivation des IdP de préférence en attendant une industrialisation et traduction en anglais des titres
-    mpham 22/02/2023 - suppression des références à fetch_userinfo puisque l'appel à userinfo est désormais manuel
-    """
-    
-    rp = {}
-    rp_id = self.get_query_string_param('id', '')
-    if rp_id != '':
-      rp = self.conf['oidc_clients'][rp_id]
 
-    redirect_uri = rp.get('redirect_uri', '')
-    
-    self.add_content('<form name="rp" action="" method="post">')
-    self.add_content('<input name="rp_id" value="'+html.escape(rp_id)+'" type="hidden" />')
-    """
-    self.add_content('<h1>Préférences')
-    #Bouton deroulant
-    self.add_content('''
-      <select onChange="includeHtml(this.value)">
-        <option value="any">Any</option>
-        <option value="okta">Okta</option>
-        <option value="keycloak">Keycloak</option>
-        <option value="azuread">Azure AD</option>
-      </select>
-      ''')
-    self.add_content('</h1>')
-    """
-
-    self.add_content('<h2>General configuration</h2>')
-
-    self.add_content('<table id="unTab" class="fixed">')
-    self.add_content('<tr><td><span class="celltxt">Name</span><span class="cellimg"><img onclick="help(this, \'name\')" src="/images/help.png"></span></td><td><input name="name" value="'+html.escape(rp.get('name', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td><span class="celltxt">Redirect URI</span><span class="cellimg"><img onclick="help(this, \'redirect_uri\')" src="/images/help.png"></span></td><td><input name="redirect_uri" id="redirect_uri" value="'+html.escape(redirect_uri)+'" class="intable" type="text"></td></tr>')
-    
-    # méthode de configuration des endpoint
-    self.add_content('<tr><td>'+self.row_label('Endpoint configuration', 'endpoint_configuration')+'</td><td><select name="endpoint_configuration" class="intable" onchange="changeEndpointConfiguration()">')
-    for value in ('Discovery URI', 'Local configuration'):
-      selected = ''
-      if value.casefold() == rp.get('endpoint_configuration', 'Discovery URI').casefold():
-        selected = ' selected'
-      self.add_content('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
-    self.add_content('</td></tr>')
-
-    self.add_content('</table>')
-    #Première étape de l'assistance
-    self.add_content("""<div id="un" class="fixed etapes" hidden>
-      Ces champs sont arbitraires, mettez le nom que vous souhaitez ainsi que la méthode qui vous semble la plus pratique pour récupérez les informations du fournisseur d\'identité.
-      <p id="includeUn"></p> 
-      <button class="button" type="button" style="padding: 5px 10px !important;" onclick="showHelp(\'deux\');">Continuer</button></div>""")
-    self.add_content('<h2>Parameters obtained from the OP</h2>')
-    self.add_content('<table id="deuxTab" class="fixed">')
-
-    # configuration des endpoint par discovery uri
-    visible = (rp.get('endpoint_configuration', 'Discovery URI').casefold() == 'discovery uri')
-    visible_style = 'none'
-    if visible:
-      visible_style = 'table-row'
-    self.add_content('<tr id="discovery_uri" style="display: '+visible_style+';"><td>'+self.row_label('Discovery URI', 'discovery_uri')+'</td><td><input name="discovery_uri" value="'+rp.get('discovery_uri', '')+'" class="intable" type="text"></td></tr>')
-    
-    # configuration des endpoint dans le fichier local
-    visible = (rp.get('endpoint_configuration', 'Discovery URI').casefold() == 'local configuration')
-    visible_style = 'none'
-    if visible:
-      visible_style = 'table-row'
-    self.add_content('<tr id="issuer" style="display: '+visible_style+';"><td>'+self.row_label('Issuer', 'issuer')+'</td><td><input name="issuer" value="'+html.escape(rp.get('issuer', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr id="authorization_endpoint" style="display: '+visible_style+';"><td>'+self.row_label('Authorization endpoint', 'authorization_endpoint')+'</td><td><input name="authorization_endpoint" value="'+html.escape(rp.get('authorization_endpoint', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr id="token_endpoint" style="display: '+visible_style+';"><td>'+self.row_label('Token endpoint', 'token_endpoint')+'</td><td><input name="token_endpoint" value="'+html.escape(rp.get('token_endpoint', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr id="userinfo_endpoint" style="display: '+visible_style+';"><td>'+self.row_label('Userinfo endpoint', 'userinfo_endpoint')+'</td><td><input name="userinfo_endpoint" value="'+html.escape(rp.get('userinfo_endpoint', ''))+'" class="intable" type="text"></td></tr>')
-
-    # configuration de la clé de vérification de signature
-    self.add_content('<tr id="signature_key_configuration" style="display: '+visible_style+';"><td>'+self.row_label('Signature key configuration', 'signature_key_configuration')+'</td><td><select name="signature_key_configuration" class="intable" onchange="changeEndpointConfiguration()">')
-    for value in ('JWKS URI', 'Local configuration'):
-      selected = ''
-      if value.casefold() == rp.get('signature_key_configuration', 'JWKS URI').casefold():
-        selected = ' selected'
-      self.add_content('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
-    self.add_content('</td></tr>')
-    
-    # clé de signature récupérée par JWKS
-    key_visible = (rp.get('signature_key_configuration', 'JWKS URI').casefold() == 'jwks uri')
-    key_visible_style = 'none'
-    if key_visible:
-      key_visible_style = 'table-row'
-    if not visible:
-      key_visible_style = 'none'
-    self.add_content('<tr id="jwks_uri" style="display: '+key_visible_style+';"><td>'+self.row_label('JWKS URI', 'jwks_uri')+'</td><td><input name="jwks_uri" value="'+html.escape(rp.get('jwks_uri', ''))+'" class="intable" type="text"></td></tr>')
-    
-    # clé de signature dans le fichier local
-    key_visible = (rp.get('signature_key_configuration', 'JWKS URI').casefold() == 'local configuration')
-    key_visible_style = 'none'
-    if key_visible:
-      key_visible_style = 'table-row'
-    if not visible:
-      key_visible_style = 'none'
-    self.add_content('<tr id="signature_key" style="display: '+key_visible_style+';"><td>'+self.row_label('Signature Key', 'signature_key')+'</td><td><input name="signature_key" value="'+html.escape(rp.get('signature_key', ''))+'" class="intable" type="text"></td></tr>')
-    
-    # configuration de la cinématique
-    self.add_content('<tr><td>'+self.row_label('Client ID', 'client_id')+'</td><td><input name="client_id" value="'+html.escape(rp.get('client_id', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>'+self.row_label('Client secret', 'client_secret')+'</td><td><input name="client_secret!" value="" class="intable" type="password"></td></tr>')
-
-    self.add_content('</table>')
-    # deuxième étape de l'assistance
-    self.add_content("""<div id="deux" class="fixed etapes"  hidden> Il s\'agit ici des champs spécifiques à votre IdP. <br>- choisissez en premier l\'url qui va permettre au client de récupérer les metadonnées de votre IdP souvent cette url est celle définie dans la RFC 5785 qui est de la forme /.well-known/openid-configuration <br>- Vous trouverez les deux derniers champs dans la page de configuration de votre application sur votre IdP. <p id="includeDeux"></p><button class="button" type="button" style="padding: 5px 10px !important;" onclick="showHelp(\'trois\');">Continuer</button>
-      </p></div>""")
-
-    self.add_content('<h2>Default OIDC request parameters</h2>')
-    self.add_content('<table id="troisTab" class="fixed">')
-
-    self.add_content('<tr><td>'+self.row_label('Scope', 'scope')+'</td><td><input name="scope" value="'+html.escape(rp.get('scope', 'openid profile'))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>'+self.row_label('Response type', 'response_type')+'</td><td><select name="response_type" class="intable">')
-    for value in ['code']:
-      selected = ''
-      if value == rp.get('response_type', ''):
-        selected = ' selected'
-      self.add_content('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
-    self.add_content('</select></td></tr>')
-    
-    self.add_content('<tr><td>'+self.row_label('Token endpoint auth method', 'token_endpoint_auth_method')+'</td><td><select name="token_endpoint_auth_method" class="intable" >')
-    for value in ('Basic', 'POST'):
-      selected = ''
-      if value.casefold() == rp.get('token_endpoint_auth_method', 'POST').casefold():
-        selected = ' selected'
-      self.add_content('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
-    self.add_content('</td></tr>')
-    
-    self.add_content('</table>')
-    #Troisième étape de l'assistance
-    self.add_content("""<div id="trois" class="etapes fixed"  hidden> Ces champs sont les paramètres par défaut pour les champs obligatoires que vous voulez appliquer à vos requêtes. <p id="includeTrois"></p><button class="button" type="button" style="padding: 5px 10px !important;" onclick="showHelp(\'quatre\');">Continuer</button>
-    </p></div>""")
-
-    self.add_content('<h2>Logout configuration (optional)</h2>')
-    self.add_content('<h3>Logout information provided by the OP</h3>')
-    self.add_content('<table class="fixed">')
-    # configuration des endpoint dans le fichier local
-    visible = (rp.get('endpoint_configuration', 'Discovery URI').casefold() == 'local configuration')
-    visible_style = 'none'
-    if visible:
-      visible_style = 'table-row'
-    self.add_content('<tr id="end_session_endpoint" style="display: '+visible_style+';"><td>'+self.row_label('Logout endpoint', 'end_session_endpoint')+'</td><td><input name="end_session_endpoint" value="'+html.escape(rp.get('end_session_endpoint', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('</table>')
-    
-    self.add_content('<h3>Logout information provided by ClientFedId, used to configure the OP</h3>')
-    self.add_content('<table class="fixed">')
-    self.add_content('<tr><td><span class="celltxt">Post logout redirect URI</span><span class="cellimg"><img onclick="help(this, \'post_logout_redirect_uri\')" src="/images/help.png"></span></td><td><input name="post_logout_redirect_uri" id="post_logout_redirect_uri" value="'+html.escape(rp.get('post_logout_redirect_uri', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('</table>')
-
-    
-    self.add_content('<h2>Options</h2>')
-    self.add_content('<table id="quatreTab" class="fixed">')
-
-    checked = ''
-    if Configuration.is_on(rp.get('verify_certificates', 'on')):
-      checked = ' checked'
-    self.add_content('<tr><td>'+self.row_label('Verify certificates', 'verify_certificates')+'</td><td><input name="verify_certificates" type="checkbox"'+checked+'></td></tr>')
-    self.add_content('</table>')
-    # quatrimème étape de l'assistance
-    self.add_content("""<div id="quatre" class="etapes fixed"  hidden> Options de comportement du client <p id="includeQuatre"></p><button class="button" type="button" style="padding: 5px 10px !important;" onclick="showHelp(\'zero\');">Continuer</button>
-    </p></div>""")
-    
-    self.add_content('<button type="submit" class="button">Save</button>')
-    #self.add_content('<button type="button" class="button" onclick="showHelp(\'un\');">Assistance</button>')
-    #self.add_content('<a href="/oidc/client/modifyclient/guide?id="'+rp_id+'"><button type="button" class="button">Guide</button></a>')
-
-    self.add_content('</form>')
-
-    self.add_content("""
-      <script>
+  @register_page_url(url='modifyclient', method='GET', template='page_default.html', continuous=False)
+  def modify_client_router(self):
+    """ Sélection du mode de modification du client :
       
-      window.addEventListener('load', (event) => {
-        if (document.getElementById('redirect_uri').value == '') {
-          document.getElementById('redirect_uri').value = window.location.origin + '/client/oidc/login/callback';
-        }
-        if (document.getElementById('post_logout_redirect_uri').value == '') {
-          document.getElementById('post_logout_redirect_uri').value = window.location.origin + '/client/oidc/logout/callback';
-        }
-      });
+      On a en effet deux interfaces pour modifier un client, en fonction de l'état de la configuration
+        - modification combinée IdP + client, quand un IdP n'a qu'une application : modify_single
+        - modification différencée IdP et les différents clients qu'il gère       : modify_multi
+        
+    Versions:
+      10/08/2024 (mpham) version initiale
+      23/08/2024 (mpham) request parameters
+    """
+
+    idp = {}
+
+    idp_id = self.get_query_string_param('idpid', '')
+    if idp_id == '':
+      # Création
+      self.modify_single_display()
+    else:
+      # Modification
+      idp = self.conf['idps'].get(idp_id)
+      if not idp:
+        raise AduneoError(f"IdP {idp_id} not found in configuration")
+        
+      oidc_clients = idp.get('oidc_clients', {})  
+      oauth2_clients = idp.get('oauth2_clients', {})  
+      saml_clients = idp.get('saml_clients', {})  
+        
+      if len(oidc_clients) == 1 and len(oauth2_clients) == 0 and len(saml_clients) == 0:
+        self.modify_single_display()
+      else:
+        self.modify_multi_display()
       
-      function changeEndpointConfiguration() {
-        if (document.rp.endpoint_configuration.value == 'Discovery URI') {
-          document.getElementById('discovery_uri').style.display = 'table-row';
-          ['issuer', 'authorization_endpoint', 'end_session_endpoint', 'token_endpoint', 'userinfo_endpoint', 'signature_key_configuration', 'jwks_uri', 'signature_key'].forEach(function(item, index) {
-            document.getElementById(item).style.display = 'none';
-          });
-        } else {
-          document.getElementById('discovery_uri').style.display = 'none';
-          ['issuer', 'authorization_endpoint', 'token_endpoint', 'end_session_endpoint', 'userinfo_endpoint', 'signature_key_configuration'].forEach(function(item, index) {
-            document.getElementById(item).style.display = 'table-row';
-          });
-          if (document.rp.signature_key_configuration.value == 'JWKS URI') {
-            document.getElementById('jwks_uri').style.display = 'table-row';
-            document.getElementById('signature_key').style.display = 'none';
-          } else {
-            document.getElementById('jwks_uri').style.display = 'none';
-            document.getElementById('signature_key').style.display = 'table-row';
-          }
-        }
+
+  def modify_single_display(self):
+    """ Modification des paramètres de l'IdP et du client sur la même page
+    
+    Versions:
+      10/08/2024 (mpham) version initiale
+      23/12/2024 (mpham) possibilité de donner la clé de vérification même en Discovery URI (pour entrer la clé HS256 de Keycloak qui n'est pas aux normes : https://github.com/keycloak/keycloak/issues/13823)
+      25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
+      30/12/2024 (mpham) End session endpoint HTTP method
+    """
+
+    idp_id = self.get_query_string_param('idpid', '')
+    app_id = self.get_query_string_param('appid', '')
+    if idp_id == '':
+      # Création
+      app_id = 'client'
+      idp = {'idp_parameters': {'oidc': {}}, 'oidc_clients': {app_id: {}}}
+    if idp_id != '' and app_id != '':
+      idp = self.conf['idps'][idp_id]
+    idp_params = idp['idp_parameters']
+    oidc_params = idp_params['oidc']
+    app_params = idp['oidc_clients'][app_id]
+
+    form_content = {
+      'idp_id': idp_id,
+      'app_id': app_id,
+      'name': idp.get('name', ''),
+      'endpoint_configuration': oidc_params.get('endpoint_configuration', 'discovery_uri'),
+      'discovery_uri': oidc_params.get('discovery_uri', ''),
+      'authorization_endpoint': oidc_params.get('', ''),
+      'token_endpoint': oidc_params.get('', ''),
+      'userinfo_endpoint': oidc_params.get('userinfo_endpoint', ''),
+      'userinfo_method': oidc_params.get('userinfo_method', 'get'),
+      'logout_endpoint': oidc_params.get('logout_endpoint', ''),
+      'issuer': oidc_params.get('issuer', ''),
+      'signature_key_configuration': oidc_params.get('signature_key_configuration', 'discovery_uri'),
+      'jwks_uri': oidc_params.get('jwks_uri', ''),
+      'signature_key': oidc_params.get('signature_key', ''),
+      'redirect_uri': app_params.get('redirect_uri', ''),
+      'post_logout_redirect_uri': app_params.get('post_logout_redirect_uri', ''),
+      'client_id': app_params.get('client_id', ''),
+      'scope': app_params.get('scope', 'openid'),
+      'response_type': app_params.get('response_type', 'code'),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+      'end_session_endpoint_method': app_params.get('end_session_endpoint_method', 'post'),
+      'display': app_params.get('display', ''),
+      'prompt': app_params.get('prompt', ''),
+      'max_age': app_params.get('max_age', ''),
+      'ui_locales': app_params.get('ui_locales', ''),
+      'id_token_hint': app_params.get('id_token_hint', ''),
+      'login_hint': app_params.get('login_hint', ''),
+      'acr_values': app_params.get('acr_values', ''),
+      'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
       }
-      </script>
-    """)
-
-    self.add_content(Help.help_window_definition())
     
-    self.send_page()
+    form = CfiForm('oidcadminsingle', form_content, action='modifyclientsingle', submit_label='Save') \
+      .hidden('idp_id') \
+      .hidden('app_id') \
+      .text('name', label='Name') \
+      .start_section('op_endpoints', title="OP endpoints") \
+        .closed_list('endpoint_configuration', label='Endpoint configuration', 
+          values={'discovery_uri': 'Discovery URI', 'local_configuration': 'Local configuration'},
+          default = 'discovery_uri'
+          ) \
+        .text('discovery_uri', label='Discovery URI', clipboard_category='discovery_uri', displayed_when="@[endpoint_configuration] = 'discovery_uri'") \
+        .text('authorization_endpoint', label='Authorization endpoint', clipboard_category='authorization_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
+        .text('token_endpoint', label='Token endpoint', clipboard_category='token_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
+        .text('logout_endpoint', label='Logout endpoint', clipboard_category='logout_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
+        .text('userinfo_endpoint', label='Userinfo endpoint', clipboard_category='userinfo_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
+        .closed_list('userinfo_method', label='Userinfo Request Method',
+          values = {'get': 'GET', 'post': 'POST'},
+          default = 'get'
+          ) \
+      .end_section() \
+      .start_section('id_token_validation', title="ID token validation") \
+        .text('issuer', label='Issuer', clipboard_category='issuer', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
+        .closed_list('signature_key_configuration', label='Signature key configuration',
+          values = {'discovery_uri': 'JWKS from discovery URI', 'jwks_uri': 'JWKS URI', 'local_configuration': 'Local configuration'},
+          default = 'discovery_uri'
+          ) \
+        .text('jwks_uri', label='JWKS URI', displayed_when="@[signature_key_configuration] = 'jwks_uri'") \
+        .text('signature_key', label='Signature key', displayed_when="@[signature_key_configuration] = 'local_configuration'") \
+      .end_section() \
+      .start_section('rp_endpoints', title="RP endpoints") \
+        .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri',
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/oidc/login/callback'); }" 
+          ) \
+        .text('post_logout_redirect_uri', label='Post logout redirect URI', clipboard_category='post_logout_redirect_uri',
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/oidc/logout/callback'); }" \
+          ) \
+      .end_section() \
+      .start_section('openid_connect_configuration', title="OpenID Connect Configuration") \
+        .text('client_id', label='Client ID', clipboard_category='client_id') \
+        .text('scope', label='Scope', clipboard_category='scope') \
+        .closed_list('response_type', label='Reponse type', 
+          values={'code': 'code'},
+          default = 'code'
+          ) \
+        .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
+          values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
+          default = 'client_secret_basic'
+          ) \
+        .closed_list('end_session_endpoint_method', label='End session endpoint HTTP method', 
+          values={'get': 'GET', 'post': 'POST'},
+          default = 'post'
+          ) \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+      .end_section() \
+      .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=True) \
+        .closed_list('display', label='Display', 
+          values={'': '', 'page': 'page', 'popup': 'popup', 'touch': 'touch', 'wap': 'wap'},
+          default = ''
+          ) \
+        .closed_list('prompt', label='Prompt', 
+          values={'': '', 'none': 'none', 'login': 'login', 'consent': 'consent', 'select_account': 'select_account'},
+          default = ''
+          ) \
+        .text('max_age', label='Max Age', clipboard_category='max_age') \
+        .text('ui_locales', label='UI Locales', clipboard_category='ui_locales') \
+        .text('id_token_hint', label='ID Token Hint', clipboard_category='id_token_hint') \
+        .text('login_hint', label='Login Hint', clipboard_category='login_hint') \
+        .text('acr_values', label='ACR Values', clipboard_category='acr_values') \
+      .end_section() \
+      .start_section('connection_options', title="Connection options") \
+        .check_box('verify_certificates', label='Verify certificates') \
+      .end_section() 
+      
+    form.set_title('OpenID Connect authentication'+('' if form_content['name'] == '' else ': '+form_content['name']))
+    form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
+
+    self.add_html(form.get_html())
+    self.add_javascript(form.get_javascript())
 
 
-  @register_url(url='modifyclient', method='POST')
-  def modify(self):
-  
+  @register_url(url='modifyclientsingle', method='POST')
+  def modify_single_modify(self):
+    """ Crée ou modifie un IdP + App OIDC (mode single) dans la configuration
+    
+    Si l'identifiant existe, ajoute un suffixe numérique
+    
+    Versions:
+      28/02/2021 (mpham)
+      24/12/2021 (mpham) ajout de redirect_uri
+      09/12/2022 (mpham) ajout de token_endpoint_auth_method
+      22/02/2023 (mpham) suppression des références à fetch_userinfo puisque l'appel à userinfo est désormais manuel
+      10/08/2024 (mpham) version 2 de la configuration
+      23/08/2024 (mpham) request parameters et strip des données du formulaire
+      25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
+      30/12/2024 (mpham) End session endpoint HTTP method
+      31/12/2024 (mpham) les identifiants des apps sont maintenant préfixés (oidc_<idp_id>_<app_id>) pour les rendre globalement uniques. Les IdP sont en idp_<ipd_id>
     """
-    Crée ou modifie un IdP dans la configuration
     
-    S'il existe, ajoute un suffixe numérique
+    idp_id = self.post_form['idp_id']
+    app_id = self.post_form['app_id']
+    if idp_id == '':
+      # Création
+      idp_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
+      app_id = f'oidc_{idp_id[4:]}_client'
+      self.conf['idps'][idp_id] = {'idp_parameters': {'oidc': {}}, 'oidc_clients': {app_id: {}}}
     
-    mpham 28/02/2021
-    mpham 24/12/2021 - ajout de redirect_uri
-    mpham 09/12/2022 - ajout de token_endpoint_auth_method
-    mpham 22/02/2023 - suppression des références à fetch_userinfo puisque l'appel à userinfo est désormais manuel
-    """
-    
-    rp_id = self.post_form['rp_id']
-    if rp_id == '':
-      rp_id = self._generate_rpid(self.post_form['name'], self.conf['oidc_clients'].keys())
-      self.conf['oidc_clients'][rp_id] = {}
-    
-    rp = self.conf['oidc_clients'][rp_id]
+    idp = self.conf['idps'][idp_id]
+    idp_params = idp['idp_parameters']
+    oidc_params = idp_params['oidc']
+    app_params = idp['oidc_clients'][app_id]
     
     if self.post_form['name'] == '':
-      self.post_form['name'] = rp_id
+      self.post_form['name'] = idp_id
+
+    idp['name'] = self.post_form['name'].strip()
+    app_params['name'] = 'OIDC Client'
     
-    for item in ['name', 'redirect_uri', 'endpoint_configuration', 'discovery_uri', 'issuer', 'authorization_endpoint', 'token_endpoint', 
-    'end_session_endpoint', 'userinfo_endpoint', 'signature_key_configuration', 'jwks_uri', 'signature_key', 
-    'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'post_logout_redirect_uri']:
-      if self.post_form[item] == '':
-        rp.pop(item, None)
+    for item in ['endpoint_configuration', 'discovery_uri', 'issuer', 'authorization_endpoint', 'token_endpoint', 
+    'end_session_endpoint', 'userinfo_endpoint', 'userinfo_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
+      if self.post_form.get(item, '') == '':
+        oidc_params.pop(item, None)
       else:
-        rp[item] = self.post_form[item]
+        oidc_params[item] = self.post_form[item].strip()
       
-    for secret in ['client_secret!']:
-      if self.post_form[secret] != '':
-        rp[secret] = self.post_form[secret]
+    for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'end_session_endpoint_method', 'post_logout_redirect_uri',
+    'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values']:
+      if self.post_form.get(item, '') == '':
+        app_params.pop(item, None)
+      else:
+        app_params[item] = self.post_form[item].strip()
+      
+    for secret in ['client_secret']:
+      if self.post_form.get(secret, '') != '':
+        app_params[secret+'!'] = self.post_form[secret]
         
     for item in ['verify_certificates']:
       if item in self.post_form:
-        rp[item] = 'on'
+        idp_params[item] = 'on'
       else:
-        rp[item] = 'off'
+        idp_params[item] = 'off'
 
     Configuration.write_configuration(self.conf)
     
-    self.send_redirection('/')
+    self.send_redirection(f"/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}")
 
 
-  @register_url(url='removeclient', method='GET')
-  def remove(self):
+  @register_page_url(url='modifymulti', method='GET', template='page_default.html', continuous=False)
+  def modify_multi_endpoint(self):
+    self.modify_multi_display()
+
   
+  def modify_multi_display(self):
+    """ Modification des paramètres du client (mais pas de l'IdP)
+    
+    Versions:
+      26/12/2024 (mpham) version initiale
+    """
+
+    idp_id = self.get_query_string_param('idpid', '')
+    app_id = self.get_query_string_param('appid', '')
+    if idp_id == '':
+      # Création de l'IdP, on redirige vers Single
+      self.modify_single_display()
+    else:
+      idp = self.conf['idps'][idp_id]
+      if app_id == '':
+        # Création du client
+        app_params = {}
+      else:
+        app_params = idp['oidc_clients'][app_id]
+        
+      # Affichage de l'IdP
+      self.add_html(f"<h1>IdP {idp['name']}</h1>")
+      idp_panel_uuid = str(uuid.uuid4())
+      self.add_html("""
+        <div>
+          <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide IdP parameters" displayLabel="Display IdP parameters">Display IdP parameters</span>
+        </div>
+        """.format(
+          div_id = idp_panel_uuid,
+          ))
+          
+      from .IdPClientAdmin import IdPClientAdmin
+      idp['id'] = idp_id
+      idp_form = IdPClientAdmin.get_idp_form(self, idp)
+          
+      self.add_html("""
+        <div id="panel_{div_id}" style="display: none;">{form}</div>
+        """.format(
+          div_id = idp_panel_uuid,
+          form = idp_form.get_html(display_only=True),
+          ))
+
+      app_params['idp_id'] = idp_id
+      app_params['app_id'] = app_id
+      app_form = self.get_app_form(app_params)
+
+      self.add_html(app_form.get_html())
+      self.add_javascript(app_form.get_javascript())
+
+
+  @register_url(url='modifymulti', method='POST')
+  def modify_multi_modify(self):
+    """ Crée ou modifie une App OIDC pour un IdP existant (mode multi)
+    
+    Si l'identifiant existe, ajoute un suffixe numérique
+    
+    Versions:
+      26/12/2024 (mpham) version initiale
+      30/12/2024 (mpham) End session endpoint HTTP method
+      31/12/2024 (mpham) les identifiants des apps sont maintenant préfixés (<idp_id>_oidc_) pour les rendre globalement uniques
+    """
+    
+    idp_id = self.post_form['idp_id']
+    idp = self.conf['idps'][idp_id]
+    
+    app_id = self.post_form['app_id']
+    if app_id == '':
+      # Création
+      if not idp.get('oidc_clients'):
+        idp['oidc_clients'] = {}
+      
+      app_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=idp['oidc_clients'].keys(), default='op', prefix=f'oidc_{idp_id[4:]}_')
+      idp['oidc_clients'][app_id] = {}
+    
+    app_params = idp['oidc_clients'][app_id]
+    
+    if self.post_form['name'] == '':
+      self.post_form['name'] = app_id
+
+    app_params['name'] = self.post_form['name'].strip()
+    
+    for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'end_session_endpoint_method', 'post_logout_redirect_uri',
+    'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values']:
+      if self.post_form.get(item, '') == '':
+        app_params.pop(item, None)
+      else:
+        app_params[item] = self.post_form[item].strip()
+      
+    for secret in ['client_secret']:
+      if self.post_form.get(secret, '') != '':
+        app_params[secret+'!'] = self.post_form[secret]
+        
+    Configuration.write_configuration(self.conf)
+    
+    self.send_redirection(f"/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}")
+
+
+  @register_page_url(url='removeapp', method='GET', template='page_default.html', continuous=False)
+  def remove_app_display(self):
+    """ Page de suppression d'un client OpenID Connect
+    
+    Versions:
+      29/12/2024 (mpham) version initiale
+    """
+
+    try:
+
+      idp_id = self.get_query_string_param('idpid', '')
+      if idp_id == '':
+        raise AduneoError(f"IdP {idp_id} does not exist", button_label="Return to homepage", action="/")
+      idp = copy.deepcopy(self.conf['idps'][idp_id])
+      
+      app_id = self.get_query_string_param('appid', '')
+      app_params = idp['oidc_clients'].get(app_id)
+      if not app_params:
+        raise AduneoError(f"OpenID Connect client {app_id} does not exist", button_label="Return to IdP page", action=f"/client/idp/admin/display?idpid={idp_id}")
+      
+      # Affichage de l'IdP
+      self.add_html(f"<h1>IdP {idp['name']}</h1>")
+      idp_panel_uuid = str(uuid.uuid4())
+      self.add_html("""
+        <div>
+          <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide IdP parameters" displayLabel="Display IdP parameters">Display IdP parameters</span>
+        </div>
+        """.format(
+          div_id = idp_panel_uuid,
+          ))
+          
+      from .IdPClientAdmin import IdPClientAdmin
+      idp['id'] = idp_id
+      idp_form = IdPClientAdmin.get_idp_form(self, idp)
+          
+      self.add_html("""
+        <div id="panel_{div_id}" style="display: none;">{form}</div>
+        """.format(
+          div_id = idp_panel_uuid,
+          form = idp_form.get_html(display_only=True),
+          ))
+
+      app_params['idp_id'] = idp_id
+      app_params['app_id'] = app_id
+      app_form = self.get_app_form(app_params)
+      app_form.set_title('Remove OIDC app '+(' '+app_params['name'] if app_params.get('name') else ''))
+      app_form.add_button('Remove', f'removeappconfirmed?idpid={idp_id}&appid={app_id}', display='all')
+      app_form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
+
+      self.add_html(app_form.get_html(display_only=True))
+      self.add_javascript(app_form.get_javascript())
+
+    except AduneoError as e:
+      self.add_html(f"""
+        <div>
+          Error: {e}
+        </div>
+        <div>
+          <span><a class="smallbutton" href="{e.action}">{e.button_label}</a></span>
+        </div>
+        """)
+
+
+  @register_url(url='removeappconfirmed', method='GET')
+  def remove_app_remove(self):
     """
     Supprime un client OpenID Connect
     
-    mpham 28/12/2021
+    Versions:
+      28/12/2021 (mpham) version initiale
+      29/12/2024 (mpham) suppression après page de confirmation
     """
 
-    rp_id = self.get_query_string_param('id')
-    if rp_id is not None:
-      self.conf['oidc_clients'].pop(rp_id, None)
+    try:
+
+      idp_id = self.get_query_string_param('idpid', '')
+      if idp_id == '':
+        raise AduneoError(f"IdP {idp_id} does not exist", action="/")
+      idp = self.conf['idps'][idp_id]
+      
+      app_id = self.get_query_string_param('appid', '')
+      app_params = idp['oidc_clients'].get(app_id)
+      if not app_params:
+        raise AduneoError(f"OpenID Connect client {app_id} does not exist", action=f"/client/idp/admin/display?idpid={idp_id}")
+
+      del idp['oidc_clients'][app_id]
       Configuration.write_configuration(self.conf)
+      self.send_redirection(f"/client/idp/admin/display?idpid={idp_id}")
       
-    self.send_redirection('/')
+    except AduneoError as e:
+      self.send_redirection(e.action)
 
 
-  def _generate_rpid(self, name, existing_names):
+  def get_app_form(handler, app_params:dict):
+    """ Retourne un RequesterForm avec un client OIDC (sans les paramètres de l'IdP)
     
+    Args:
+      handler: objet de type BaseHandler, pour accès à la configuration
+      app_params: dict avec les paramètres du client OIDC (RP), dans le formalisme du fichier de configuration
+             Attention : il faut ajouter deux champs
+              - idp_id avec l'identifiant unique de l'IdP
+              - app_id avec l'identifiant unique du client
+             
+    Returns:
+      objet RequesterForm
+    
+    Versions:
+      26/12/2024 (mpham) version initiale adaptée de modify_single_display
+      30/12/2024 (mpham) End session endpoint HTTP method
     """
-    Génère un identifiant à partir d'un nom
-    en ne retenant que les lettres et les chiffres
-    et en vérifiant que l'identifiant n'existe pas déjà
+
+    form_content = {
+      'idp_id': app_params['idp_id'],
+      'app_id': app_params['app_id'],
+      'name': app_params.get('name', ''),
+      'redirect_uri': app_params.get('redirect_uri', ''),
+      'post_logout_redirect_uri': app_params.get('post_logout_redirect_uri', ''),
+      'client_id': app_params.get('client_id', ''),
+      'scope': app_params.get('scope', 'openid'),
+      'response_type': app_params.get('response_type', 'code'),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+      'end_session_endpoint_method': app_params.get('end_session_endpoint_method', 'post'),
+      'display': app_params.get('display', ''),
+      'prompt': app_params.get('prompt', ''),
+      'max_age': app_params.get('max_age', ''),
+      'ui_locales': app_params.get('ui_locales', ''),
+      'id_token_hint': app_params.get('id_token_hint', ''),
+      'login_hint': app_params.get('login_hint', ''),
+      'acr_values': app_params.get('acr_values', ''),
+      }
     
-    S'il existe, ajoute un suffixe numérique
-    
-    mpham 28/02/2021
-    """
-    
-    base = name
-    ok = False
-    rank = 0
-    
-    while not ok:
-      id = ''.join(c for c in base.casefold() if c.isalnum())
-      if id == '':
-        id = 'oidc_rp'
-      if rank > 0:
-        id = id+str(rank)
+    form = CfiForm('oidcadminmulti', form_content, action='modifymulti', submit_label='Save') \
+      .hidden('idp_id') \
+      .hidden('app_id') \
+      .text('name', label='Name') \
+      .start_section('rp_endpoints', title="RP endpoints") \
+        .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri',
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/oidc/login/callback'); }" 
+          ) \
+        .text('post_logout_redirect_uri', label='Post logout redirect URI', clipboard_category='post_logout_redirect_uri',
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/oidc/logout/callback'); }" \
+          ) \
+      .end_section() \
+      .start_section('openid_connect_configuration', title="OpenID Connect Configuration") \
+        .text('client_id', label='Client ID', clipboard_category='client_id') \
+        .text('scope', label='Scope', clipboard_category='scope') \
+        .closed_list('response_type', label='Reponse type', 
+          values={'code': 'code'},
+          default = 'code'
+          ) \
+        .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
+          values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
+          default = 'client_secret_basic'
+          ) \
+        .closed_list('end_session_endpoint_method', label='End session endpoint HTTP method', 
+          values={'get': 'GET', 'post': 'POST'},
+          default = 'post'
+          ) \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+      .end_section() \
+      .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=True) \
+        .closed_list('display', label='Display', 
+          values={'': '', 'page': 'page', 'popup': 'popup', 'touch': 'touch', 'wap': 'wap'},
+          default = ''
+          ) \
+        .closed_list('prompt', label='Prompt', 
+          values={'': '', 'none': 'none', 'login': 'login', 'consent': 'consent', 'select_account': 'select_account'},
+          default = ''
+          ) \
+        .text('max_age', label='Max Age', clipboard_category='max_age') \
+        .text('ui_locales', label='UI Locales', clipboard_category='ui_locales') \
+        .text('id_token_hint', label='ID Token Hint', clipboard_category='id_token_hint') \
+        .text('login_hint', label='Login Hint', clipboard_category='login_hint') \
+        .text('acr_values', label='ACR Values', clipboard_category='acr_values') \
+      .end_section()
       
-      if id in existing_names:
-        rank = rank+1
-      else:
-        ok = True
-        
-    return id
+    form.set_title('OpenID Connect authentication'+('' if form_content['name'] == '' else ': '+form_content['name']))
+    form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
+
+    return form
+    
+

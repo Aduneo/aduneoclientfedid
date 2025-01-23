@@ -20,12 +20,3 @@ function copyValue(colId) {
   //copyTextToClipboard(item.innerHTML.replaceAll('&nbsp;', ' ').replaceAll('<br>', "\\n"))
   copyTextToClipboard(item.innerHTML)
 }
-function copyTextToClipboard(text) {
-  var tempArea = document.createElement('textarea')
-  tempArea.value = text
-  document.body.appendChild(tempArea)
-  tempArea.select()
-  tempArea.setSelectionRange(0, 99999)
-  document.execCommand("copy")
-  document.body.removeChild(tempArea)
-}

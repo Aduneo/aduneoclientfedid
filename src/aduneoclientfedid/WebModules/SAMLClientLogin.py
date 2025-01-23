@@ -14,25 +14,32 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from ..BaseServer import AduneoError
-from ..BaseServer import BaseHandler
-from ..BaseServer import register_web_module, register_url
-from ..Configuration import Configuration
-from ..Help import Help
-from .Clipboard import Clipboard
-from .FlowHandler import FlowHandler
-from datetime import datetime
-from lxml import etree
 import base64
+import copy
 import html
 import json
 import os
 import requests
+import time
 import traceback
 import urllib.parse
 import uuid
 import xmlsec
 import zlib
+
+from datetime import datetime
+from lxml import etree
+from ..BaseServer import AduneoError
+from ..BaseServer import BaseHandler
+from ..BaseServer import register_web_module, register_url, register_page_url
+from ..CfiForm import CfiForm
+from ..Configuration import Configuration
+from ..Context import Context
+from ..Help import Help
+from .Clipboard import Clipboard
+from .FlowHandler import FlowHandler
+from .SAMLClientAdmin import SAMLClientAdmin
+
 
 """
   Un contexte de chaque cinématique est conservé dans la session.
@@ -64,263 +71,241 @@ import zlib
 
 @register_web_module('/client/saml/login')
 class SAMLClientLogin(FlowHandler):
- 
-  @register_url(url='preparerequest', method='GET')
+
+  @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=False)
   def prepare_request(self):
+    """
+      Prépare la requête d'autorisation SAML
+
+    Versions:
+      02/01/2025 (mpham) version initiale copiée d'OAuth 2 et de l'ancienne version de SAML
+    """
 
     self.log_info('--- Start SAML flow ---')
 
-    app_id = self.get_query_string_param('id')
-    context_id = self.get_query_string_param('contextid')
-    
-    context = None
-    if context_id:
-      context = self.get_session_value(context_id)
-    
-    if context is None:
-      if app_id is None:
-        self.send_redirection('/')
+    try:
+
+      idp_id = self.get_query_string_param('idpid')
+      app_id = self.get_query_string_param('appid')
+
+      fetch_configuration_document = False
+
+      new_auth = True
+      if self.context is None:
+        if idp_id is None or app_id is None:
+          raise AduneoError(f"Missing idpip or appid in URL", button_label="Homepage", action="/")
       else:
+        new_auth = False
+      
+      if self.get_query_string_param('newauth'):
+        new_auth = True
+
+      if new_auth:
         # Nouvelle requête
-        if app_id not in self.conf['saml_clients']:
-          self.send_redirection('/')
-        client = self.conf['saml_clients'][app_id]
-        self.log_info('  '*1 + 'for IdP '+client['name'])
+        idp = copy.deepcopy(self.conf['idps'][idp_id])
+        idp_params = idp['idp_parameters'].get('saml')
+        if not idp_params:
+          raise AduneoError(f"SAML IdP parameters have not been defined for IdP {idp_id}", button_label="IdP parameters", action=f"/client/idp/admin/modify?idpid={idp_id}")
+        
+        app_params = idp['saml_clients'][app_id]
 
-        # récupération des clés
-        if client.get('sp_key_configuration').casefold() == 'server keys':
-          self.log_info('Fetching default SAML keys as SP keys')
-          
-          try:
-            cert_path = self.hreq.check_saml_certificate_exists()
-            with open(cert_path) as cert_file:
-              client['sp_certificate'] = ''.join(cert_file.readlines()[1:-1]).replace('\n', '')
-            
-            (cert_path_without_ext, ext) = os.path.splitext(cert_path)
-            key_path = cert_path_without_ext+'.key'
-            with open(key_path) as key_file:
-              client['sp_private_key'] = ''.join(key_file.readlines()[1:-1]).replace('\n', '')
-              
-          except Exception as e:
-            self.log_info("  Default SAML certificate not found or read error")
-            client['sp_certificate'] = ''
-            client['sp_private_key'] = ''
+        # On récupère name des paramètres de l'IdP
+        idp_params['name'] = idp['name']
+
+        # si le contexte existe, on le conserve (cas newauth)
+        if self.context is None:
+          self.context = Context()
+        self.context['idp_id'] = idp_id
+        self.context['app_id'] = app_id
+        self.context['flow_type'] = 'SAML'
+        self.context['idp_params'] = idp_params
+        self.context['app_params'][app_id] = app_params
+        self.set_session_value(self.context['context_id'], self.context)
+
+      else:
+        # Rejeu de requête (conservée dans la session)
+        idp_id = self.context['idp_id']
+        app_id = self.context['app_id']
+        idp_params = self.context.idp_params
+        app_params = self.context.last_app_params
       
-    else:
-      # Rejeu de requête (conservée dans la session)
-      client = context['request']
-      app_id = context['initial_flow']['app_id']
-      #self.del_session_value(context_id)   TODO
+      self.log_info(('  ' * 1) + f"for SP {app_params['name']} of IdP {idp_params['name']}")
+      self.add_html(f"<h1>IdP {idp_params['name']} SAML SP {app_params['name']}</h1>")
       
-      conf_client = self.conf['saml_clients'][app_id]
-      client['name'] = conf_client['name']
-      self.log_info('  '*1 + 'for IdP '+client['name'])
-      
-    relay_state = str(uuid.uuid4())
-                                          
-    self.add_content("<h1>SAML SP: "+client["name"]+"</h1>")
-    self.add_content('<form name="request" action="/client/saml/login/sendrequest" method="post">')
-    self.add_content('<input name="app_id" value="'+html.escape(app_id)+'" type="hidden" />')
-    self.add_content('<table class="fixed">')
-     
-    self.add_content('<tr><td>IdP Entity ID</td><td><input name="idp_entity_id" value="'+html.escape(client.get('idp_entity_id', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>IdP Certificate</td><td><textarea name="idp_certificate" rows="10" class="intable">'+html.escape(client.get('idp_certificate', ''))+'</textarea></td></tr>')
-    self.add_content('<tr><td>IdP Single Sign-On URL</td><td><input name="idp_sso_url" value="'+html.escape(client.get('idp_sso_url', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>SP Entity ID</td><td><input name="sp_entity_id" value="'+html.escape(client.get('sp_entity_id', ''))+'" class="intable" type="text"></td></tr>')
-    self.add_content('<tr><td>SP Assertion Consumer Service URL</td><td><input name="sp_acs_url" value="'+html.escape(client.get('sp_acs_url', ''))+'" class="intable" type="text"></td></tr>')
+      relay_state = str(uuid.uuid4())
 
-    self.add_content('<tr><td>NameID Policy</td><td>')
-    self.add_content('<div class="select-editable" style="width: 520px;">')
-    self.add_content('<select onchange="this.nextElementSibling.value=this.value" style="width: 520px;">')
-    nameid_list = [
-      'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
-      'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
-      'urn:oasis:names:tc:SAML:1.1:nameid-format:X509SubjectName',
-      'urn:oasis:names:tc:SAML:1.1:nameid-format:WindowsDomainQualifiedName',
-      'urn:oasis:names:tc:SAML:2.0:nameid-format:kerberos',
-      'urn:oasis:names:tc:SAML:2.0:nameid-format:entity',
-      'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
-      'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
-      ]
-    for option in nameid_list:
-      self.add_content('<option value="'+option+'">'+option+'</option>')
-    self.add_content('</select>')
-    self.add_content('<input name="nameid_policy" value="'+html.escape(client.get('nameid_policy', ''))+'" class="intable" type="text" style="width: 500px;">')
-    self.add_content('</div>')
-    self.add_content('</td></tr>')
-    
-    self.add_content('<tr><td>Authentication binding</td><td><select name="authentication_binding" class="intable" onchange="reset_keys_fields()">')
-    for value in ('urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'):
-      selected = ''
-      if value == client.get('authentication_binding', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'):
-        selected = ' selected'
-      self.add_content('<option value="'+value+'"'+selected+'>'+html.escape(value)+'</value>')
-    self.add_content('</select></td></tr>')
+      # possibilités de SAML en binding
+      idp_authentication_binding_capabilities = idp_params.get('idp_authentication_binding_capabilities')
+      if not idp_authentication_binding_capabilities:
+        idp_authentication_binding_capabilities = self.conf.get('/default/saml/idp_authentication_binding_capabilities')
+        if not idp_authentication_binding_capabilities:
+          idp_authentication_binding_capabilities = ['urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST']
 
-    checked = ''
-    if Configuration.is_on(client.get('sign_auth_request', 'off')):
-      checked = ' checked'
-    self.add_content('<tr><td>Sign authentication request</td><td><input name="sign_auth_request" type="checkbox"'+checked+' onchange="reset_keys_fields()"></td></tr>')
-
-    display_sp_private_key = 'none'
-    display_sp_certificate = 'none'
-    if Configuration.is_on(client.get('sign_auth_request', 'off')):
-      display_sp_private_key = 'table-row'
-      if client.get('authentication_binding') == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Post':
-        display_sp_certificate = 'table-row'
-
-    self.add_content('<tr id="sp_private_key_row" style="display: '+display_sp_private_key+'"><td>SP Private Key</td><td><textarea name="sp_private_key" rows="10" class="intable">'+html.escape(client['sp_private_key'])+'</textarea></td></tr>')
-    self.add_content('<tr id="sp_certificate_row" style="display: '+display_sp_certificate+'"><td>SP Certificate</td><td><textarea name="sp_certificate" rows="10" class="intable">'+html.escape(client['sp_certificate'])+'</textarea></td></tr>')
-      
-    self.add_content('</table>')
-    
-    self.add_content('<div style="padding-top: 20px; padding-bottom: 12px;"><div style="padding-bottom: 6px;"><strong>Authentication request</strong> <img title="Copy request" class="smallButton" src="/images/copy.png" onClick="copyRequest()"/></div>')
-    self.add_content('<span id="auth_request" style="font-family: Consolas; font-size: 12px; white-space: pre;"></span></div>')
-    self.add_content('<input name="authentication_request" type="hidden">')
-    self.add_content('<input name="relay_state" value="'+html.escape(relay_state)+'" type="hidden">')
-    
-    self.add_content('<button type="submit" class="button" onclick="openConsole();">Send to IdP</button>')
-    self.add_content('</form>')
-
-    self.add_content("""
-      <script>
-      function updateAuthRequest() {
-
-        var request = "<samlp:AuthnRequest\\r\\n"
-        request += "  xmlns:samlp=\\\"urn:oasis:names:tc:SAML:2.0:protocol\\\" \\r\\n"
-        request += "  xmlns:saml=\\\"urn:oasis:names:tc:SAML:2.0:assertion\\\" \\r\\n"
-        request += "  ID=\\\"<ID>\\\" \\r\\n"
-        request += "  Version=\\\"2.0\\\" \\r\\n"
-        request += "  ProviderName=\\\"{provider_name}\\\" \\r\\n"
-        request += "  IssueInstant=\\\"{timestamp}\\\" \\r\\n"
-        request += "  Destination=\\\"{destination}\\\" \\r\\n"
-        request += "  ProtocolBinding=\\\"{protocol_binding}\\\" \\r\\n"
-        request += "  AssertionConsumerServiceURL=\\\"{acs_url}\\\"> \\r\\n"
-        request += "\\r\\n"
-        request += "  <saml:Issuer>{sp_id}</saml:Issuer> \\r\\n"
-        request += "  <samlp:NameIDPolicy Format=\\\"{nameid_policy}\\\" AllowCreate=\\\"true\\\"/> \\r\\n"
-        request += "</samlp:AuthnRequest>"
-      
-        request = request.replace('{provider_name}', '"""+client['name']+"""')
-        request = request.replace('{timestamp}', (new Date()).toISOString())
-        request = request.replace('{destination}', document.request.idp_sso_url.value)
-        request = request.replace('{protocol_binding}', document.request.authentication_binding.value)
-        request = request.replace('{acs_url}', document.request.sp_acs_url.value)
-        request = request.replace('{sp_id}', document.request.sp_entity_id.value)
-        request = request.replace('{nameid_policy}', document.request.nameid_policy.value)
-
-        document.getElementById('auth_request').textContent = request;
-        document.request.authentication_request.value = request;
-      }
-      var input = document.request.getElementsByTagName('input');
-      Array.prototype.slice.call(input).forEach(function(item, index) {
-        if (item.type == 'text') { item.addEventListener("input", updateAuthRequest); }
-      });
-      var select = document.request.getElementsByTagName('select');
-      Array.prototype.slice.call(select).forEach(function(item, index) {
-        if (item.name != 'signature_key_configuration') {
-          item.addEventListener("change", updateAuthRequest);
-        }
-      });
-      updateAuthRequest();
-      
-      function copyRequest() {
-        copyTextToClipboard(document.request.authentication_request.value);
-      }
-      function copyTextToClipboard(text) {
-        alert(text)
-        var tempArea = document.createElement('textarea')
-        tempArea.value = text
-        document.body.appendChild(tempArea)
-        tempArea.select()
-        tempArea.setSelectionRange(0, 99999)
-        document.execCommand("copy")
-        document.body.removeChild(tempArea)
+      form_content = {
+        'hr_context': self.context['context_id'],
+        'name': app_params.get('name', ''),
+        'idp_entity_id': idp_params.get('idp_entity_id', ''),
+        'idp_certificate': idp_params.get('idp_certificate', ''),
+        'idp_sso_url': idp_params.get('idp_sso_url', ''),
+        'sp_entity_id': app_params.get('sp_entity_id', ''),
+        'sp_acs_url': app_params.get('sp_acs_url', ''),
+        'nameid_policy': app_params.get('nameid_policy', 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'),
+        'authentication_binding': app_params.get('authentication_binding', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'),
+        'sign_auth_request': Configuration.is_on(app_params.get('sign_auth_request', 'off')),
+        'sp_private_key': '',
+        'sp_certificate': app_params.get('sp_certificate', ''),
+        'relay_state': relay_state,
+        'request_id': 'id'+str(uuid.uuid4()),
+        'authentication_request': '',
       }
       
-      function reset_keys_fields() {
-        if (document.request.sign_auth_request.checked) {
-          document.getElementById('sp_private_key_row').style.display = 'table-row';
-          if (document.request.authentication_binding.value == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST') {
-            document.getElementById('sp_certificate_row').style.display = 'table-row';
-          } else {
-            document.getElementById('sp_certificate_row').style.display = 'none';
-          }
-        } else {
-          document.getElementById('sp_private_key_row').style.display = 'none';
-          document.getElementById('sp_certificate_row').style.display = 'none';
-        }
-      }
-      </script>
-    """)
-      
-    self.send_page()
+      form = CfiForm('samlauth', form_content, action='/client/saml/login/sendrequest', mode='new_page') \
+        .hidden('hr_context') \
+        .hidden('name') \
+        .hidden('request_id') \
+        .start_section('idp_params', title="IdP parameters") \
+          .text('idp_entity_id', label='IdP entity ID', clipboard_category='idp_entity_id') \
+          .text('idp_sso_url', label='IdP SSO URL', clipboard_category='idp_sso_url', on_change='updateAuthenticationRequest(cfiForm)') \
+          .textarea('idp_certificate', label='IdP certificate', rows=10, clipboard_category='idp_certificate', upload_button='Upload IdP certificate') \
+        .end_section() \
+        .start_section('sp_parameters', title="SP parameters") \
+          .text('sp_entity_id', label='SP entity ID', clipboard_category='sp_entity_id', on_change='updateAuthenticationRequest(cfiForm)') \
+          .text('sp_acs_url', label='SP Assertion Consumer Service URL', clipboard_category='sp_acs_url', on_change='updateAuthenticationRequest(cfiForm)') \
+          .open_list('nameid_policy', label='NameID policy', clipboard_category='nameid_policy', on_change='updateAuthenticationRequest(cfiForm)', 
+            hints = [
+              'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
+              'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
+              'urn:oasis:names:tc:SAML:1.1:nameid-format:X509SubjectName',
+              'urn:oasis:names:tc:SAML:1.1:nameid-format:WindowsDomainQualifiedName',
+              'urn:oasis:names:tc:SAML:2.0:nameid-format:kerberos',
+              'urn:oasis:names:tc:SAML:2.0:nameid-format:entity',
+              'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
+              'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
+              ]) \
+          .closed_list('authentication_binding', label='Authentication binding', on_change='updateAuthenticationRequest(cfiForm)',
+            values = {value: value for value in idp_authentication_binding_capabilities},
+            default = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+            ) \
+          .check_box('sign_auth_request', label='Sign authentication request') \
+          .textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sign_auth_request]") \
+          .textarea('sp_certificate', label='SP certificate', rows=10, clipboard_category='sp_certificate', upload_button='Upload SP certificate', displayed_when="@[sign_auth_request]") \
+        .end_section() \
+        .start_section('authn_params', title="Authentication request") \
+          .text('relay_state', label='Relay state', clipboard_category='relay_state') \
+          .textarea('authentication_request', label='SAML authentication request', rows=10, clipboard_category='authentication_request', upload_button='Upload XML', on_load='updateAuthenticationRequest(cfiForm)') \
+        .end_section() \
+
+      self.add_javascript_include('/javascript/SAMLClientLogin.js')
+      self.add_html(form.get_html())
+      self.add_javascript(form.get_javascript())
+
+    except AduneoError as error:
+      self.add_html('<h4>Error: '+html.escape(str(error))+'</h4>')
+      self.add_html(f"""
+        <div>
+          <span><a class="middlebutton" href="{error.action}">{error.button_label}</a></span>
+        </div>
+        """)
+    except Exception as error:
+      self.log_error(('  ' * 1)+traceback.format_exc())
+      self.add_html('<h4>Refresh error: '+html.escape(str(error))+'</h4>')
       
 
   @register_url(url='sendrequest', method='POST')
   def send_request(self):
-  
-    self.log_info('Redirection to SAML IdP requested')
-    relay_state = self.post_form.get('relay_state')
+    """
+      Prépare la requête d'autorisation SAML
 
-    app_id = self.post_form['app_id']
-    conf_client = self.conf['saml_clients'][app_id]
+    Versions:
+      02/01/2025 (mpham) version initiale copiée d'OAuth 2 et de l'ancienne version de SAML
+    """
 
-    context = {"context_id": relay_state, "initial_flow": {"app_id": app_id, "flow_type": "SAML"}, "request": {}, "tokens": {}}
-    request = context['request']
-    for item in ['app_id', 'relay_state', 'idp_entity_id', 'idp_certificate', 'idp_sso_url', 'sp_entity_id', 
-      'sp_acs_url', 'authentication_binding', 'sp_private_key', 'sp_certificate', 'sign_auth_request']:
-      if self.post_form.get(item, '') != '':
-        request[item] = self.post_form[item]
-    request['nameid_policy'] = self.post_form.get('nameid_policy', 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified')
+    try:
+    
+      if not self.context:
+        self.log_error("""context_id not found in form data {data}""".format(data=self.post_form))
+        raise AduneoError("Context not found in request")
 
-    self.set_session_value(relay_state, context)
+      self.log_info('Redirection to SAML IdP requested')
+      relay_state = self.post_form.get('relay_state', '')
+      if relay_state == '':
+        raise AduneoError("Relay state not found in request")
+      self.log_info(f"  for relay state {relay_state}")
+
+      # pour récupérer le contexte depuis le state (puisque c'est la seule information exploitable retournée par l'IdP)
+      self.set_session_value(relay_state, self.context['context_id'])
+
+      # Mise à jour dans le contexte des paramètres liés à l'IdP
+      idp_params = self.context.idp_params
+      for item in ['idp_entity_id', 'idp_certificate', 'idp_sso_url']:
+        idp_params[item] = self.post_form.get(item, '').strip()
+
+      # Mise à jour dans le contexte des paramètres liés au client courant
+      app_params = self.context.last_app_params
+      for item in ['sp_entity_id', 'sp_acs_url', 'nameid_policy', 'authentication_binding', 'sp_private_key', 'sp_certificate', 'request_id']:
+        app_params[item] = self.post_form.get(item, '').strip()
         
-    authentication_binding = request.get('authentication_binding', '')
-    if authentication_binding == '':
-      error_message = 'Authentication binding not found'
-      self.log_error(error_message)
-      self.send_page(error_message)
-    if authentication_binding == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect':
-      self.send_request_redirect(context, conf_client)
-    elif authentication_binding == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST':
-      self.send_request_post(context, conf_client)
-    else:
-      error_message = 'Authentication binding '+authentication_binding+' not supported'
-      self.log_error(error_message)
-      self.send_page(error_message)
+      if 'sign_auth_request' in self.post_form:
+        app_params['sign_auth_request'] = 'on'
+      else:
+        app_params['sign_auth_request'] = 'off'
 
-  
-  def send_request_redirect(self, context, conf_client):
+      # récupération de la clé privée dans la configuration
+      if app_params['sp_private_key'] == '':
+        self.log_info("  private key not in form, retrieving it from configuration")
+        conf_idp = self.conf['idps'][self.context.idp_id]
+        conf_app = conf_idp['saml_clients'][self.context.app_id]
+        if conf_app.get('sp_key_configuration', 'clientfedid_keys') == 'specific_keys':
+          self.log_info("  private key was in the SP configuration")
+          app_params['sp_private_key'] = conf_app.get('sp_private_key', '')
+        else:
+          self.log_info("  private key is the default SAML private key")
+          app_params['sp_private_key'] = SAMLClientAdmin._get_clientfedid_private_key()
+
+      # détermination de la méthode d'envoi à l'IdP
+      authentication_binding = self.post_form.get('authentication_binding', '')
+      self.log_info('  with binding '+authentication_binding)
+      if authentication_binding == '':
+        raise AduneoError("Authentication binding not found")
+      if authentication_binding == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect':
+        self.send_request_redirect()
+      elif authentication_binding == 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST':
+        self.send_request_post()
+      else:
+        raise AduneoError(f"Authentication binding {authentication_binding} not supported")
+
+    except Exception as error:
+      if not isinstance(error, AduneoError):
+        self.log_error(traceback.format_exc())
+      self.log_error("""Can't send the request to the IdP, technical error {error}""".format(error=error))
+      self.add_html("""<div>Can't send the request to the IdP, technical error {error}</div>""".format(error=error))
+      self.add_html(f"""
+        <div>
+          <span><a class="middlebutton" href="{f"/client/idp/admin/display?idpid={self.context.idp_id}"}">IdP parameters</a></span>
+        </div>
+        """)
+      self.send_page()
+
+
+  def send_request_redirect(self):
+    """ Envoie la requête d'authentification en HTTP-Redirect
     
-    self.log_info('  sending request in HTTP Redirect')
-    
-    request = context['request']
-    relay_state = request['relay_state']
-    
-    req_template = """
-    <samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="{id}" Version="2.0" ProviderName="{provider_name}" IssueInstant="{timestamp}" Destination="{destination}" ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" AssertionConsumerServiceURL="{acs_url}">
-      <saml:Issuer>{sp_id}</saml:Issuer>
-      <samlp:NameIDPolicy Format="{nameid_policy}" AllowCreate="true"/>
-    </samlp:AuthnRequest>
+    Versions:
+      00/00/2022 (mpham) version initiale
+      03/03/2023 (mpham) le protocolBinding était à POST au lieu de Redirect dans la requête
+      03/01/2025 (mpham) adaptation à CfiForm
     """
     
-    req_id = 'id'+str(uuid.uuid4())
-    request['request_id'] = req_id   # pour validation du subject de l'assertion
-    timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')     # 2014-07-16T23:52:45Z
+    self.log_info('  sending request in HTTP Redirect')
+
+    idp_params = self.context.idp_params
+    app_params = self.context.last_app_params
     
-    xml_req = req_template.format(
-      id = req_id, 
-      provider_name = conf_client['name'], 
-      timestamp = timestamp, 
-      destination = request['idp_sso_url'], 
-      acs_url = request['sp_acs_url'], 
-      sp_id = request['sp_entity_id'],
-      nameid_policy = request['nameid_policy']
-      )
+    request = self.post_form.get('authentication_request', '')
+    relay_state = self.post_form.get('relay_state', '')
     
     self.log_info("Authentication request:")
-    self.log_info(xml_req)
+    self.log_info(request)
     
     # on deflate la requête
     compress = zlib.compressobj(
@@ -338,7 +323,7 @@ class SAMLClientLogin(FlowHandler):
                                   #   3 = Z_RLE
                                   #   4 = Z_FIXED
     )
-    deflated_req = compress.compress(xml_req.encode('iso-8859-1'))
+    deflated_req = compress.compress(request.encode('iso-8859-1'))
     deflated_req += compress.flush()    
 
     base64_req = base64.b64encode(deflated_req)
@@ -347,7 +332,7 @@ class SAMLClientLogin(FlowHandler):
     
     urlencoded_req = urllib.parse.quote_plus(base64_req)
 
-    sign_auth_request = request.get('sign_auth_request', 'off')
+    sign_auth_request = self.post_form.get('sign_auth_request', 'off')
     if Configuration.is_on(sign_auth_request):
     
       # Signature de la requête
@@ -363,9 +348,9 @@ class SAMLClientLogin(FlowHandler):
 
       xmlsec.enable_debug_trace(True)
 
-      if request.get('sp_private_key', '') == '':
+      if app_params.get('sp_private_key', '') == '':
         raise AduneoError("Missing private key, can't sign request")
-      sp_private_key = '-----BEGIN PRIVATE KEY-----\n' + request['sp_private_key'] + '\n-----END PRIVATE KEY-----'
+      sp_private_key = '-----BEGIN PRIVATE KEY-----\n' + app_params['sp_private_key'] + '\n-----END PRIVATE KEY-----'
 
       ctx = xmlsec.SignatureContext()
       ctx.key = xmlsec.Key.from_memory(sp_private_key, xmlsec.KeyFormat.PEM, None)
@@ -373,7 +358,7 @@ class SAMLClientLogin(FlowHandler):
       base64_signature = base64.b64encode(signature).decode()
       self.log_info('Signature: '+base64_signature)
 
-      url = self.post_form['idp_sso_url'] + '?' + message + '&signature=' + urllib.parse.quote_plus(base64_signature)
+      url = idp_params['idp_sso_url'] + '?' + message + '&signature=' + urllib.parse.quote_plus(base64_signature)
       self.log_info('URL: '+url)
       self.log_info('Sending redirection')
       self.send_redirection(url)
@@ -381,52 +366,33 @@ class SAMLClientLogin(FlowHandler):
     else:
       # requête non signée
     
-      url = request['idp_sso_url'] + '?SAMLRequest=' + urlencoded_req + '&RelayState=' + urllib.parse.quote_plus(relay_state)
+      url = self.post_form['idp_sso_url'] + '?SAMLRequest=' + urlencoded_req + '&RelayState=' + urllib.parse.quote_plus(relay_state)
       self.log_info('URL: '+url)
       self.log_info('Sending redirection')
       
       self.send_redirection(url)
 
 
-  def send_request_post(self, context, conf_client):
+  def send_request_post(self):
 
     self.log_info('  sending request in HTTP POST')
     
-    request = context['request']
-    relay_state = request['relay_state']
-
-    req_id = 'id'+str(uuid.uuid4())
-    request['request_id'] = req_id   # pour validation du subject de l'assertion
-    self.log_info('Constructing authentication request '+req_id)
-    timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')     # 2014-07-16T23:52:45Z
-
-    req_template = """
-    <samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="{id}" Version="2.0" ProviderName="{provider_name}" IssueInstant="{timestamp}" Destination="{destination}" ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" AssertionConsumerServiceURL="{acs_url}">
-      <saml:Issuer>{sp_id}</saml:Issuer>
-      <samlp:NameIDPolicy Format="{nameid_policy}" AllowCreate="true"/>
-    </samlp:AuthnRequest>
-    """
-
-    xml_req = req_template.format(
-      id = req_id, 
-      provider_name = conf_client['name'], 
-      timestamp = timestamp, 
-      destination = request['idp_sso_url'], 
-      acs_url = request['sp_acs_url'], 
-      sp_id = request['sp_entity_id'],
-      nameid_policy = request['nameid_policy']
-      )
+    idp_params = self.context.idp_params
+    app_params = self.context.last_app_params
+    
+    request = self.post_form.get('authentication_request', '')
+    relay_state = self.post_form.get('relay_state', '')
     
     self.log_info("Authentication request:")
-    self.log_info(xml_req)
+    self.log_info(request)
     
-    byte_xml_req = xml_req.encode()
+    byte_xml_req = request.encode()
 
     sign_auth_request = self.post_form.get('sign_auth_request', 'off')
     if Configuration.is_on(sign_auth_request):
     
       # Signature de la requête
-      template = etree.fromstring(xml_req)
+      template = etree.fromstring(request)
       xmlsec.tree.add_ids(template, ["ID"]) 
 
       # on crée le noeud pour la signature
@@ -440,20 +406,19 @@ class SAMLClientLogin(FlowHandler):
       issuer_el = template.find('{urn:oasis:names:tc:SAML:2.0:assertion}Issuer')
       issuer_el.addnext(signature_node)
 #      template.append(signature_node)
-      ref = xmlsec.template.add_reference(signature_node, xmlsec.Transform.SHA1, uri='#'+req_id)
+      ref = xmlsec.template.add_reference(signature_node, xmlsec.Transform.SHA1, uri='#'+app_params['request_id'])
       xmlsec.template.add_transform(ref, xmlsec.Transform.ENVELOPED)
       xmlsec.template.add_transform(ref, xmlsec.constants.TransformExclC14N)
       key_info = xmlsec.template.ensure_key_info(signature_node)
       xmlsec.template.add_x509_data(key_info)  
 
       # on signe le XML
-
-      if request.get('sp_private_key', '') == '':
+      if app_params.get('sp_private_key', '') == '':
         raise AduneoError("Missing private key, can't sign request")
-      sp_private_key = '-----BEGIN PRIVATE KEY-----\n' + request['sp_private_key'] + '\n-----END PRIVATE KEY-----'
-      if request.get('sp_certificate', '') == '':
+      sp_private_key = '-----BEGIN PRIVATE KEY-----\n' + app_params['sp_private_key'] + '\n-----END PRIVATE KEY-----'
+      if self.post_form.get('sp_certificate', '') == '':
         raise AduneoError("Missing certificate, can't sign request")
-      sp_certificate = '-----BEGIN CERTIFICATE-----\n' + request['sp_certificate'] + '\n-----END CERTIFICATE-----'
+      sp_certificate = '-----BEGIN CERTIFICATE-----\n' + app_params['sp_certificate'] + '\n-----END CERTIFICATE-----'
 
       ctx = xmlsec.SignatureContext()
       ctx.key = xmlsec.Key.from_memory(sp_private_key, xmlsec.KeyFormat.PEM, None)
@@ -476,7 +441,7 @@ class SAMLClientLogin(FlowHandler):
       <input type="hidden" name="SAMLRequest" value="{saml_request}" />
       <input type="hidden" name="RelayState" value="{relay_state}" />
       </form></body></html>
-    """.format(idp_sso_url=self.post_form['idp_sso_url'], saml_request=html.escape(base64_req), relay_state=html.escape(relay_state))
+    """.format(idp_sso_url=idp_params['idp_sso_url'], saml_request=html.escape(base64_req), relay_state=html.escape(relay_state))
     
     self.log_info("SAML POST form:")
     self.log_info(saml_form)
@@ -484,9 +449,8 @@ class SAMLClientLogin(FlowHandler):
     self.add_content(saml_form)
 
     
-  @register_url(url='acs', method='POST')
+  @register_page_url(url='acs', method='POST', template='page_default.html', continuous=True)
   def authcallback(self):
-    
     """
     Retour d'authentification (endpoint ACS)
     
@@ -508,61 +472,61 @@ class SAMLClientLogin(FlowHandler):
       les informations proviennent du client et tout rentre dans l'ordre
       (il faut cependant faire attention à ne pas créer une nouvelle session, voir Server.do_POST)
     
-    mpham 03/03/2021-05/03/2021
-    mpham (28/02/2023) le bouton de copie n'est pas affiché pour les résultats de type 'passed'
+    Versions:
+      03/03/2021-05/03/2021 (mpham) version initiale
+      28/02/2023 (mpham) le bouton de copie n'est pas affiché pour les résultats de type 'passed'
+      03/01/2025 (mpham) adaptation continuous page
     """
     
     # Problème cookie SameSite=Lax
     if self.hreq.headers.get('Cookie') is None:
       self.log_error('Session cookie not sent by brower (SameSite problem), form is sent to brower and autosubmitted')
-      self.send_page_top(200, template=False, send_cookie=False)
       
       self.add_content('<html><body onload="document.saml.submit()">')
+      self.add_content('<div>SameSite workaround, submitting response form from ClientFedID</div>')
       self.add_content('<form name="saml" method="post">')
       for item in self.post_form:
         self.add_content('<input type="hidden" name="'+html.escape(item)+'" value="'+html.escape(self.post_form[item])+'" />')
       #self.add_content('<input type="submit" />')
       self.add_content('</form></body></html>')
       return
-      
 
-    self.send_page_top(200)
-    self.add_content(Help.help_window_definition())
-    self.add_content(Clipboard.get_window_definition())
-    self.add_content("""<script src="/javascript/resultTable.js"></script>""")
-    self.add_content("""<script src="/javascript/requestSender.js"></script>""")
-
-    self.log_info('Authentication callback')
-    
-
+    self.add_javascript_include('/javascript/resultTable.js')
+    self.add_javascript_include('/javascript/clipboard.js')
     try:
 
-      self.log_info('raw response:')
-      self.log_info(str(self.post_form))
-    
-      self.log_info('Checking authentication')
+      self.log_info('SAML Authentication callback')
+      self.log_info('  raw response:')
+      self.log_info('  '+str(self.post_form))
       
       warnings = []
-      
-      # récupération de relay_state pour obtention des paramètres dans la session
+
+      # récupération de state pour obtention des paramètres dans la session
       idp_relay_state = self.post_form.get('RelayState', None)
       if idp_relay_state is None:
-        raise AduneoError('Relay state not found in POST data')
-      self.log_info('for relay state: '+idp_relay_state)
-      context = self.get_session_value(idp_relay_state)
-      if (context is None):
-        raise AduneoError(self.log_error('context '+idp_relay_state+' not found in session'))
+        raise AduneoError(f"Can't retrieve request context from relay state because state in not present in callback POST data")
+      self.log_info('  SAML callback for state: '+idp_relay_state)
+
+      context_id = self.get_session_value(idp_relay_state)
+      if not context_id:
+        raise AduneoError(f"Can't retrieve request context from state because context id not found in session for state {idp_relay_state}")
+
+      self.context = self.get_session_value(context_id)
+      if not self.context:
+        raise AduneoError(f"Can't retrieve request context because context id {context_id} not found in session")
       
-      auth_req = context['request']
-      app_id = auth_req['app_id']
-      conf_client = self.conf['saml_clients'][app_id]
-      self.log_info('SP Name: '+conf_client['name'])
-        
-      self.add_content('<h2>Authentication callback for '+html.escape(conf_client['name'])+'</h2>')
+      # extraction des informations utiles de la session
+      idp_id = self.context.idp_id
+      app_id = self.context.app_id
+      idp_params = self.context.idp_params
+      app_params = self.context.last_app_params
+
+      self.add_html(f"<h3>SAML callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
+
       self.start_result_table()
-        
-      self.add_result_row('Relay state returned by IdP', idp_relay_state)
-      self.add_result_row('Raw response', str(self.post_form))
+      self.add_result_row('Relay state returned by IdP', idp_relay_state, 'idp_relay_state')
+      
+      self.add_result_row('Raw response', str(self.post_form), 'idp_raw_response')
 
       # analyse du XML de réponse
       base64_resp = self.post_form.get('SAMLResponse', None)
@@ -573,7 +537,7 @@ class SAMLClientLogin(FlowHandler):
       self.log_info(xml_resp)
 
       root_el = etree.fromstring(xml_resp.encode())
-      self.add_result_row('XML response', etree.tostring(root_el, pretty_print=True).decode())
+      self.add_result_row('XML response', etree.tostring(root_el, pretty_print=True).decode(), 'xml_response')
       
       # Vérification du statut
       try:
@@ -587,9 +551,9 @@ class SAMLClientLogin(FlowHandler):
         self.log_info('Status code: '+status_code)
         
         if status_code == 'urn:oasis:names:tc:SAML:2.0:status:Success':
-          self.add_result_row('Status authenticated', status_code)
+          self.add_result_row('Status authenticated', status_code, 'status_code')
         else:
-          self.add_result_row('Status failed', status_code)
+          self.add_result_row('Status failed', status_code, 'status_code')
           raise AduneoError('wrong status: '+status_code)
         
       except Exception as error:
@@ -604,14 +568,14 @@ class SAMLClientLogin(FlowHandler):
           raise AduneoError('Issuer element not found')
         issuer = issuer_el.text
         self.log_info('issuer       : '+issuer)
-        self.log_info('IdP entity id: '+auth_req['idp_entity_id'])
+        self.log_info('IdP entity id: '+idp_params['idp_entity_id'])
         
-        if issuer == auth_req['idp_entity_id']:
-          self.add_result_row('Issuer verification passed', issuer)
+        if issuer == idp_params['idp_entity_id']:
+          self.add_result_row('Issuer verification passed', issuer, 'issuer_verification')
         else:
           title = 'Issuer verification failed'
-          value = issuer+' (response) != '+auth_req['idp_entity_id']+' (conf)'
-          self.add_result_row(title, value)
+          value = issuer+' (response) != '+idp_params['idp_entity_id']+' (conf)'
+          self.add_result_row(title, value, 'issuer_verification')
           raise AduneoError(title)
         
       except Exception as error:
@@ -622,9 +586,9 @@ class SAMLClientLogin(FlowHandler):
       self.log_info('Response signature verification')
       try:
         self.log_info('IdP Certificate')
-        self.log_info(auth_req['idp_certificate'])
+        self.log_info(idp_params['idp_certificate'])
       
-        cert = '-----BEGIN CERTIFICATE-----\n' + auth_req['idp_certificate'] + '\n-----END CERTIFICATE-----'
+        cert = '-----BEGIN CERTIFICATE-----\n' + idp_params['idp_certificate'] + '\n-----END CERTIFICATE-----'
       
         xmlsec.enable_debug_trace(True)
         xmlsec.tree.add_ids(root_el, ["ID"]) # -> correspond à l'attribut ID dans le tag response, c'est demandé par XML Signature
@@ -637,11 +601,11 @@ class SAMLClientLogin(FlowHandler):
         ctx = xmlsec.SignatureContext(manager)
         ctx.verify(signature_node)
         self.log_info('Response signature verification: OK')
-        self.add_result_row('Response signature verification', 'Passed', copy_button=False)
+        self.add_result_row('Response signature verification', 'Passed', 'response_signature_verification', copy_button=False)
       
       except Exception as error:
         self.log_error("Response signature verification failed: "+str(error))
-        self.add_result_row('Response signature failed', str(error))
+        self.add_result_row('Response signature failed', str(error), 'response_signature_verification')
         raise AduneoError('Response signature verification failed: '+str(error))
 
       # Extraction de l'assertion
@@ -660,7 +624,7 @@ class SAMLClientLogin(FlowHandler):
         
         xmlsec.tree.add_ids(encrypted_assertion_el, ["Id"]) # attention, on est case sensitive !
         
-        sp_private_key = '-----BEGIN PRIVATE KEY-----\n' + auth_req['sp_private_key'] + '\n-----END PRIVATE KEY-----'
+        sp_private_key = '-----BEGIN PRIVATE KEY-----\n' + app_params['sp_private_key'] + '\n-----END PRIVATE KEY-----'
         
         manager = xmlsec.KeysManager()
 #        manager.add_key(xmlsec.Key.from_file('conf/localhost.key', xmlsec.KeyFormat.PEM, None))
@@ -673,7 +637,7 @@ class SAMLClientLogin(FlowHandler):
       
       self.log_info('XML assertion')
       self.log_info(etree.tostring(assertion_el).decode())
-      self.add_result_row('XML assertion', etree.tostring(assertion_el, pretty_print=True).decode())
+      self.add_result_row('XML assertion', etree.tostring(assertion_el, pretty_print=True).decode(), 'assertion')
 
       # Extraction des conditions de validité de l'assertion
       conditions_el = assertion_el.find('{urn:oasis:names:tc:SAML:2.0:assertion}Conditions')
@@ -695,10 +659,10 @@ class SAMLClientLogin(FlowHandler):
       self.log_info("Now                : "+str(now)+' UTC')
       if now > not_before_date:
         self.log_info("NotBefore condition verification OK")
-        self.add_result_row('NotBefore condition passed', str(not_before_date)+' UTC (now is '+str(now)+' UTC)')
+        self.add_result_row('NotBefore condition passed', str(not_before_date)+' UTC (now is '+str(now)+' UTC)', 'notbefore_verification')
       else:
         self.log_info("NotBefore condition verification failed")
-        self.add_result_row('NotBefore condition failed', str(not_before_date)+' UTC (now is '+str(now)+' UTC)')
+        self.add_result_row('NotBefore condition failed', str(not_before_date)+' UTC (now is '+str(now)+' UTC)', 'notbefore_verification')
         raise AduneoError('NotBefore condition failed')
         
       self.log_info("NotOnOrAfter condition verification:")
@@ -712,10 +676,10 @@ class SAMLClientLogin(FlowHandler):
       self.log_info("Now                : "+str(now)+' UTC')
       if now < not_on_or_after_date:
         self.log_info("NotOnOrAfter condition verification OK")
-        self.add_result_row('NotOnOrAfter condition passed', str(not_on_or_after_date)+' UTC (now is '+str(now)+' UTC)')
+        self.add_result_row('NotOnOrAfter condition passed', str(not_on_or_after_date)+' UTC (now is '+str(now)+' UTC)', 'notonorafter_verification')
       else:
         self.log_info("NotOnOrAfter condition verification failed")
-        self.add_result_row('NotOnOrAfter condition failed', str(not_on_or_after_date)+' UTC (now is '+str(now)+' UTC)')
+        self.add_result_row('NotOnOrAfter condition failed', str(not_on_or_after_date)+' UTC (now is '+str(now)+' UTC)', 'notonorafter_verification')
         raise AduneoError('NotOnOrAfter condition failed')
       
       # Vérification d'audience
@@ -729,24 +693,24 @@ class SAMLClientLogin(FlowHandler):
         raise AduneoError('Audience element not found')
       audience = audience_el.text
       self.log_info("Audience    : "+audience)
-      self.log_info("SP Entity ID: "+auth_req['sp_entity_id'])
-      if audience == auth_req['sp_entity_id']:
+      self.log_info("SP Entity ID: "+app_params['sp_entity_id'])
+      if audience == app_params['sp_entity_id']:
         self.log_info("Audience condition OK")
-        self.add_result_row('Audience condition passed', audience)
+        self.add_result_row('Audience condition passed', audience, 'audience_verification')
       else:
         self.log_info("Audience condition failed")
         title = 'Audience condition failed'
-        value = audience+' (response) != '+auth_req['sp_entity_id']+' (conf)'
-        self.add_result_row(title, value)
+        value = audience+' (response) != '+app_params['sp_entity_id']+' (conf)'
+        self.add_result_row(title, value, 'audience_verification')
         raise AduneoError(title)
       
       # Vérification de signature de l'assertion
       self.log_info('Assertion signature verification')
       try:
         self.log_info('IdP Certificate')
-        self.log_info(auth_req['idp_certificate'])
+        self.log_info(idp_params['idp_certificate'])
       
-        cert = '-----BEGIN CERTIFICATE-----\n' + auth_req['idp_certificate'] + '\n-----END CERTIFICATE-----'
+        cert = '-----BEGIN CERTIFICATE-----\n' + idp_params['idp_certificate'] + '\n-----END CERTIFICATE-----'
       
         xmlsec.enable_debug_trace(True)
         xmlsec.tree.add_ids(assertion_el, ["ID"]) # -> correspond à l'attribut ID dans le tag response, c'est demandé par XML Signature
@@ -761,17 +725,17 @@ class SAMLClientLogin(FlowHandler):
           ctx = xmlsec.SignatureContext(manager)
           ctx.verify(signature_node)
           self.log_info('Assertion signature verification: OK')
-          self.add_result_row('Assertion signature verification', 'Passed', copy_button=False)
+          self.add_result_row('Assertion signature verification', 'Passed', 'assertion_signature_verification', copy_button=False)
           
         else:
 
           self.log_info('Signature not found in assertion')
-          self.add_result_row('Assertion signature verification', 'Warning: signature not found in assertion', copy_button=False)
+          self.add_result_row('Assertion signature verification', 'Warning: signature not found in assertion', 'assertion_signature_verification', copy_button=False)
           warnings.append('Signature not found in assertion')
       
       except Exception as error:
         self.log_error("Assertion signature verification failed: "+str(error))
-        self.add_result_row('Assertion signature failed', str(error))
+        self.add_result_row('Assertion signature failed', str(error), 'assertion_signature_verification')
         print(traceback.format_exc())
         raise AduneoError('Assertion signature verification failed: '+str(error))
 
@@ -791,9 +755,13 @@ class SAMLClientLogin(FlowHandler):
         self.add_result_row('NameID', 'Not found in subject')
         raise AduneoError('NameID element not found in subject')
         
-      nameid = nameid_el.text
-      self.log_info('NameID: '+nameid)
-      self.add_result_row('NameID', nameid)
+      name_id = nameid_el.text
+      self.log_info('NameID: '+name_id)
+      self.add_result_row('NameID', name_id, 'name_id')
+      
+      name_id_format = nameid_el.attrib.get('Format', 'unspecified')
+      self.log_info('NameID format: '+name_id_format)
+      self.add_result_row('NameID format', name_id_format, 'name_id_format')
           
       # Validation du subject
       subjectconfirmation_el = subject_el.find('{urn:oasis:names:tc:SAML:2.0:assertion}SubjectConfirmation')
@@ -813,15 +781,15 @@ class SAMLClientLogin(FlowHandler):
       if in_response_to is not None:
         self.log_info('Subject InResponseTo verification')
         self.log_info("InResponseTo: "+in_response_to)
-        self.log_info("Request ID  : "+auth_req['request_id'])
-        if in_response_to == auth_req['request_id']:
+        self.log_info("Request ID  : "+app_params['request_id'])
+        if in_response_to == app_params['request_id']:
           self.log_info("Subject InResponseTo verification passed")
-          self.add_result_row('Subject InResponseTo verification passed', in_response_to)
+          self.add_result_row('Subject InResponseTo verification passed', in_response_to, 'inresponseto_verification')
         else:
           self.log_info("Subject InResponseTo verification failed")
           title = 'Subject InResponseTo verification failed'
-          value = in_response_to+' (response) != '+auth_req['request_id']+' (authn request)'
-          self.add_result_row(title, value)
+          value = in_response_to+' (response) != '+app_params['request_id']+' (authn request)'
+          self.add_result_row(title, value, 'inresponseto_verification')
           raise AduneoError(title)
       
       # Vérification du destinataire
@@ -829,15 +797,15 @@ class SAMLClientLogin(FlowHandler):
       if recipient is not None:
         self.log_info('Subject Recipient verification')
         self.log_info("Recipient : "+recipient)
-        self.log_info("SP ACS URL: "+auth_req['sp_acs_url'])
-        if recipient == auth_req['sp_acs_url']:
+        self.log_info("SP ACS URL: "+app_params['sp_acs_url'])
+        if recipient == app_params['sp_acs_url']:
           self.log_info("Subject Recipient verification passed")
-          self.add_result_row('Subject Recipient verification passed', recipient)
+          self.add_result_row('Subject Recipient verification passed', recipient, 'subject_recipient_verification')
         else:
           self.log_info("Subject Recipient verification failed")
           title = 'Subject Recipient verification failed'
-          value = recipient+' (response) != '+auth_req['sp_acs_url']+' (SP ACS URL)'
-          self.add_result_row(title, value)
+          value = recipient+' (response) != '+app_params['sp_acs_url']+' (SP ACS URL)'
+          self.add_result_row(title, value, 'subject_recipient_verification')
           raise AduneoError(title)
 
       # Vérification d'expiration (NotOnOrAfter)
@@ -847,12 +815,12 @@ class SAMLClientLogin(FlowHandler):
         not_on_or_after_date = self._parse_saml_date(not_on_or_after_str)
         if now < not_on_or_after_date:
           self.log_info("Subject NotOnOrAfter verification passed")
-          self.add_result_row('NotOnOrAfter verification passed', str(not_on_or_after_date)+' UTC (now is '+str(now)+' UTC)')
+          self.add_result_row('Subject NotOnOrAfter verification passed', str(not_on_or_after_date)+' UTC (now is '+str(now)+' UTC)', 'subject_notonorafter_verification')
         else:
           self.log_info("Subject NotOnOrAfter verification failed")
           title = 'Subject NotOnOrAfter verification failed'
           value = str(not_on_or_after_date)+' UTC (now is '+str(now)+' UTC)'
-          self.add_result_row(title, value)
+          self.add_result_row(title, value, 'subject_notonorafter_verification')
           raise AduneoError(title)
       
       # Extraction de SessionIndex
@@ -864,45 +832,46 @@ class SAMLClientLogin(FlowHandler):
         raise AduneoError('AuthnStatement element not found in assertion')
       session_index = authn_statement_el.attrib.get('SessionIndex', '')
       self.log_info("SessionIndex: "+session_index)
-      self.add_result_row('SessionIndex', session_index)
+      self.add_result_row('SessionIndex', session_index, 'session_index')
       
       self.end_result_table()
-      self.add_content('<h3>Authentication succcessful</h3>')
+      self.add_html('<h3>Authentication successful</h3>')
       if len(warnings)>0:
-        self.add_content('With warnings:')
-        self.add_content('<ul>')
+        self.add_html('With warnings:')
+        self.add_html('<ul>')
         for warning in warnings:
-          self.add_content('<li>'+html.escape(warning)+'</li>')
-        self.add_content('</ul>')
+          self.add_html('<li>'+html.escape(warning)+'</li>')
+        self.add_html('</ul>')
         
-
-      # On met l'assertion dans la session pour pouvoir l'échanger contre un jeton OAuth
-      if 'tokens' not in context:
-        context['tokens'] = {}
-      context['tokens']['saml_assertion'] = etree.tostring(assertion_el).decode()
-      self.set_session_value(idp_relay_state, context)
+      # enregistrement de l'assertion dans la session pour manipulation ultérieure (échange contre un jeton OAuth 2)
+      #   les assertions sont indexés par timestamp d'obtention
+      assertion_name = 'Authn SAML '+app_params['name']+' - '+time.strftime("%H:%M:%S", time.localtime())
+      assertion_wrapper = {'name': assertion_name, 'type': 'saml_assertion', 'app_id': app_id, 'saml_assertion': etree.tostring(assertion_el).decode(),
+        'name_id': name_id, 'name_id_format': name_id_format, 'session_index': session_index}
+      self.context['saml_assertions'][str(time.time())] = assertion_wrapper
 
       # on considère qu'on est bien loggé
-      #   on place dans la session le NameID, son format et le SessionIndex, utilisés ensuite pour le logout
-      self.logon('saml_client_'+app_id, 
-        {'NameID': nameid, 'Format': nameid_el.attrib.get('Format'), 'SessionIndex': session_index})
+      #   on place dans la session le NameID, son format et le SessionIndex, utilisés ensuite pour le logout (notice : on va maintenant chercher les infos de logout dans le contexte)
+      self.logon('saml_client_'+idp_id+'/'+app_id, 
+        {'NameID': name_id, 'Format': nameid_el.attrib.get('Format'), 'SessionIndex': session_index})
 
     except AduneoError as error:
-      self.end_result_table()
-      self.add_content('<h3>Authentication failed : '+html.escape(str(error))+'</h3>')
+      if self.is_result_in_table():
+        self.end_result_table()
+      self.add_html('<h4>Authorization failed: '+html.escape(str(error))+'</h4>')
+      if error.explanation_code:
+        self.add_html(Explanation.get(error.explanation_code))
     except Exception as error:
-      self.log_error(traceback.format_exc())
-      self.end_result_table()
-      self.add_content('<h3>Authentication failed : '+html.escape(str(error))+'</h3>')
+      if self.is_result_in_table():
+        self.end_result_table()
+      self.log_error(('  ' * 1)+traceback.format_exc())
+      self.add_html('<h4>Authorization failed: '+html.escape(str(error))+'</h4>')
 
-    self._add_footer_menu(context)
-
-    self.add_content("""
-    <div id="text_ph"></div>
-    <div id="end_ph"></div>""")
-    
-    self.send_page_bottom()
     self.log_info('--- End SAML flow ---')
+
+    self.add_menu() 
+
+    self.send_page()
 
 
   @register_url(url='oauthexchange_spa', method='GET')

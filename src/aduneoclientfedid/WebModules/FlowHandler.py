@@ -15,9 +15,10 @@ limitations under the License.
 """
 
 from ..BaseServer import AduneoError
-from ..BaseServer import register_web_module, register_url
+from ..BaseServer import register_web_module, register_page_url
 from ..BaseServer import BaseHandler
 from ..Configuration import Configuration
+from ..Context import Context
 import html
 import json
 import requests
@@ -42,32 +43,162 @@ class FlowHandler(BaseHandler):
     """ Constructeur
     
     Args:
-      hreg: instance courante de HTTPRequestHandler
+      hreq: instance courante de HTTPRequestHandler
     
     Versions:
-      23/12/2022 (mpham) : version initiale
+      23/12/2022 (mpham) version initiale
+      08/08/2024 (mpham) l'objet de contexte est directement instancié ici
+      30/12/2024 (mpham) en POST, on va aussi chercher l'identifiant du contexte dans hr_context (champ standard de RequesterForm)
     """
+
     super().__init__(hreq)
+    
+    self.context = None
+    if hreq.command == 'GET':
+      context_id = self.get_query_string_param('contextid')
+    elif hreq.command == 'POST':
+      context_id = self.post_form.get('contextid')
+      if not context_id:
+        context_id = self.post_form.get('hr_context')
+
+    if context_id:
+      self.context = self.get_session_value(context_id)
 
   
-  @register_url(url='cancelrequest', method='GET')
+  @register_page_url(url='cancelrequest', method='GET', continuous=True)
   def cancel_request(self):
     """ Annule une requête affichée par display_form_http_request
     
     Versions:
-      23/12/2022 (mpham) : version initiale
+      23/12/2022 (mpham) version initiale
+      05/09/2024 (mpham) adaptation aux pages continues et à CfiForm
     """
+    self.add_html("""<div>Action cancelled</div>""")
+    self.add_menu()
+    self.send_page()
+  
+  
+  @register_page_url(url='newauth', method='GET', continuous=True)
+  def new_auth(self):
+    """ Menu de nouvelle authentification auprès d'une application de l'IdP courant, en poursuite de contexte
+    
+    Versions:
+      04/12/2024 (mpham) version initiale
+    """
+    self.add_html("""<h2>New auth in same context</h2>""")
+    
+    idp_id = self.context.idp_id
+    idp = self.conf['idps'][idp_id]
 
-    # récupération de contextid pour obtention des paramètres dans la session
-    context_id = self.get_query_string_param('contextid')
-    
-    context = self.get_session_value(context_id)
-    if (context is None):
-      raise AduneoError(self.log_error('context not found in session'))
+    if idp.get('oidc_clients'):
       
-    self._add_footer_menu(context)
+      self.add_html("""<div>OIDC Clients</div>""")          
+      for client_id in sorted(idp['oidc_clients'].keys()):
+        
+        client = idp['oidc_clients'][client_id]
+        self.add_html("""
+          <div>
+            <span>{name}</span>
+            <span><a href="/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
+          </div>
+          """.format(
+            name = html.escape(client.get('name', 'Client')),
+            idp_id = urllib.parse.quote_plus(idp_id),
+            app_id = urllib.parse.quote_plus(client_id),
+            context_id = self.context.context_id,
+          )
+        )
+
+    if idp.get('oauth2_clients'):
+        
+      self.add_html("""<div>OAuth 2 Clients</div>""")          
+      for client_id in sorted(idp['oauth2_clients'].keys()):
+        
+        client = idp['oauth2_clients'][client_id]
+        self.add_html("""
+          <div>
+            <span>{name}</span>
+            <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
+          </div>
+          """.format(
+            name = html.escape(client.get('name', 'Client')),
+            idp_id = urllib.parse.quote_plus(idp_id),
+            app_id = urllib.parse.quote_plus(client_id),
+            context_id = self.context.context_id,
+          )
+        )
+
+    dom_id = 'id'+str(uuid.uuid4())
+    self.add_html('<div id="'+html.escape(dom_id)+'">')
+    self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/cancelrequest?contextid='+urllib.parse.quote_plus(self.context.context_id)+'\', \'\', \''+dom_id+'\')" class="button">Cancel</span>')
+    self.add_html('</div>')
     
-    self.send_page_raw()
+    self.send_page()
+  
+  
+  @register_page_url(url='logout', method='GET', continuous=True)
+  def logout(self):
+    """ Menu de déconnexion d'une application (OIDC) de l'IdP courant, en poursuite de contexte
+    
+    Pour OAuth 2, faire une révocation de jetons
+    
+    TODO : SAML
+    
+    Versions:
+      30/12/2024 (mpham) version initiale
+      04/01/2025 (mpham) SAML logout
+    """
+    self.add_html("""<h2>Logout</h2>""")
+    
+    idp_id = self.context.idp_id
+    idp = self.conf['idps'][idp_id]
+
+    # OpenID Connect
+    if idp.get('oidc_clients'):
+      
+      self.add_html("""<div>OIDC Clients</div>""")          
+      for client_id in sorted(idp['oidc_clients'].keys()):
+        
+        client = idp['oidc_clients'][client_id]
+        self.add_html("""
+          <div>
+            <span>{name}</span>
+            <span><a href="/client/oidc/logout/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}" class="smallbutton">Logout</a></span>
+          </div>
+          """.format(
+            name = html.escape(client.get('name', 'Client')),
+            idp_id = urllib.parse.quote_plus(idp_id),
+            app_id = urllib.parse.quote_plus(client_id),
+            context_id = self.context.context_id,
+          )
+        )
+
+    # SAML
+    if idp.get('saml_clients'):
+      
+      self.add_html("""<div>SAML service providers (SP)</div>""")          
+      for app_id in sorted(idp['saml_clients'].keys()):
+        
+        app_params = idp['saml_clients'][app_id]
+        self.add_html("""
+          <div>
+            <span>{name}</span>
+            <span><a href="/client/saml/logout/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}" class="smallbutton">Logout</a></span>
+          </div>
+          """.format(
+            name = html.escape(app_params.get('name', 'Client')),
+            idp_id = urllib.parse.quote_plus(idp_id),
+            app_id = urllib.parse.quote_plus(app_id),
+            context_id = self.context.context_id,
+          )
+        )
+
+    dom_id = 'id'+str(uuid.uuid4())
+    self.add_html('<div id="'+html.escape(dom_id)+'">')
+    self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/cancelrequest?contextid='+urllib.parse.quote_plus(self.context.context_id)+'\', \'\', \''+dom_id+'\')" class="smallbutton">Cancel</span>')
+    self.add_html('</div>')
+    
+    self.send_page()
   
   
   def display_http_request(self, method:str, url:str, data:dict = None, auth_method:str = 'None', auth_login:str = None, sender_url:str = None, context:str = None, dom_id=None):
@@ -162,14 +293,14 @@ class FlowHandler(BaseHandler):
           - display_text : texte en lecture seule
           - edit_text : texte en modification
           - (ajouter en fonction des besoins edit_json, edit_textarea, edit_select, edit_checkbox, etc.)
-          - value : valeur par défaut
+        - value : valeur par défaut
 
     Les données de la requête sont mises à jour automatiquement lorsque des valeurs des <input> dont l'identifiant commence par <dom_id>_ sont modifiées (par exemple 424986_scope
     Pour cela, il doit être fourni le code Javascript de génération, qui retourne (dans return) les données.
       Dans ce code, les valeurs sont récupérées par la fonction get_form_value_with_dom qui prend en argument l'identifiant de l'<input> sans le dom
     
     Par exemple :
-      data = {'scope': get_form_value_with_dom('scope')};
+      data = {'scope': get_form_value_with_dom(domId, 'scope')};
       return data;
       
     Ces informations sont mises dans le corps en POST, et en query string en GET.
@@ -269,7 +400,7 @@ class FlowHandler(BaseHandler):
     if clipboard != '':
       html_code += '<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>'
     html_code += '</td>'
-    html_code += '</td></tr>'
+    html_code += '</td></tr>' # TODO : il n'y a pas un </td> en trop ?
     
     methods = [m.strip().upper() for m in method.split(',')]
     for m in methods:
@@ -438,7 +569,7 @@ class FlowHandler(BaseHandler):
       
     auth_method = call_parameters.get('auth_method')
     if auth_method is None:
-      raise AduneoError(self.log_error("Call authentication method not found in request"))
+      raise AduneoError(self.log_error("Call authentication scheme not found in request"))
     
     auth_login = call_parameters.get('auth_login', '')
     auth_secret = call_parameters.get('auth_secret', '')
@@ -455,7 +586,7 @@ class FlowHandler(BaseHandler):
     elif auth_method.casefold() == 'bearer token':
       request_headers = {'Authorization':"Bearer "+auth_login}
     else:
-      raise AduneoError(self.log_error("authentication method "+auth_method+" not supported"))
+      raise AduneoError(self.log_error("authentication scheme "+auth_method+" not supported"))
 
     verify_cert = call_parameters.get('verify_cert')
     if verify_cert is None:
@@ -484,8 +615,82 @@ class FlowHandler(BaseHandler):
     return response
 
 
-  def _add_footer_menu(self, context):
+  def add_menu(self):
     """ Affiche un menu en fin de cinématique pour
+        - relancer une même cinématique
+        - manipuler les jetons (introspection, user info, échanges), en fonction des jetons trouvés dans la session
+        
+    Args:
+      context: contexte de la cinématique en cours, récupérée de la session
+      
+    Versions:
+      08/08/2024 (mpham) version initiale
+      30/12/2024 (mpham) logout
+    """
+
+    if not self.context:
+      self.add_html('<span><a href="/" class="button">Menu</a></span>')
+    else:
+
+      dom_id = 'id'+str(uuid.uuid4())
+
+      context_id = self.context['context_id']
+      
+      userinfo = False
+      logout = False
+      introspection = False
+      refresh = False
+      token_exchange = False
+      oauth_exchange = False
+      
+      for id_token in self.context['id_tokens'].values():
+        userinfo = True
+        logout = True
+        token_exchange = True
+        if 'access_token' in id_token:
+          introspection = True
+        if 'refresh_token' in id_token:
+          refresh = True
+      
+      for access_token in self.context['access_tokens'].values():
+        introspection = True
+        token_exchange = True
+        if 'refresh_token' in access_token:
+          refresh = True
+
+      if len(self.context['access_tokens']) > 0:
+        oauth_exchange = True
+
+      for saml_assertion_wrapper in self.context['saml_assertions'].values():
+        logout = True
+      
+      retry_url = {
+        'OIDC': '/client/oidc/login/preparerequest',
+        'OAuth2': '/client/oauth2/login/preparerequest',
+        'SAML': '/client/saml/login/preparerequest',
+        }.get(self.context['flow_type'])
+
+      self.add_html('<div id="'+html.escape(dom_id)+'">')
+      if retry_url:
+        self.add_html('<span><a href="'+retry_url+'?contextid='+urllib.parse.quote_plus(context_id)+'&idpid='+urllib.parse.quote_plus(self.context.idp_id)+'&appid='+urllib.parse.quote_plus(self.context.app_id)+'" class="middlebutton">Retry original flow</a></span>')
+      self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/newauth?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">New auth</span>')
+      if userinfo:
+        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oidc/userinfo/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Userinfo</span>')
+      if introspection:
+        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/introspection/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Introspect AT</span>')
+      if refresh:
+        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/refresh/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Refresh AT</span>')
+      if logout:
+        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/logout?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Logout</span>')
+      if token_exchange:
+        self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Exchange Token</span>')
+      if oauth_exchange:
+        self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/saml/login/oauthexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+urllib.parse.quote_plus(dom_id)+'\')" class="middlebutton">Exchange SAML -> OAuth</span>')
+      self.add_html('</div>')
+
+
+  def _add_footer_menu_deprecated(self, context):
+    """ DEPRECATED Affiche un menu en fin de cinématique pour
         - relancer une même cinématique
         - manipuler les jetons (introspection, user info, échanges), en fonction des jetons trouvés dans la session
         
@@ -526,16 +731,16 @@ class FlowHandler(BaseHandler):
 
       self.add_content('<div id="'+html.escape(dom_id)+'">')
       if retry_url:
-        self.add_content('<span><a href="'+retry_url+'?contextid='+urllib.parse.quote(context_id)+'&id='+urllib.parse.quote(context['initial_flow']['app_id'])+'" class="button">Retry original flow</a></span>')
+        self.add_content('<span><a href="'+retry_url+'?contextid='+urllib.parse.quote_plus(context_id)+'&id='+urllib.parse.quote_plus(context['initial_flow']['app_id'])+'" class="button">Retry original flow</a></span>')
       if id_token and op_access_token:
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oidc/login/userinfo_spa?contextid='+urllib.parse.quote(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Userinfo</span>')
+        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oidc/login/userinfo_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Userinfo</span>')
       if id_token:
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote(context_id)+'&token_type=id_token\', \'\', \''+dom_id+'\')" class="button">Exchange ID Token</span>')
+        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'&token_type=id_token\', \'\', \''+dom_id+'\')" class="button">Exchange ID Token</span>')
       if access_token:
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/introspection_spa?contextid='+urllib.parse.quote(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Introspect AT</span>')
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote(context_id)+'&token_type=access_token\', \'\', \''+dom_id+'\')" class="button">Exchange AT</span>')
+        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/introspection_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Introspect AT</span>')
+        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'&token_type=access_token\', \'\', \''+dom_id+'\')" class="button">Exchange AT</span>')
       if refresh_token:
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/refreshtoken_spa?contextid='+urllib.parse.quote(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Refresh AT</span>')
+        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/refreshtoken_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Refresh AT</span>')
       if saml_assertion:
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/saml/login/oauthexchange_spa?contextid='+urllib.parse.quote(context_id)+'\', \'\', \''+urllib.parse.quote(dom_id)+'\')" class="button">Exchange SAML -> OAuth</span>')
+        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/saml/login/oauthexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+urllib.parse.quote_plus(dom_id)+'\')" class="button">Exchange SAML -> OAuth</span>')
       self.add_content('</div>')

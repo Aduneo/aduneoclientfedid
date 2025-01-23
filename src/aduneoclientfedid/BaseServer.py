@@ -109,6 +109,7 @@ class BaseServer(BaseHTTPRequestHandler):
     Versions:
       27/01/2021 - 24/02/2021 (mpham) version intiale
       30/03/2023 (mpham) prise en compte des pages continues
+      10/01/2025 (mpham) les templates sont pris en charge par @register_page_url, on n'envoie plus de templates pour les pages non continues
     """
     
     if clear_buffer:
@@ -118,13 +119,8 @@ class BaseServer(BaseHTTPRequestHandler):
       from .WebModules.ContinuousPage import ContinuousPageBuffer
       ContinuousPageBuffer.add_content(self.continuous_page_id, html=self.content+content, stop=True)
     else:
-    
-      self.send_page_top(code)
-      
       page = bytes(self.content + content, "UTF-8")
       self.wfile.write(page)
-      
-      self.send_page_bottom()
 
 
   def send_page_raw(self, content = '', code=200, clear_buffer=False):
@@ -236,6 +232,33 @@ class BaseServer(BaseHTTPRequestHandler):
     else:
       self.add_content('<script src="{url}"></script>'.format(url=url))
       
+
+  def start_continuous_page_block(self):
+    """ Démarrage un bloc de contenu insécable
+    
+    Le bloc doit être envoyé dans son ensemble, sinon le navigateur va ajouter des éléments parasites.
+    
+    C'est par exemple le cas si on récupère du tampon un tableau (table) en plusieurs fois.
+    A chaque récupération, le navigateur ferme le tableau.
+    
+    Versions:
+        05/08/2024 (mpham) version initiale
+    """
+    if self.continuous_page:
+      from .WebModules.ContinuousPage import ContinuousPageBuffer
+      ContinuousPageBuffer.start_continuous_page_block(self.continuous_page_id)
+
+
+  def end_continuous_page_block(self):
+    """ Ferme un bloc de contenu insécable
+    
+    Versions:
+        05/08/2024 (mpham) version initiale
+    """
+    if self.continuous_page:
+      from .WebModules.ContinuousPage import ContinuousPageBuffer
+      ContinuousPageBuffer.end_continuous_page_block(self.continuous_page_id)
+
 
   def send_redirection(self, url):
   
@@ -356,8 +379,39 @@ class BaseServer(BaseHTTPRequestHandler):
       in_file.close()
 
 
+  def download_file(self, path:str, content_type:str='application/octet-stream', filename:str=None):
+    """ Télécharge un fichier
+    
+    Args:
+      path: chemin sur le serveur ClientFedID, qui doit être dans le dossier de configuration
+      content_type: sans commentaire
+      filename: prend par défaut le nom du fichier sur le disque
+      
+    Versions:
+      01/01/2025 (mpham) version initiale
+    """
+    
+    from .Configuration import Configuration
+    if not BaseServer.check_path_traversal(Configuration.conf_dir, path):
+      self.send_page('404 !', code=404, clear_buffer=True)
+
+    if not filename:
+      filename = os.path.basename(path)
+
+    self.send_response(200)
+    self.send_header('Content-type', content_type)
+    self.send_header('Content-disposition', 'filename='+filename)
+    self.end_headers()
+    
+    in_file = open(path, 'rb')
+    chunk = in_file.read(1024)
+    while chunk:
+      self.wfile.write(chunk)
+      chunk = in_file.read(1024)
+    in_file.close()
+    
+
   def send_template(self, template_name:str, **parameters):
-  
     """
     Mécanisme de template simplifié
     Fourniture du template par un nom de fichier dans le dossier templates
@@ -375,6 +429,7 @@ class BaseServer(BaseHTTPRequestHandler):
         template_content = in_file.read()
         
       self.send_page(self.apply_template(template_content, **parameters))
+      
 
   def send_template_raw(self, template_name:str, **parameters):
   
@@ -395,6 +450,7 @@ class BaseServer(BaseHTTPRequestHandler):
         template_content = in_file.read()
         
       self.send_page_raw(self.apply_template(template_content, **parameters))
+      
 
   def _send_page_headers(self, send_cookie:bool=True):
     """ Envoie les en-têtes d'une page :
@@ -575,6 +631,16 @@ class BaseHandler:
     return self.hreq.session_id
     
   
+  @property
+  def is_continuous_page(self):
+    """ Indique si la page est de type continue
+      (affichage progressif d'un bloc de la page)
+    
+    mpham 05/08/2024
+    """
+    return self.hreq.continuous_page
+
+
   def get_query_string_param(self, key, default=None):
     
     """
@@ -608,8 +674,8 @@ class BaseHandler:
     self.hreq.add_content(content)
     
   
-  def send_page(self, content = ''):
-    self.hreq.send_page(content)
+  def send_page(self, content = '', code=200):
+    self.hreq.send_page(content, code)
 
 
   def send_page_raw(self, content = ''):
@@ -633,6 +699,13 @@ class BaseHandler:
     self.hreq.add_javascript_include(url)
 
 
+  def start_continuous_page_block(self):
+    self.hreq.start_continuous_page_block()
+
+  def end_continuous_page_block(self):
+    self.hreq.end_continuous_page_block()
+
+
   def send_template(self, template_name:str, **parameters):
     self.hreq.send_template(template_name, **parameters)
 
@@ -642,7 +715,9 @@ class BaseHandler:
   def send_redirection(self, url):
     self.hreq.send_redirection(url)
     
-    
+  def download_file(self, path:str, content_type:str='application/octet-stream', filename:str=None):
+    self.hreq.download_file(path, content_type, filename)
+ 
   def send_json_page(self, html:str='', javascript:str=''):
     self.hreq.send_json_page(html, javascript)
     
@@ -685,7 +760,21 @@ class BaseHandler:
 
 
   def start_result_table(self):
-    self.add_content('<table class="fixed">')
+    """ Commence un tableau de résultat
+    
+    On fait un test sur self.is_continuous_page le temps de la migration de toutes les pages vers le mode continu
+    TODO : retirer les add_content quand toutes les pages seront en mode continu
+    
+    Versions:
+      25/02/2021 (mpham) version initiale
+      05/08/2024 (mpham) adaptation aux pages continues
+    """
+    
+    if self.is_continuous_page:
+      self.start_continuous_page_block()
+      self.add_html('<table class="fixed">')
+    else:
+      self.add_content('<table class="fixed">')
     self.result_in_table = True
   
 
@@ -709,16 +798,28 @@ class BaseHandler:
     return '<span class="celltxt">{label}</span><span class="cellimg"><img onclick="help(this, \'{help_id}\')" src="/images/help.png"></span>'.format(label=html.escape(label), help_id=help_id)
     
 
-  def add_result_row(self, title:str, value:str, help_id:str=None, copy_button=True) -> str:
-    
+  def add_result_row(self, title:str, value:str, help_id:str=None, copy_button=True, expanded=False):
     """
     Ajoute une ligne à un tableau de retour d'authentification
     Tronque la valeur si elle est trop longue (avec bouton d'affichage complet)
     Possibilité de copie de la valeur
+
+    On fait un test sur self.is_continuous_page le temps de la migration de toutes les pages vers le mode continu
+    TODO : retirer les add_content quand toutes les pages seront en mode continu
     
-    mpham 25/02/2021
-          29/09/2022 col identifier is now a uuid be bu truely unique
-          28/02/2023 ajout de l'argument copy_button contrôlant l'affichage du bouton  de copie
+    Args:
+      title: libellé de la ligne (colonne de droite)
+      value: valeur à afficher (colonne de gauche)
+      help_id: identifiant de la rubrique d'aide, None si on ne propose pas d'aide
+      copy_button: affiche un bouton pour copier la valeur dans le presse-papier  
+      expanded: indique si le texte est trop long s'il faut en afficher que le début (défaut) ou en entier
+    
+    Versions:
+      25/02/2021 (mpham) version initiale
+      29/09/2022 (mpham) col identifier is now a uuid be bu truely unique
+      28/02/2023 (mpham) ajout de l'argument copy_button contrôlant l'affichage du bouton  de copie
+      05/08/2024 (mpham) adaptation aux pages continues
+      05/09/2024 (mpham) ajout de l'argument expanded
     """
 
     col_id = 'col' + str(uuid.uuid4())
@@ -726,42 +827,157 @@ class BaseHandler:
       row_label = html.escape(title)
     else:
       row_label = '<span class="celltxt">{label}</span><span class="cellimg"><img onclick="help(this, \'{help_id}\')" src="/images/help.png"></span>'.format(label=html.escape(title), help_id=help_id)
-    self.add_content('<tr><td>'+row_label)
-    self.add_content('<span id="'+col_id+'_raw" style="display: none;">'+value+'</span>')
-    self.add_content('</td>')
+    if self.is_continuous_page:
+      self.add_html('<tr><td>'+row_label)
+      self.add_html('<span id="'+col_id+'_raw" style="display: none;">'+value+'</span>')
+      self.add_html('</td>')
+    else:
+      self.add_content('<tr><td>'+row_label)
+      self.add_content('<span id="'+col_id+'_raw" style="display: none;">'+value+'</span>')
+      self.add_content('</td>')
     
     if len(value) <= 80:
       # la valeur tient sur une ligne
       html_value = html.escape(value).replace('\n', '<br>').replace(' ', '&nbsp;')
-      self.add_content('<td><span id="'+col_id+'"><span id="'+col_id+'c">'+html_value+'</span>')
-      self.add_content('</td><td style="width: 34px;">')
+      if self.is_continuous_page:
+        self.add_html('<td><span id="'+col_id+'"><span id="'+col_id+'c">'+html_value+'</span>')
+        self.add_html('</td><td style="width: 34px;">')
+      else:
+        self.add_content('<td><span id="'+col_id+'"><span id="'+col_id+'c">'+html_value+'</span>')
+        self.add_content('</td><td style="width: 34px;">')
       if copy_button:
-        self.add_content('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
-      self.add_content('</td>')
+        if self.is_continuous_page:
+          self.add_html('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
+        else:
+          self.add_content('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
+      if self.is_continuous_page:
+        self.add_html('</td>')
+      else:
+        self.add_content('</td>')
     else:
       # la valeur doit être tronquée
-      truncated_value = value[0:80]
       html_value = html.escape(value).replace('\n', '<br>').replace(' ', '&nbsp;')
-      self.add_content('<td><span id="'+col_id+'s">'+html.escape(truncated_value)+'...</span>')
-      self.add_content('<span id="'+col_id+'l" style="display: none;"><span id="'+col_id+'c">'+html_value+'</span>')
-      self.add_content('</td><td style="width: 34px;">')
-      self.add_content('<span><img title="Expand" id="'+col_id+'_expand" class="smallButton" src="/images/plus.png" onClick="showLong(\''+col_id+'\')"/></span>')
-      self.add_content('<img title="Collapse" id="'+col_id+'_collapse" class="smallButton" style="display: none;" src="/images/moins.png" onClick="showShort(\''+col_id+'\')"/>')
+      truncated_value = html.escape(value[0:80]+'...')
+      if expanded:
+        display_truncated = 'none'
+        display_all = 'inline'
+        display_minus = 'inline'
+        display_plus = 'none'
+      else:
+        display_truncated = 'inline'
+        display_all = 'none'
+        display_minus = 'none'
+        display_plus = 'inline'
+      
+      if self.is_continuous_page:
+        self.add_html('<td><span id="'+col_id+'s" style="display: '+display_truncated+';">'+truncated_value+'</span>')
+        self.add_html('<span id="'+col_id+'l" style="display: '+display_all+';"><span id="'+col_id+'c">'+html_value+'</span>')
+        self.add_html('</td><td style="width: 34px;">')
+        self.add_html('<span><img title="Expand" id="'+col_id+'_expand" class="smallButton"  style="display: '+display_plus+';" src="/images/plus.png" onClick="showLong(\''+col_id+'\')"/></span>')
+        self.add_html('<img title="Collapse" id="'+col_id+'_collapse" class="smallButton" style="display: '+display_minus+';" src="/images/moins.png" onClick="showShort(\''+col_id+'\')"/>')
+      else:
+        self.add_content('<td><span id="'+col_id+'s" style="display: '+display_truncated+';">'+truncated+'</span>')
+        self.add_content('<span id="'+col_id+'l" style="display: '+display_all+';"><span id="'+col_id+'c">'+html_value+'</span>')
+        self.add_content('</td><td style="width: 34px;">')
+        self.add_content('<span><img title="Expand" id="'+col_id+'_expand" class="smallButton"  style="display: '+display_plus+';" src="/images/plus.png" onClick="showLong(\''+col_id+'\')"/></span>')
+        self.add_content('<img title="Collapse" id="'+col_id+'_collapse" class="smallButton" style="display: '+display_minus+';" src="/images/moins.png" onClick="showShort(\''+col_id+'\')"/>')
       if copy_button:
-        self.add_content('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
-      self.add_content('</td>')
-    self.add_content('</tr>')
+        if self.is_continuous_page:
+          self.add_html('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
+        else:
+          self.add_content('<span> </span><img title="Copy value" class="smallButton" src="/images/copy.png" onClick="copyValue(\''+col_id+'\')"/></span>')
+      if self.is_continuous_page:
+        self.add_html('</td>')
+      else:
+        self.add_content('</td>')
+    if self.is_continuous_page:
+      self.add_html('</tr>')
+    else:
+      self.add_content('</tr>')
     
 
   def end_result_table(self):
+    """ Ferme un tableau de résultat
+    
+    On fait un test sur self.is_continuous_page le temps de la migration de toutes les pages vers le mode continu
+    TODO : retirer les add_content quand toutes les pages seront en mode continu
+    
+    Versions:
+      25/02/2021 (mpham) version initiale
+      05/08/2024 (mpham) adaptation aux pages continues
+    """
     
     if self.result_in_table:
-      self.add_content('</table>')
+      if self.is_continuous_page:
+        self.add_html('</table>')
+        self.end_continuous_page_block()
+      else:
+        self.add_content('</table>')
       self.result_in_table = True
 
+
+  def escape_string_to_javascript(self, string:str) -> str:
+    """ Ajoute des caractères d'échappement pour génération de chaînes dans du code Javascript
     
+    Versions:
+      mpham (05/09/2024) version initiale
+    """
+    return string.replace("'", r"\'").replace('"', r'\"').replace("\\", "\\\\")
+
+    
+  def _generate_unique_id(self, name:str, existing_ids:list, default:str='id', prefix=''):
+    
+    """
+    Génère un identifiant à partir d'un nom
+    en ne retenant que les lettres et les chiffres
+    et en vérifiant que l'identifiant n'existe pas déjà
+    
+    S'il existe, ajoute un suffixe numérique
+
+    Args:
+      name: Nom à partir duquel l'identifiant est généré
+      existing_ids: liste des identifiants qui existent déjà
+      default: nom par défaut si aucun n'est donné
+      prefix: préfixe de l'identifiant, qui sera donc de la forme <prefixe><nom> dans le cas général
+      
+    Returns:
+      identifiant unique parmi une liste, de la forme <prefixe><nom> et avec ajout d'un indice pour gérer les doublons
+
+    Versions:
+      28/02/2021 (mpham) version initiale
+      31/12/2024 (mpham) gestion des préfixes, pour obtenir des identifiants globalement uniques pour les IdP et les apps
+    """
+    
+    name = default if name == '' else name
+    base = prefix + ''.join(c for c in name.casefold() if c.isalnum())
+    ok = False
+    rank = 0
+    
+    while not ok:
+
+      candidate_id = base + ('' if rank == 0 else str(rank))
+      if candidate_id in existing_ids:
+        rank = rank+1
+      else:
+        ok = True
+        
+    return candidate_id
+
+
+
 class AduneoError(Exception):
   """ Exception fonctionnelle
+  """
+  
+  def __init__(self, message:str, explanation_code:str=None, action:str=None, button_label:str=None):
+    self.explanation_code = explanation_code
+    self.action = action
+    self.button_label = button_label
+    super().__init__(message)
+
+
+class DesignError(Exception):
+  """ Erreur de conception
   """
   
   def __init__(self, message:str, explanation_code:str=None):
@@ -780,14 +996,20 @@ class WebRouter:
     @register_web_module('/client/oauth/login')
     class OAuthClientLogin(BaseHandler):
     
-    Les méthodes de l'objet devant servir des URL ont le decorator @register_url avec la méthode (une même URL ne peut donc pas servir en même temps GET et POST)
+    Les méthodes de l'objet devant servir des URL ont le decorator @register_page_url avec la méthode (une même URL ne peut donc pas servir en même temps GET et POST)
     
-    @register_url('POST')
+    @register_page_url('send_access_token_introspection_request', 'POST')
     def send_access_token_introspection_request_spa(self):
 
+    L'URL est donnée relativement au module. 
+    L'URL complète sera donc /client/oauth/login/send_access_token_introspection_request
+    
+    L'URL vide ('') correspond à la page d'accueil du module, c'est-à-dire à /client/oauth/login dans notre exemple
+
+    Si l'URL n'est pas donnée dans le décorateur,
     Le nom de la méthode donne l'URL relative (ici send_access_token_introspection_request_spa)
     
-    L'URL complète sera donc /client/oauth/login/send_access_token_introspection_request_spa
+    L'URL complète sera alors /client/oauth/login/send_access_token_introspection_request_spa
     
     Pour servir une URL, on commence par vérifier qu'elle existe par WebRouter.is_authorized_url
     Puis on crée un objet WebRouter avec l'URL et la méthode HTTP
@@ -891,7 +1113,6 @@ def register_url(method:str, url:str=None):
 
   Versions:
     30/09/2022 (mpham) version initiale
-  DEPRECATED
   """
   def decorator(func):
   
@@ -921,7 +1142,7 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
     (l'enregistrement se fait pas car func n'est pas la page mais le décorateur suivant)
   
   Args:
-    method: méthode HTTP
+    method: méthode HTTP, avec possibilité d'en donner plusieurs, dans une list (['GET', 'POST'] par exemple)
     url: URL relative par rapport à la racine déclarée au niveau de la classe par le décorateur register_web_module
     template: nom (optionnel) d'un fichier de modèle (du dossier templates) où le mot-clé {{content}} indique où insérer le contenu
     continuous: indique si la page est de type continu (envoi progressif du contenu pour affichage partiel lors des opérations prenant du temps)
@@ -930,6 +1151,8 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
     30/09/2022 (mpham) version initiale
     24/03/2023 (mpham) ajout de la fonction wrapper pour pouvoir ajouter d'autres décorateurs aux méthodes (en particulier @continuous_page)
     29/03/2023 (mpham) ajout des paramètres template et continuous
+    05/01/2025 (mpham) possibilité de définir plusieurs méthodes
+    09/01/2025 (mpham) comportement identique pages continues et non continues avec CfiForm
   """
   def decorator(func):
   
@@ -942,9 +1165,14 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
 
     if relative_url is None:
       relative_url = method_name
-    if module_name not in WebRouter.temp_urls[method.casefold()]:
-      WebRouter.temp_urls[method.casefold()][module_name] = {}
-    WebRouter.temp_urls[method.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name}
+    
+    methods = method
+    if isinstance(methods, str):
+      methods = [methods]
+    for met in methods:  
+      if module_name not in WebRouter.temp_urls[met.casefold()]:
+        WebRouter.temp_urls[met.casefold()][module_name] = {}
+      WebRouter.temp_urls[met.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name}
     
     # Traitement de la page
     def wrapper(*args, **kwargs):
@@ -959,30 +1187,48 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
         template_content = Template.load_template(template)
       
       self.hreq.continuous_page = continuous
-      print('---- IN DECORATOR', self.hreq.continuous_page)
+      #print('---- IN DECORATOR', self.hreq.continuous_page)
       if continuous:
+        
         # Page continue
-        self.hreq.continuous_page_id = str(uuid.uuid4())
-        print('---- IN DECORATOR', self.hreq.continuous_page_id)
+        continuous_page_id = self.hreq.headers.get('CpId')
+        if continuous_page_id:
+          # on est en ajout de contenu d'une page à ajout progressif, on récupère l'identifiant existant
+          self.hreq.continuous_page_id = continuous_page_id
+
+          self.hreq.send_response(200)
+          self.hreq._send_page_headers()
+          self.hreq.top_sent = True # TODO, regarder comment le supprimer
+          func(*args, **kwargs)
+          
+        else:
+          # initialisation d'une page à ajout progressif, on affiche le template de la page
         
-        content = """
-        <script src="/javascript/requestSender.js"></script>
-        <div id="text_ph"></div>
-        <div id="end_ph"></div>        
-        <script>
-        function getHtmlJsonContinueDelayed() {{
-          getHtmlJsonContinue("GET", "/continuouspage/poll?cp_id={cp_id}");
-        }}
-        //setTimeout(getHtmlJsonContinueDelayed, 1000);
-        getHtmlJsonContinueDelayed()
-        </script>
-        """.format(cp_id=self.hreq.continuous_page_id)
+          self.hreq.continuous_page_id = str(uuid.uuid4())
+          #print('---- IN DECORATOR', self.hreq.continuous_page_id)
+          
+          # TODO : transférer vers le template le presse-papiers et l'include requestSender
+          from .WebModules.Clipboard import Clipboard
+          content = Clipboard.get_window_definition()
+          content += """
+          <script src="/javascript/requestSender.js"></script>
+          <div id="text_ph"></div>
+          <div id="end_ph"></div>        
+          <script>
+          continuousPageId = '{cp_id}';
+          function getHtmlJsonContinueDelayed() {{
+            getHtmlJsonContinue("GET", "/continuouspage/poll?cp_id={cp_id}");
+          }}
+          //setTimeout(getHtmlJsonContinueDelayed, 1000);
+          getHtmlJsonContinueDelayed()
+          </script>
+          """.format(cp_id=self.hreq.continuous_page_id)
         
-        self.hreq.send_response(200)
-        self.hreq._send_page_headers()
-        self.hreq.top_sent = True # TODO, regarder comment le supprimer
-        self.add_content(Template.apply_template(template_content, content=content))
-        func(*args, **kwargs)
+          self.hreq.send_response(200)
+          self.hreq._send_page_headers()
+          self.hreq.top_sent = True # TODO, regarder comment le supprimer
+          self.add_content(Template.apply_template(template_content, content=content))
+          func(*args, **kwargs)
         
       else:
         # Page normale
@@ -990,15 +1236,22 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
         content_pos = template_content.find('{{content}}')
         if content_pos == -1:
           raise AduneoError(self.log_error("Le fichier de modèle de page "+template+" ne contient pas de balise de contenu {{content}}"))
-        template_top = template_content[:content_pos]
+        template_top = template_content[:content_pos+11]
         template_bottom = template_content[content_pos+11:]
-        
+
+        from .WebModules.Clipboard import Clipboard
+        content = Clipboard.get_window_definition()
+        content += """
+        <script src="/javascript/requestSender.js"></script>
+        """
+
         self.hreq.send_response(200)
         self.hreq._send_page_headers()
         self.hreq.top_sent = True # TODO, regarder comment le supprimer
-        self.add_content(Template.apply_template(template_top))
+        self.add_content(Template.apply_template(template_top, content=content))
         func(*args, **kwargs)
-        self.add_content(Template.apply_template(template_bottom))
+        self.add_content(template_bottom)
+        #self.add_content(Template.apply_template(template_bottom))
         
     return wrapper
     
@@ -1045,14 +1298,19 @@ def register_web_module(path):
   
   Args:
     path: URL relative servie par la classe, par exemple /client/oauth/login
-  
-  mpham 30/09/2022
+
+  Versions:
+    30/09/2022 (mpham) version initiale
+    28/12/2023 (mpham) page d'accueil des modules
   """
   def decorator(class_def):
     module_name = class_def.__module__
     for method in ['get', 'post']:
       for relative_url in WebRouter.temp_urls[method.casefold()].get(module_name, []):
-        full_url = path+'/'+relative_url
+        if relative_url == '':
+          full_url = path
+        else:
+          full_url = path+'/'+relative_url
         func_def = WebRouter.temp_urls[method.casefold()][module_name][relative_url]
         WebRouter.authorized_urls[method][full_url] = func_def
     

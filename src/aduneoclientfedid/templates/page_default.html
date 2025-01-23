@@ -1,12 +1,30 @@
 <html><head><title>Aduneo - ClientFedID</title>
 <link rel="stylesheet" href="/css/aduneo.css">
+<link rel="stylesheet" href="/css/dragWindow.css">
 </head>
 <script>var autoOpenWebconsole = false;</script> <!-- TODO appeler une API pour récupérer le paramètre de configuration -->
 <script src="/javascript/common.js"></script>
+<script src="/javascript/help.js"></script>
 <body><div style="color: #FFA500; font-family: Tahoma; font-size: 40px; background-color: #004c97; height: 74px;"><a href="https://www.aduneo.com"><img style="width: 294px; height: 64px; vertical-align: middle; margin-left: 8px; margin-top: 5px;" src="/images/aduneo.png"></a><span style="margin-left: 30px; vertical-align: middle;">ClientFedID - Identity Federation Test Client</span>
 <a href="/"><img style="height: 36px; float: right; margin-top: 20px; margin-right: 20px" src="/images/home.png"></a>
 <span><a class="button" onclick="openConsole(true);" style="float: right;margin-top: 15;margin-right: 10;">Logs</a></span></div>
 <div style="margin-top: 20px; margin-left: 50px; font-family: Verdana;">
 {{content}}
 </div>
+
+  <div id="helpWindow" class="dragWindow" onmousedown="startDrag(this, event)">
+    <form>
+    <div class="dragHeader">
+      <span id="helpHeader" class="helpHeader" style="display: inline;"></span>
+      <span id="helpHeaderEdit" style="display: none;"><input id="helpHeaderInput" type="text" style="width: 500px;" /></span><span style="float: right; cursor: pointer;" onclick="closeHelpWindow()">&#x2716;</span><span id="helpEditButton" class="smallbutton" style="float: right; display: inline;" onclick="editHelp()">Edit</span>
+    </div>
+    <div id="helpContent" class="helpContent dragContent" style="display: block;">
+    </div>
+    <div id="helpContentEdit" class="dragContent" style="display: none;">
+      <div><textarea id="helpContentInput" style="width: 100%; height: 320px"></textarea></div>
+      <div><span id="helpSaveButton" class="middlebutton" style="float: right; display: inline;" onclick="saveHelp()">Save</span></div>
+    </div>
+    </form>
+  </div>
+
 </body></html>

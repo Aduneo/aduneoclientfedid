@@ -1,3 +1,8 @@
+/**
+ * @license
+ * Copyright 2023 Aduneo
+ * SPDX-License-Identifier: Apache-2.0
+ */
 function openDrag(elId, x, y) {
   dragWindow = document.getElementById(elId);
   dragWindow.style.left = x;

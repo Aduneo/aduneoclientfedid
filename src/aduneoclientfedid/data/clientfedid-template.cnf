@@ -1,5 +1,6 @@
 {
   "meta": {
+    "version": 2,
     "key": "fedclient.key"
   },
   "server": {
@@ -27,10 +28,12 @@
       "remember_secrets": "off"
     }
   },
-  "oidc_clients": {
+  "default": {
+    "saml": {
+      "idp_authentication_binding_capabilities": ["urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect", "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"],
+      "idp_logout_binding_capabilities": ["urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect", "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"]
+    }
   },
-  "saml_clients": {
-  },
-  "oauth_clients": {
+  "idps": {
   }
 }
