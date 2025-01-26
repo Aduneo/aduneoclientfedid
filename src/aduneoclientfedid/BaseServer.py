@@ -607,7 +607,9 @@ class BaseHandler:
     """
     hreq est l'instance courante de HTTPRequestHandler
     
-    mpham 01/03/2021
+    Versions:
+      01/03/2021 (mpham) version initiale
+      26/01/2025 (mpham) remontée des en-têtes
     """
     
     from .Server import Server  # pour éviter les imports circulaires
@@ -616,6 +618,7 @@ class BaseHandler:
     self.post_json = hreq.post_json
     self.hreq = hreq
     self.server = hreq.server
+    self.headers = hreq.headers
     
     self.result_in_table = False   # Indique si une table est ouverte (voir start_result_table)
 
@@ -645,7 +648,7 @@ class BaseHandler:
     
     """
     retourne la valeur d'un paramètre de la query string
-      le paramètre ne soit se retrouver qu'une fois dans la query string
+      le paramètre ne doit se retrouver qu'une fois dans la query string
       
     retourne None si le paramètre n'est pas trouvé ou s'il a plusieurs valeurs
     

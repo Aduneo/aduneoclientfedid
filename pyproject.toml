@@ -12,7 +12,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aduneoclientfedid"
-version = "1.0.2"
+version = "2.0.1"
 description = "Identity Federation Test Client"
 readme = "README.md"
 authors = [{ name = "Aduneo", email = "contact@aduneo.com" }]
@@ -20,7 +20,7 @@ license = { file = "LICENSE" }
 classifiers = [
     "Topic :: System :: Systems Administration :: Authentication/Directory",
 ]
-keywords = ["identity", "federation", "openid connect", "oidc", "oauth", "oauth 2", "saml"]
+keywords = ["identity", "federation", "openid connect", "oidc", "oauth", "oauth 2", "saml", "cas"]
 dependencies = [
     "requests",
     "jwcrypto",

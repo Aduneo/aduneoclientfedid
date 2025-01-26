@@ -458,7 +458,6 @@ class OIDCClientLogin(FlowHandler):
         verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
         self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
         self.log_info(('  ' * 1)+'Client ID: '+client_id)
-        print(client_secret)
         r = requests.post(token_endpoint, data=data, auth=auth, verify=verify_certificates)
       except Exception as error:
         self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
