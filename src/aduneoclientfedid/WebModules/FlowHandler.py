@@ -84,6 +84,7 @@ class FlowHandler(BaseHandler):
     
     Versions:
       04/12/2024 (mpham) version initiale
+      28/01/2025 (mpham) CAS et SAML
     """
     self.add_html("""<h2>New auth in same context</h2>""")
     
@@ -119,6 +120,44 @@ class FlowHandler(BaseHandler):
           <div>
             <span>{name}</span>
             <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
+          </div>
+          """.format(
+            name = html.escape(client.get('name', 'Client')),
+            idp_id = urllib.parse.quote_plus(idp_id),
+            app_id = urllib.parse.quote_plus(client_id),
+            context_id = self.context.context_id,
+          )
+        )
+
+    if idp.get('saml_clients'):
+        
+      self.add_html("""<div>SAML SP</div>""")          
+      for client_id in sorted(idp['saml_clients'].keys()):
+        
+        client = idp['saml_clients'][client_id]
+        self.add_html("""
+          <div>
+            <span>{name}</span>
+            <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
+          </div>
+          """.format(
+            name = html.escape(client.get('name', 'Client')),
+            idp_id = urllib.parse.quote_plus(idp_id),
+            app_id = urllib.parse.quote_plus(client_id),
+            context_id = self.context.context_id,
+          )
+        )
+
+    if idp.get('cas_clients'):
+        
+      self.add_html("""<div>CAS Clients</div>""")          
+      for client_id in sorted(idp['cas_clients'].keys()):
+        
+        client = idp['cas_clients'][client_id]
+        self.add_html("""
+          <div>
+            <span>{name}</span>
+            <span><a href="/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
           </div>
           """.format(
             name = html.escape(client.get('name', 'Client')),
@@ -626,6 +665,7 @@ class FlowHandler(BaseHandler):
     Versions:
       08/08/2024 (mpham) version initiale
       30/12/2024 (mpham) logout
+      28/01/2025 (mpham) CAS
     """
 
     if not self.context:
@@ -668,6 +708,7 @@ class FlowHandler(BaseHandler):
         'OIDC': '/client/oidc/login/preparerequest',
         'OAuth2': '/client/oauth2/login/preparerequest',
         'SAML': '/client/saml/login/preparerequest',
+        'CAS': '/client/cas/login/preparerequest',
         }.get(self.context['flow_type'])
 
       self.add_html('<div id="'+html.escape(dom_id)+'">')

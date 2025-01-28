@@ -26,6 +26,7 @@ import uuid
 from ..BaseServer import AduneoError
 from ..BaseServer import register_web_module, register_url, register_page_url
 from ..CfiForm import RequesterForm
+from ..BasicXML import BasicXML
 from ..Configuration import Configuration
 from ..Context import Context
 from ..Explanation import Explanation
@@ -263,6 +264,7 @@ class CASClientLogin(FlowHandler):
     
     Versions:
       26/01/2025 (mpham) version initiale adaptée de OIDCClientLogin
+      18/01/2025 (mpham) parsing de la réponse (XML ou JSON)
     """
 
     self.add_javascript_include('/javascript/resultTable.js')
@@ -339,13 +341,29 @@ class CASClientLogin(FlowHandler):
       #self.log_info(json.dumps(response, indent=2))
       self.log_info(r.text)
 
-      # TODO : interpréter le XML et le JSON pour vérifier que l'authentification est bien réussie
-      #        pour cela, faire un parser XML simplifié
-
       self.start_result_table()
-      self.add_result_row('CAS response', r.text, '')
+
+      authentication_successful = False
+      if app_params.get('validation_response_format') == 'json':
+        response = r.json()
+        self.add_result_row('CAS response', json.dumps(response, indent=2), '')
+        service_response = response.get('serviceResponse')
+        if service_response:
+          if service_response.get('authenticationSuccess'):
+            authentication_successful = True
+      else:
+        self.add_result_row('CAS response', r.text, '')
+        response = BasicXML.parse(r.text)
+        service_response = response.get('cas:serviceResponse')
+        if service_response:
+          if service_response.get('cas:authenticationSuccess'):
+            authentication_successful = True
+
       self.end_result_table()
-      self.add_html('<h3>Authentication successful</h3>')
+      if authentication_successful:
+        self.add_html('<h3>Authentication successful</h3>')
+      else:
+        self.add_html('<h3>Authentication failed</h3>')
       
       # on considère qu'on est bien loggé
       self.logon('cas_client_'+idp_id+'/'+app_id, cas_ticket)
