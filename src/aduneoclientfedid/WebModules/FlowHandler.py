@@ -131,7 +131,7 @@ class FlowHandler(BaseHandler):
 
     if idp.get('saml_clients'):
         
-      self.add_html("""<div>SAML SP</div>""")          
+      self.add_html("""<div>SAML Service Providers (SP)</div>""")          
       for client_id in sorted(idp['saml_clients'].keys()):
         
         client = idp['saml_clients'][client_id]
@@ -177,7 +177,7 @@ class FlowHandler(BaseHandler):
   
   @register_page_url(url='logout', method='GET', continuous=True)
   def logout(self):
-    """ Menu de déconnexion d'une application (OIDC) de l'IdP courant, en poursuite de contexte
+    """ Menu de déconnexion d'une application (OIDC, SAML ou CAS) de l'IdP courant, en poursuite de contexte
     
     Pour OAuth 2, faire une révocation de jetons
     
@@ -186,6 +186,7 @@ class FlowHandler(BaseHandler):
     Versions:
       30/12/2024 (mpham) version initiale
       04/01/2025 (mpham) SAML logout
+      28/01/2025 (mpham) CAS logout
     """
     self.add_html("""<h2>Logout</h2>""")
     
@@ -223,6 +224,26 @@ class FlowHandler(BaseHandler):
           <div>
             <span>{name}</span>
             <span><a href="/client/saml/logout/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}" class="smallbutton">Logout</a></span>
+          </div>
+          """.format(
+            name = html.escape(app_params.get('name', 'Client')),
+            idp_id = urllib.parse.quote_plus(idp_id),
+            app_id = urllib.parse.quote_plus(app_id),
+            context_id = self.context.context_id,
+          )
+        )
+
+    # CAS
+    if idp.get('cas_clients'):
+      
+      self.add_html("""<div>CAS clients</div>""")          
+      for app_id in sorted(idp['cas_clients'].keys()):
+        
+        app_params = idp['cas_clients'][app_id]
+        self.add_html("""
+          <div>
+            <span>{name}</span>
+            <span><a href="/client/cas/logout/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}" class="smallbutton">Logout</a></span>
           </div>
           """.format(
             name = html.escape(app_params.get('name', 'Client')),
@@ -704,6 +725,9 @@ class FlowHandler(BaseHandler):
       for saml_assertion_wrapper in self.context['saml_assertions'].values():
         logout = True
       
+      for cas_ticket in self.context['cas_tickets'].values():
+        logout = True
+      
       retry_url = {
         'OIDC': '/client/oidc/login/preparerequest',
         'OAuth2': '/client/oauth2/login/preparerequest',
@@ -728,60 +752,3 @@ class FlowHandler(BaseHandler):
       if oauth_exchange:
         self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/saml/login/oauthexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+urllib.parse.quote_plus(dom_id)+'\')" class="middlebutton">Exchange SAML -> OAuth</span>')
       self.add_html('</div>')
-
-
-  def _add_footer_menu_deprecated(self, context):
-    """ DEPRECATED Affiche un menu en fin de cinématique pour
-        - relancer une même cinématique
-        - manipuler les jetons (introspection, user info, échanges), en fonction des jetons trouvés dans la session
-        
-    Args:
-      context: contexte de la cinématique en cours, récupérée de la session
-      
-    Versions:
-      00/00/2022 (mpham) : version initiale
-      23/12/2022 (mpham) : copie de OAuthClientLogin et généralisation aux différentes cinématiques
-    """
-
-    if not context:
-      self.add_content('<span><a href="/" class="button">Menu</a></span>')
-    else:
-
-      dom_id = 'id'+str(uuid.uuid4())
-
-      context_id = context['context_id']
-      
-      id_token = None
-      op_access_token = None
-      access_token = None
-      refresh_token = None
-      saml_assertion = None
-      tokens = context.get('tokens')
-      if tokens:
-        id_token = tokens.get('id_token')
-        op_access_token = tokens.get('op_access_token')
-        access_token = tokens.get('access_token')
-        refresh_token = tokens.get('refresh_token')
-        saml_assertion = tokens.get('saml_assertion')
-
-      retry_url = {
-        'OIDC': '/client/oidc/login/preparerequest',
-        'OAuth2': '/client/oauth/login/preparerequest',
-        'SAML': '/client/saml/login/preparerequest',
-        }.get(context['initial_flow']['flow_type'])
-
-      self.add_content('<div id="'+html.escape(dom_id)+'">')
-      if retry_url:
-        self.add_content('<span><a href="'+retry_url+'?contextid='+urllib.parse.quote_plus(context_id)+'&id='+urllib.parse.quote_plus(context['initial_flow']['app_id'])+'" class="button">Retry original flow</a></span>')
-      if id_token and op_access_token:
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oidc/login/userinfo_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Userinfo</span>')
-      if id_token:
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'&token_type=id_token\', \'\', \''+dom_id+'\')" class="button">Exchange ID Token</span>')
-      if access_token:
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/introspection_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Introspect AT</span>')
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'&token_type=access_token\', \'\', \''+dom_id+'\')" class="button">Exchange AT</span>')
-      if refresh_token:
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/refreshtoken_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="button">Refresh AT</span>')
-      if saml_assertion:
-        self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/saml/login/oauthexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+urllib.parse.quote_plus(dom_id)+'\')" class="button">Exchange SAML -> OAuth</span>')
-      self.add_content('</div>')

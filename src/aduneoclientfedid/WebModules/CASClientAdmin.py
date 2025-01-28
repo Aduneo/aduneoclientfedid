@@ -1,5 +1,5 @@
 """
-Copyright 2023 Aduneo
+Copyright 2025 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -121,6 +121,11 @@ class CASClientAdmin(BaseHandler):
           default = 'cas_3.0'
           ) \
       .end_section() \
+      .start_section('logout_configuration', title="Logout configuration") \
+        .text('logout_service_url', label='Logout service URL', clipboard_category='logout_service_url',
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/cas/logout/callback'); }" 
+          ) \
+      .end_section() \
       .start_section('ticket_validation', title="Ticket validation") \
         .closed_list('validation_response_format', label='Validation response format',
           values = {'xml': 'XML', 'json': 'JSON'},
@@ -173,7 +178,7 @@ class CASClientAdmin(BaseHandler):
       else:
         cas_params[item] = self.post_form[item].strip()
 
-    for item in ['service_url', 'renew', 'gateway', 'method', 'ticket_validation_version', 'validation_response_format']:
+    for item in ['service_url', 'renew', 'gateway', 'method', 'ticket_validation_version', 'validation_response_format', 'logout_service_url']:
       if self.post_form.get(item, '') == '':
         app_params.pop(item, None)
       else:

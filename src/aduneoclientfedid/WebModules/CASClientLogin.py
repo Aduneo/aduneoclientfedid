@@ -1,5 +1,5 @@
 """
-Copyright 2023 Aduneo
+Copyright 2025 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,9 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import base64
 import copy
-import datetime
 import html
 import json
 import requests
@@ -30,8 +28,6 @@ from ..BasicXML import BasicXML
 from ..Configuration import Configuration
 from ..Context import Context
 from ..Explanation import Explanation
-from ..Help import Help
-from ..JWT import JWT
 from .Clipboard import Clipboard
 from .FlowHandler import FlowHandler
 
@@ -96,7 +92,7 @@ class CASClientLogin(FlowHandler):
         app_params = self.context.last_app_params
       
       self.log_info(('  ' * 1) + f"for client {app_params['name']} of IdP {idp_params['name']}")
-      self.add_html(f"<h1>IdP {idp_params['name']} CAS Client {app_params['name']}</h1>")
+      self.add_html(f"<h1>Authentication for IdP {idp_params['name']} CAS Client {app_params['name']}</h1>")
 
       # ticket validation version
       cas_server_validate_url = idp_params.get('cas_server_url', '')
@@ -336,9 +332,7 @@ class CASClientLogin(FlowHandler):
         self.add_html('<div class="intertable">Error, status code '+str(r.status_code)+'</div>')
         raise AduneoError(self.log_error('token retrieval error: status code '+str(r.status_code)+", "+r.text))
 
-      #response = r.json()
       self.log_info("IdP response:")
-      #self.log_info(json.dumps(response, indent=2))
       self.log_info(r.text)
 
       self.start_result_table()
@@ -365,7 +359,8 @@ class CASClientLogin(FlowHandler):
       else:
         self.add_html('<h3>Authentication failed</h3>')
       
-      # on considère qu'on est bien loggé
+      # on considère qu'on est bien loggé (le ticket n'est pas utilisable, on ne le conserve que pour information
+      self.context['cas_tickets'][str(time.time())] = cas_ticket
       self.logon('cas_client_'+idp_id+'/'+app_id, cas_ticket)
       
     except AduneoError as error:

@@ -103,6 +103,7 @@ class Context(dict):
     08/08/2024 (mpham) version initiale
     05/09/2024 (mpham) refonte du contexte et intégration des paramètres de la dernière introspection
     28/11/2024 (mpham) on ajoute l'app ayant obtenu le jeton d'accès pour pouvoir le rafraîchir
+    28/01/2025 (mpham) tickets CAS (attention, ils sont inutilisables)
   """
 
   def __init__(self):
@@ -113,6 +114,7 @@ class Context(dict):
     self['id_tokens'] = {}
     self['access_tokens'] = {}
     self['saml_assertions'] = {}
+    self['cas_tickets'] = {}
 
 
   def get_all_access_tokens(self):
