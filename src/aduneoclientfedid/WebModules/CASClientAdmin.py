@@ -195,21 +195,6 @@ class CASClientAdmin(BaseHandler):
     self.send_redirection(f"/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   @register_page_url(url='modifymulti', method='GET', template='page_default.html', continuous=False)
   def modify_multi_endpoint(self):
     self.modify_multi_display()
@@ -219,7 +204,7 @@ class CASClientAdmin(BaseHandler):
     """ Modification des paramètres du client (mais pas de l'IdP)
     
     Versions:
-      26/12/2024 (mpham) version initiale
+      28/01/2025 (mpham) version initiale
     """
 
     idp_id = self.get_query_string_param('idpid', '')
@@ -233,7 +218,7 @@ class CASClientAdmin(BaseHandler):
         # Création du client
         app_params = {}
       else:
-        app_params = idp['oidc_clients'][app_id]
+        app_params = idp['cas_clients'][app_id]
         
       # Affichage de l'IdP
       self.add_html(f"<h1>IdP {idp['name']}</h1>")
@@ -267,14 +252,12 @@ class CASClientAdmin(BaseHandler):
 
   @register_url(url='modifymulti', method='POST')
   def modify_multi_modify(self):
-    """ Crée ou modifie une App OIDC pour un IdP existant (mode multi)
+    """ Crée ou modifie une App CAS pour un IdP existant (mode multi)
     
     Si l'identifiant existe, ajoute un suffixe numérique
     
     Versions:
-      26/12/2024 (mpham) version initiale
-      30/12/2024 (mpham) End session endpoint HTTP method
-      31/12/2024 (mpham) les identifiants des apps sont maintenant préfixés (<idp_id>_oidc_) pour les rendre globalement uniques
+      28/01/2025 (mpham) version initiale
     """
     
     idp_id = self.post_form['idp_id']
@@ -283,41 +266,36 @@ class CASClientAdmin(BaseHandler):
     app_id = self.post_form['app_id']
     if app_id == '':
       # Création
-      if not idp.get('oidc_clients'):
-        idp['oidc_clients'] = {}
+      if not idp.get('cas_clients'):
+        idp['cas_clients'] = {}
       
-      app_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=idp['oidc_clients'].keys(), default='op', prefix=f'oidc_{idp_id[4:]}_')
-      idp['oidc_clients'][app_id] = {}
+      app_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=idp['cas_clients'].keys(), default='op', prefix=f'cas_{idp_id[4:]}_')
+      idp['cas_clients'][app_id] = {}
     
-    app_params = idp['oidc_clients'][app_id]
+    app_params = idp['cas_clients'][app_id]
     
     if self.post_form['name'] == '':
       self.post_form['name'] = app_id
 
     app_params['name'] = self.post_form['name'].strip()
     
-    for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'end_session_endpoint_method', 'post_logout_redirect_uri',
-    'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values']:
+    for item in ['service_url', 'renew', 'gateway', 'method', 'ticket_validation_version', 'validation_response_format', 'logout_service_url']:
       if self.post_form.get(item, '') == '':
         app_params.pop(item, None)
       else:
         app_params[item] = self.post_form[item].strip()
-      
-    for secret in ['client_secret']:
-      if self.post_form.get(secret, '') != '':
-        app_params[secret+'!'] = self.post_form[secret]
         
     Configuration.write_configuration(self.conf)
     
-    self.send_redirection(f"/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}")
+    self.send_redirection(f"/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}")
 
 
   @register_page_url(url='removeapp', method='GET', template='page_default.html', continuous=False)
   def remove_app_display(self):
-    """ Page de suppression d'un client OpenID Connect
+    """ Page de suppression d'un client CAS
     
     Versions:
-      29/12/2024 (mpham) version initiale
+      28/01/2025 (mpham) version initiale
     """
 
     try:
@@ -328,9 +306,9 @@ class CASClientAdmin(BaseHandler):
       idp = copy.deepcopy(self.conf['idps'][idp_id])
       
       app_id = self.get_query_string_param('appid', '')
-      app_params = idp['oidc_clients'].get(app_id)
+      app_params = idp['cas_clients'].get(app_id)
       if not app_params:
-        raise AduneoError(f"OpenID Connect client {app_id} does not exist", button_label="Return to IdP page", action=f"/client/idp/admin/display?idpid={idp_id}")
+        raise AduneoError(f"CAS client {app_id} does not exist", button_label="Return to IdP page", action=f"/client/idp/admin/display?idpid={idp_id}")
       
       # Affichage de l'IdP
       self.add_html(f"<h1>IdP {idp['name']}</h1>")
@@ -357,7 +335,7 @@ class CASClientAdmin(BaseHandler):
       app_params['idp_id'] = idp_id
       app_params['app_id'] = app_id
       app_form = self.get_app_form(app_params)
-      app_form.set_title('Remove OIDC app '+(' '+app_params['name'] if app_params.get('name') else ''))
+      app_form.set_title('Remove CAS client '+(' '+app_params['name'] if app_params.get('name') else ''))
       app_form.add_button('Remove', f'removeappconfirmed?idpid={idp_id}&appid={app_id}', display='all')
       app_form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
 
@@ -378,11 +356,10 @@ class CASClientAdmin(BaseHandler):
   @register_url(url='removeappconfirmed', method='GET')
   def remove_app_remove(self):
     """
-    Supprime un client OpenID Connect
+    Supprime un client CAS
     
     Versions:
-      28/12/2021 (mpham) version initiale
-      29/12/2024 (mpham) suppression après page de confirmation
+      28/01/2025 (mpham) version initiale
     """
 
     try:
@@ -393,11 +370,11 @@ class CASClientAdmin(BaseHandler):
       idp = self.conf['idps'][idp_id]
       
       app_id = self.get_query_string_param('appid', '')
-      app_params = idp['oidc_clients'].get(app_id)
+      app_params = idp['cas_clients'].get(app_id)
       if not app_params:
-        raise AduneoError(f"OpenID Connect client {app_id} does not exist", action=f"/client/idp/admin/display?idpid={idp_id}")
+        raise AduneoError(f"CAS client {app_id} does not exist", action=f"/client/idp/admin/display?idpid={idp_id}")
 
-      del idp['oidc_clients'][app_id]
+      del idp['cas_clients'][app_id]
       Configuration.write_configuration(self.conf)
       self.send_redirection(f"/client/idp/admin/display?idpid={idp_id}")
       
@@ -419,76 +396,57 @@ class CASClientAdmin(BaseHandler):
       objet RequesterForm
     
     Versions:
-      26/12/2024 (mpham) version initiale adaptée de modify_single_display
-      30/12/2024 (mpham) End session endpoint HTTP method
+      28/01/2025 (mpham) version initiale adaptée de modify_single_display
     """
 
     form_content = {
       'idp_id': app_params['idp_id'],
       'app_id': app_params['app_id'],
       'name': app_params.get('name', ''),
-      'redirect_uri': app_params.get('redirect_uri', ''),
-      'post_logout_redirect_uri': app_params.get('post_logout_redirect_uri', ''),
-      'client_id': app_params.get('client_id', ''),
-      'scope': app_params.get('scope', 'openid'),
-      'response_type': app_params.get('response_type', 'code'),
-      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
-      'end_session_endpoint_method': app_params.get('end_session_endpoint_method', 'post'),
-      'display': app_params.get('display', ''),
-      'prompt': app_params.get('prompt', ''),
-      'max_age': app_params.get('max_age', ''),
-      'ui_locales': app_params.get('ui_locales', ''),
-      'id_token_hint': app_params.get('id_token_hint', ''),
-      'login_hint': app_params.get('login_hint', ''),
-      'acr_values': app_params.get('acr_values', ''),
+      'service_url': app_params.get('service_url', ''),
+      'renew': app_params.get('renew', '[not set]'),
+      'gateway': app_params.get('renew', '[not set]'),
+      'method': app_params.get('method', 'get'),
+      'ticket_validation_version': app_params.get('ticket_validation_version', 'cas_3.0'),
+      'validation_response_format': app_params.get('validation_response_format', 'XML'),
       }
     
     form = CfiForm('oidcadminmulti', form_content, action='modifymulti', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
       .text('name', label='Name') \
-      .start_section('rp_endpoints', title="RP endpoints") \
-        .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri',
-          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/oidc/login/callback'); }" 
+      .start_section('client_configuration', title="CAS client configuration") \
+        .text('service_url', label='Service URL', clipboard_category='service_url',
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/cas/login/callback'); }" 
           ) \
-        .text('post_logout_redirect_uri', label='Post logout redirect URI', clipboard_category='post_logout_redirect_uri',
-          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/oidc/logout/callback'); }" \
+        .open_list('renew', label='Renew', 
+          hints = ['[not set]', 'true']
+          ) \
+        .open_list('gateway', label='Gateway', 
+          hints = ['[not set]', 'true']
+          ) \
+        .closed_list('method', label='Method',
+          values = {'get': 'GET', 'post': 'POST', 'header': 'HEADER'},
+          default = 'get'
+          ) \
+        .closed_list('ticket_validation_version', label='Ticket validation version',
+          values = {'cas_1.0': 'CAS 1.0', 'cas_2.0': 'CAS 2.0', 'cas_3.0': 'CAS 3.0'},
+          default = 'cas_3.0'
           ) \
       .end_section() \
-      .start_section('openid_connect_configuration', title="OpenID Connect Configuration") \
-        .text('client_id', label='Client ID', clipboard_category='client_id') \
-        .text('scope', label='Scope', clipboard_category='scope') \
-        .closed_list('response_type', label='Reponse type', 
-          values={'code': 'code'},
-          default = 'code'
+      .start_section('logout_configuration', title="Logout configuration") \
+        .text('logout_service_url', label='Logout service URL', clipboard_category='logout_service_url',
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/cas/logout/callback'); }" 
           ) \
-        .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
-          values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
-          default = 'client_secret_basic'
-          ) \
-        .closed_list('end_session_endpoint_method', label='End session endpoint HTTP method', 
-          values={'get': 'GET', 'post': 'POST'},
-          default = 'post'
-          ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
       .end_section() \
-      .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=True) \
-        .closed_list('display', label='Display', 
-          values={'': '', 'page': 'page', 'popup': 'popup', 'touch': 'touch', 'wap': 'wap'},
-          default = ''
+      .start_section('ticket_validation', title="Ticket validation") \
+        .closed_list('validation_response_format', label='Validation response format',
+          values = {'xml': 'XML', 'json': 'JSON'},
+          default = 'XML'
           ) \
-        .closed_list('prompt', label='Prompt', 
-          values={'': '', 'none': 'none', 'login': 'login', 'consent': 'consent', 'select_account': 'select_account'},
-          default = ''
-          ) \
-        .text('max_age', label='Max Age', clipboard_category='max_age') \
-        .text('ui_locales', label='UI Locales', clipboard_category='ui_locales') \
-        .text('id_token_hint', label='ID Token Hint', clipboard_category='id_token_hint') \
-        .text('login_hint', label='Login Hint', clipboard_category='login_hint') \
-        .text('acr_values', label='ACR Values', clipboard_category='acr_values') \
-      .end_section()
+      .end_section() \
       
-    form.set_title('OpenID Connect authentication'+('' if form_content['name'] == '' else ': '+form_content['name']))
+    form.set_title('CAS authentication'+('' if form_content['name'] == '' else ': '+form_content['name']))
     form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     return form
