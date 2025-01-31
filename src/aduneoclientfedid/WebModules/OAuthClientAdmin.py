@@ -75,6 +75,7 @@ class OAuthClientAdmin(BaseHandler):
       23/08/2024 (mpham) version initiale copiée de OIDC
       23/12/2024 (mpham) les valeurs des select sont maintenant toutes des constantes du type metadata_uri et non plus des libellés comme Authorization Server Metadata URI
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
+      31/01/2025 (mpham) option same_as_oidc pour la configuration des endpoints
     """
 
     idp_id = self.get_query_string_param('idpid', '')
@@ -119,7 +120,7 @@ class OAuthClientAdmin(BaseHandler):
       .text('name', label='Name') \
       .start_section('as_endpoints', title="Authorization Server Endpoints") \
         .closed_list('endpoint_configuration', label='Endpoint configuration', 
-          values={'metadata_uri': 'Authorization Server Metadata URI', 'local_configuration': 'Local configuration'},
+          values={'metadata_uri': 'Authorization Server Metadata URI', 'local_configuration': 'Local configuration', 'same_as_oidc': 'Same as OIDC'},
           default = 'metadata_uri'
           ) \
         .text('metadata_uri', label='AS Metadata URI', clipboard_category='metadata_uri', displayed_when="@[endpoint_configuration] = 'metadata_uri'") \
@@ -268,7 +269,7 @@ class OAuthClientAdmin(BaseHandler):
           
       from .IdPClientAdmin import IdPClientAdmin
       idp['id'] = idp_id
-      idp_form = IdPClientAdmin.get_idp_form(self, idp)
+      idp_form = IdPClientAdmin.get_idp_form(self, idp, display_only=True)
           
       self.add_html("""
         <div id="panel_{div_id}" style="display: none;">{form}</div>

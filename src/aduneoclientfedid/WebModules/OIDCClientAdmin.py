@@ -70,6 +70,7 @@ class OIDCClientAdmin(BaseHandler):
       23/12/2024 (mpham) possibilité de donner la clé de vérification même en Discovery URI (pour entrer la clé HS256 de Keycloak qui n'est pas aux normes : https://github.com/keycloak/keycloak/issues/13823)
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
       30/12/2024 (mpham) End session endpoint HTTP method
+      31/01/2025 (mpham) option same_as_oauth2 pour la configuration des endpoints
     """
 
     idp_id = self.get_query_string_param('idpid', '')
@@ -122,7 +123,7 @@ class OIDCClientAdmin(BaseHandler):
       .text('name', label='Name') \
       .start_section('op_endpoints', title="OP endpoints") \
         .closed_list('endpoint_configuration', label='Endpoint configuration', 
-          values={'discovery_uri': 'Discovery URI', 'local_configuration': 'Local configuration'},
+          values={'discovery_uri': 'Discovery URI', 'local_configuration': 'Local configuration', 'same_as_oauth2': 'Same as OAuth 2'},
           default = 'discovery_uri'
           ) \
         .text('discovery_uri', label='Discovery URI', clipboard_category='discovery_uri', displayed_when="@[endpoint_configuration] = 'discovery_uri'") \
@@ -299,7 +300,7 @@ class OIDCClientAdmin(BaseHandler):
           
       from .IdPClientAdmin import IdPClientAdmin
       idp['id'] = idp_id
-      idp_form = IdPClientAdmin.get_idp_form(self, idp)
+      idp_form = IdPClientAdmin.get_idp_form(self, idp, display_only=True)
           
       self.add_html("""
         <div id="panel_{div_id}" style="display: none;">{form}</div>

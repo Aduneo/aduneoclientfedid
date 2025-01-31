@@ -74,6 +74,7 @@ class IdPClientAdmin(BaseHandler):
       09/01/2025 (mpham) paramètres SAML
       23/01/2025 (mpham) prise en compte des paramètres SAML uniquement si saml_prerequisite vérifié
       28/01/2025 (mpham) paramètres CAS
+      31/01/2025 (mpham) SAML : si l'entity ID n'est pas donnée, on n'enregistre pas les bindings (ça permet de conserver saml à {})
     """
     
     idp_id = self.post_form['idp_id']
@@ -129,12 +130,13 @@ class IdPClientAdmin(BaseHandler):
           saml_params.pop(item, None)
         else:
           saml_params[item] = self.post_form[item].strip()
-        
-      for item in ['idp_authentication_binding_capabilities', 'idp_logout_binding_capabilities']:
-        if self.post_form.get(item, '') == '':
-          saml_params.pop(item, None)
-        else:
-          saml_params[item] = self.post_form[item].split('\t')
+      
+      if saml_params.get('idp_entity_id'):
+        for item in ['idp_authentication_binding_capabilities', 'idp_logout_binding_capabilities']:
+          if self.post_form.get(item, '') == '':
+            saml_params.pop(item, None)
+          else:
+            saml_params[item] = self.post_form[item].split('\t')
         
     # Paramètres CAS
     for item in ['cas_server_url']:
@@ -170,7 +172,7 @@ class IdPClientAdmin(BaseHandler):
     idp = copy.deepcopy(self.conf['idps'][idp_id])
     
     idp['id'] = idp_id
-    form = self.get_idp_form(idp)  
+    form = self.get_idp_form(idp, display_only=True)  
 
     self.add_html(form.get_html(display_only=True))
 
@@ -431,13 +433,14 @@ class IdPClientAdmin(BaseHandler):
       self.send_redirection(e.action)
 
 
-  def get_idp_form(handler, idp:dict):
+  def get_idp_form(handler, idp:dict, display_only:bool=False):
     """ Retourne un RequesterForm avec un IdP
     
     Args:
       handler: objet de type BaseHandler, pour accès à la configuration
       idp: dict avec les paramètres de l'IdP, dans le formalisme du fichier de configuration
              Attention : il faut ajouter le champ id avec l'identifiant unique de l'IdP
+      display_only: adapte le formulaire en fonction du mode, attention, il faut toujours passer le bon display_only à CfiForm.get_html
              
     Returns:
       objet RequesterForm
@@ -447,6 +450,8 @@ class IdPClientAdmin(BaseHandler):
       09/01/2025 (mpham) paramètres SAML
       23/01/2025 (mpham) les paramètres SAML ne sont affichés que si saml_prerequisite est bien vérifié
       28/01/2025 (mpham) paramètres SAML
+      31/01/2025 (mpham) en lecture seule, l'affiche pas les INPUT des sections non définies
+      31/01/2025 (mpham) option same_as pour la configuration des endpoints OIDC et OAuth 2
     """
 
     idp_params = idp['idp_parameters']
@@ -506,10 +511,14 @@ class IdPClientAdmin(BaseHandler):
     form = CfiForm('idpadmin', form_content, action='modify', submit_label='Save') \
       .hidden('idp_id') \
       .text('name', label='Name') \
-      .start_section('oidc_configuration', title="OIDC configuration", collapsible=True) \
+      .start_section('oidc_configuration', title="OIDC configuration", collapsible=True) 
+    if oidc_params == {} and display_only:
+      form.raw_html("OpenID Connect not configured")
+    else:
+      form \
         .start_section('op_endpoints', title="OP endpoints") \
           .closed_list('oidc_endpoint_configuration', label='Endpoint configuration', 
-            values={'discovery_uri': 'Discovery URI', 'local_configuration': 'Local configuration'},
+            values={'discovery_uri': 'Discovery URI', 'local_configuration': 'Local configuration', 'same_as_oauth2': 'Same as OAuth 2'},
             default = 'discovery_uri'
             ) \
           .text('oidc_discovery_uri', label='Discovery URI', clipboard_category='discovery_uri', displayed_when="@[oidc_endpoint_configuration] = 'discovery_uri'") \
@@ -530,12 +539,17 @@ class IdPClientAdmin(BaseHandler):
             ) \
           .text('oidc_jwks_uri', label='JWKS URI', displayed_when="@[oidc_signature_key_configuration] = 'jwks_uri'") \
           .text('oidc_signature_key', label='Signature key', displayed_when="@[oidc_signature_key_configuration] = 'local_configuration'") \
-        .end_section() \
+        .end_section() 
+    form \
       .end_section() \
-      .start_section('oauth2_configuration', title="OAuth 2 configuration", collapsible=True) \
+      .start_section('oauth2_configuration', title="OAuth 2 configuration", collapsible=True) 
+    if oauth2_params == {} and display_only:
+      form.raw_html("OAuth 2 not configured")
+    else:
+      form \
         .start_section('as_endpoints', title="Authorization Server Endpoints") \
           .closed_list('oauth2_endpoint_configuration', label='Endpoint configuration', 
-            values={'metadata_uri': 'Authorization Server Metadata URI', 'local_configuration': 'Local configuration'},
+            values={'metadata_uri': 'Authorization Server Metadata URI', 'local_configuration': 'Local configuration', 'same_as_oidc': 'Same as OIDC'},
             default = 'metadata_uri'
             ) \
           .text('oauth2_metadata_uri', label='AS Metadata URI', clipboard_category='metadata_uri', displayed_when="@[oauth2_endpoint_configuration] = 'metadata_uri'") \
@@ -551,22 +565,35 @@ class IdPClientAdmin(BaseHandler):
             default = 'basic'
             ) \
           .text('oauth2_revocation_endpoint', label='Revocation endpoint', clipboard_category='revocation_endpoint', displayed_when="@[oauth2_endpoint_configuration] = 'local_configuration'") \
-        .end_section() \
+        .end_section() 
+    form \
       .end_section() \
       
     if handler.hreq.saml_prerequisite:
-      form.start_section('saml_configuration', title="SAML configuration", collapsible=True) \
+      form \
+      .start_section('saml_configuration', title="SAML configuration", collapsible=True) 
+      if saml_params == {} and display_only:
+        form.raw_html("SAML not configured")
+      else:
+        form \
         .upload_button('upload_idp_metadata', label='Upload IdP metadata', on_upload="parseIdPMetadata(upload_content, cfiForm);") \
         .text('idp_entity_id', label='IdP entity ID', clipboard_category='idp_entity_id') \
         .text('idp_sso_url', label='IdP SSO URL', clipboard_category='idp_sso_url') \
         .text('idp_slo_url', label='IdP SLO URL', clipboard_category='idp_slo_url') \
         .textarea('idp_certificate', label='IdP certificate', rows=10, clipboard_category='idp_certificate', upload_button='Upload IdP certificate') \
         .hidden('idp_authentication_binding_capabilities') \
-        .hidden('idp_logout_binding_capabilities') \
+        .hidden('idp_logout_binding_capabilities') 
+      form \
       .end_section() \
       
-    form.start_section('cas_configuration', title="CAS configuration", collapsible=True) \
-        .text('cas_cas_server_url', label='CAS server URL', clipboard_category='cas_server_url') \
+    form \
+      .start_section('cas_configuration', title="CAS configuration", collapsible=True) 
+    if cas_params == {} and display_only:
+      form.raw_html("CAS not configured")
+    else:
+      form \
+        .text('cas_cas_server_url', label='CAS server URL', clipboard_category='cas_server_url') 
+    form \
       .end_section() \
       .start_section('common_configuration', title="Common configuration", collapsible=True) \
         .check_box('verify_certificates', label='Verify certificates') \
