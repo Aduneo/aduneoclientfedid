@@ -40,28 +40,34 @@ class OAuthClientAdmin(BaseHandler):
         
     Versions:
       23/08/2024 (mpham) version initiale copiée de OIDC
+      31/01/2025 (mpham) on n'affiche les paramètres de l'IdP dans tous les cas si on a un seul client ou pas de client
     """
-
-    idp = {}
 
     idp_id = self.get_query_string_param('idpid', '')
     if idp_id == '':
-      # Création
+      # Création d'un IdP
       self.modify_single_display()
     else:
-      # Modification
+      # Modification d'un IdP
       idp = self.conf['idps'].get(idp_id)
       if not idp:
         raise AduneoError(f"IdP {idp_id} not found in configuration")
-        
-      oidc_clients = idp.get('oidc_clients', {})  
+
       oauth2_clients = idp.get('oauth2_clients', {})  
-      saml_clients = idp.get('saml_clients', {})  
-        
-      if len(oidc_clients) == 0 and len(oauth2_clients) == 1 and len(saml_clients) == 0:
-        self.modify_single_display()
+      
+      app_id = self.get_query_string_param('appid', '')
+      if app_id == '':
+        # Création d'un nouveau SP
+        if len(oauth2_clients) == 0:
+          self.modify_single_display()
+        else:
+          self.modify_multi_display()
       else:
-        self.modify_multi_display()
+        # Modification d'un SP
+        if len(oauth2_clients) == 1:
+          self.modify_single_display()
+        else:
+          self.modify_multi_display()
       
 
   def modify_single_display(self):
@@ -76,19 +82,21 @@ class OAuthClientAdmin(BaseHandler):
       23/12/2024 (mpham) les valeurs des select sont maintenant toutes des constantes du type metadata_uri et non plus des libellés comme Authorization Server Metadata URI
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
       31/01/2025 (mpham) option same_as_oidc pour la configuration des endpoints
+      31/01/2025 (mpham) création d'un client pour un IdP existant
     """
 
     idp_id = self.get_query_string_param('idpid', '')
     app_id = self.get_query_string_param('appid', '')
     if idp_id == '':
       # Création
-      app_id = 'client'
-      idp = {'idp_parameters': {'oidc': {}}, 'oauth2_clients': {app_id: {}}}
-    if idp_id != '' and app_id != '':
-      idp = copy.deepcopy(self.conf['idps'][idp_id])
+      idp = {'idp_parameters': {}}
+    else:
+      idp = self.conf['idps'][idp_id]
+
     idp_params = idp['idp_parameters']
-    oauth2_params = idp_params['oauth2']
-    app_params = idp['oauth2_clients'][app_id]
+    oauth2_params = idp_params.get('oauth2', {})
+    oauth2_clients = idp.get('oauth2_clients', {})
+    app_params = oauth2_clients.get(app_id, {})
 
     form_content = {
       'idp_id': idp_id,
@@ -182,17 +190,24 @@ class OAuthClientAdmin(BaseHandler):
       23/08/2024 (mpham) version initiale copiée d'OIDC
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
       31/12/2024 (mpham) les identifiants des apps sont maintenant préfixés (oauth2_<idp_id>_<app_id>) pour les rendre globalement uniques. Les IdP sont en idp_<ipd_id>
+      31/01/2025 (mpham) création d'un client pour un IdP existant
     """
     
     idp_id = self.post_form['idp_id']
     app_id = self.post_form['app_id']
     if idp_id == '':
-      # Création
+      # Création de l'IdP
       idp_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
-      app_id = f'oauth2_{idp_id[4:]}_client'
       self.conf['idps'][idp_id] = {'idp_parameters': {'oauth2': {}}, 'oauth2_clients': {app_id: {}}}
-    
     idp = self.conf['idps'][idp_id]
+
+    if app_id == '':
+      # Création du SP
+      app_id = f'oauth2_{idp_id[4:]}_client'
+      if not idp.get('oauth2_clients'):
+        idp['oauth2_clients'] = {}
+      idp['oauth2_clients'][app_id] = {}
+
     idp_params = idp['idp_parameters']
     oauth2_params = idp_params['oauth2']
     app_params = idp['oauth2_clients'][app_id]

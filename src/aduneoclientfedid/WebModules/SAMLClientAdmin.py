@@ -39,33 +39,39 @@ class SAMLClientAdmin(BaseHandler):
     """ Sélection du mode de modification du client :
       
       On a en effet deux interfaces pour modifier un client, en fonction de l'état de la configuration
-        - modification combinée IdP + client, quand un IdP n'a qu'une application : modify_single
-        - modification différencée IdP et les différents clients qu'il gère       : modify_multi
+        - modification combinée IdP + client, quand un IdP n'a qu'une application du même type : modify_single
+        - modification différencée IdP et les différents clients qu'il gère                    : modify_multi
         
     Versions:
       01/01/2025 (mpham) version initiale adaptée de OIDCClientAdmin
+      31/01/2025 (mpham) on n'affiche les paramètres de l'IdP dans tous les cas si on a un seul SP ou pas de SP
     """
-
-    idp = {}
 
     idp_id = self.get_query_string_param('idpid', '')
     if idp_id == '':
-      # Création
+      # Création d'un IdP
       self.modify_single_display()
     else:
-      # Modification
+      # Modification d'un IdP
       idp = self.conf['idps'].get(idp_id)
       if not idp:
         raise AduneoError(f"IdP {idp_id} not found in configuration")
-        
-      oidc_clients = idp.get('oidc_clients', {})  
-      oauth2_clients = idp.get('oauth2_clients', {})  
+
       saml_clients = idp.get('saml_clients', {})  
-        
-      if len(oidc_clients) == 0 and len(oauth2_clients) == 0 and len(saml_clients) == 1:
-        self.modify_single_display()
+      
+      app_id = self.get_query_string_param('appid', '')
+      if app_id == '':
+        # Création d'un nouveau SP
+        if len(saml_clients) == 0:
+          self.modify_single_display()
+        else:
+          self.modify_multi_display()
       else:
-        self.modify_multi_display()
+        # Modification d'un SP
+        if len(saml_clients) == 1:
+          self.modify_single_display()
+        else:
+          self.modify_multi_display()
       
 
   def modify_single_display(self):
@@ -74,19 +80,21 @@ class SAMLClientAdmin(BaseHandler):
     Versions:
       01/01/2025 (mpham) version initiale adaptée de OIDCClientAdmin
       09/01/2025 (mpham) possibilités de l'IdP en termes de binding
+      31/01/2025 (mpham) création d'un SP pour un IdP existant
     """
 
     idp_id = self.get_query_string_param('idpid', '')
     app_id = self.get_query_string_param('appid', '')
     if idp_id == '':
       # Création
-      app_id = 'sp'
-      idp = {'idp_parameters': {'saml': {}}, 'saml_clients': {app_id: {}}}
-    if idp_id != '' and app_id != '':
+      idp = {'idp_parameters': {}}
+    else:
       idp = self.conf['idps'][idp_id]
+
     idp_params = idp['idp_parameters']
-    saml_params = idp_params['saml']
-    app_params = idp['saml_clients'][app_id]
+    saml_params = idp_params.get('saml', {})
+    saml_clients = idp.get('saml_clients', {})
+    app_params = saml_clients.get(app_id, {})
 
     # possibilités de l'IdP en binding
     idp_authentication_binding_capabilities = saml_params.get('idp_authentication_binding_capabilities')
@@ -202,17 +210,24 @@ class SAMLClientAdmin(BaseHandler):
     Versions:
       01/01/2025 (mpham) version initiale adaptée de OIDCClientAdmin
       09/01/2025 (mpham) possibilités de l'IdP en termes de binding
+      31/01/2025 (mpham) création d'un SP pour un IdP existant
     """
     
     idp_id = self.post_form['idp_id']
     app_id = self.post_form['app_id']
     if idp_id == '':
-      # Création
+      # Création de l'IdP
       idp_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
-      app_id = f'saml_{idp_id[4:]}_sp'
       self.conf['idps'][idp_id] = {'idp_parameters': {'saml': {}}, 'saml_clients': {app_id: {}}}
-    
     idp = self.conf['idps'][idp_id]
+
+    if app_id == '':
+      # Création du SP
+      app_id = f'saml_{idp_id[4:]}_sp'
+      if not idp.get('saml_clients'):
+        idp['saml_clients'] = {}
+      idp['saml_clients'][app_id] = {}
+    
     idp_params = idp['idp_parameters']
     saml_params = idp_params['saml']
     app_params = idp['saml_clients'][app_id]

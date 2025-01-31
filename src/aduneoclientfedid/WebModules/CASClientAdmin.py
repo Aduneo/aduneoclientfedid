@@ -37,29 +37,34 @@ class CASClientAdmin(BaseHandler):
         
     Versions:
       24/01/2025 (mpham) version initiale copiée et adaptée de OIDCClientAdmin
+      31/01/2025 (mpham) on n'affiche les paramètres de l'IdP dans tous les cas si on a un seul client ou pas de client
     """
-
-    idp = {}
 
     idp_id = self.get_query_string_param('idpid', '')
     if idp_id == '':
-      # Création
+      # Création d'un IdP
       self.modify_single_display()
     else:
-      # Modification
+      # Modification d'un IdP
       idp = self.conf['idps'].get(idp_id)
       if not idp:
         raise AduneoError(f"IdP {idp_id} not found in configuration")
-        
-      oidc_clients = idp.get('oidc_clients', {})  
-      oauth2_clients = idp.get('oauth2_clients', {})  
-      saml_clients = idp.get('saml_clients', {})  
+
       cas_clients = idp.get('cas_clients', {})  
-        
-      if len(cas_clients) == 1 and (len(oidc_clients) + len(oauth2_clients) + len(saml_clients) == 0):
-        self.modify_single_display()
+      
+      app_id = self.get_query_string_param('appid', '')
+      if app_id == '':
+        # Création d'un nouveau SP
+        if len(cas_clients) == 0:
+          self.modify_single_display()
+        else:
+          self.modify_multi_display()
       else:
-        self.modify_multi_display()
+        # Modification d'un SP
+        if len(cas_clients) == 1:
+          self.modify_single_display()
+        else:
+          self.modify_multi_display()
       
 
   def modify_single_display(self):
@@ -67,19 +72,21 @@ class CASClientAdmin(BaseHandler):
     
     Versions:
       24/01/2025 (mpham) version initiale adaptée de OIDCClientAdmin
+      31/01/2025 (mpham) création d'un client pour un IdP existant
     """
 
     idp_id = self.get_query_string_param('idpid', '')
     app_id = self.get_query_string_param('appid', '')
     if idp_id == '':
       # Création
-      app_id = 'client'
-      idp = {'idp_parameters': {'cas': {}}, 'cas_clients': {app_id: {}}}
-    if idp_id != '' and app_id != '':
+      idp = {'idp_parameters': {}}
+    else:
       idp = self.conf['idps'][idp_id]
+
     idp_params = idp['idp_parameters']
-    cas_params = idp_params['cas']
-    app_params = idp['cas_clients'][app_id]
+    cas_params = idp_params.get('cas', {})
+    cas_clients = idp.get('cas_clients', {})
+    app_params = cas_clients.get(app_id, {})
 
     form_content = {
       'idp_id': idp_id,
@@ -151,17 +158,24 @@ class CASClientAdmin(BaseHandler):
     
     Versions:
       24/01/2025 (mpham) version initiale adaptée de OIDCClientAdmin
+      31/01/2025 (mpham) création d'un client pour un IdP existant
     """
     
     idp_id = self.post_form['idp_id']
     app_id = self.post_form['app_id']
     if idp_id == '':
-      # Création
+      # Création de l'IdP
       idp_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
-      app_id = f'cas_{idp_id[4:]}_client'
       self.conf['idps'][idp_id] = {'idp_parameters': {'cas': {}}, 'cas_clients': {app_id: {}}}
-    
     idp = self.conf['idps'][idp_id]
+
+    if app_id == '':
+      # Création du SP
+      app_id = f'cas_{idp_id[4:]}_client'
+      if not idp.get('cas_clients'):
+        idp['cas_clients'] = {}
+      idp['cas_clients'][app_id] = {}
+
     idp_params = idp['idp_parameters']
     cas_params = idp_params['cas']
     app_params = idp['cas_clients'][app_id]

@@ -32,34 +32,42 @@ class OIDCClientAdmin(BaseHandler):
     """ Sélection du mode de modification du client :
       
       On a en effet deux interfaces pour modifier un client, en fonction de l'état de la configuration
-        - modification combinée IdP + client, quand un IdP n'a qu'une application : modify_single
-        - modification différencée IdP et les différents clients qu'il gère       : modify_multi
+        - modification combinée IdP + client, quand un IdP n'a qu'une application du même type : modify_single
+        - modification différencée IdP et les différents clients qu'il gère                    : modify_multi
         
     Versions:
       10/08/2024 (mpham) version initiale
       23/08/2024 (mpham) request parameters
+      31/01/2025 (mpham) on n'affiche les paramètres de l'IdP dans tous les cas si on a un seul client ou pas de client
     """
 
     idp = {}
 
     idp_id = self.get_query_string_param('idpid', '')
     if idp_id == '':
-      # Création
+      # Création d'un IdP
       self.modify_single_display()
     else:
-      # Modification
+      # Modification d'un IdP
       idp = self.conf['idps'].get(idp_id)
       if not idp:
         raise AduneoError(f"IdP {idp_id} not found in configuration")
-        
+
       oidc_clients = idp.get('oidc_clients', {})  
-      oauth2_clients = idp.get('oauth2_clients', {})  
-      saml_clients = idp.get('saml_clients', {})  
-        
-      if len(oidc_clients) == 1 and len(oauth2_clients) == 0 and len(saml_clients) == 0:
-        self.modify_single_display()
+      
+      app_id = self.get_query_string_param('appid', '')
+      if app_id == '':
+        # Création d'un nouveau SP
+        if len(oidc_clients) == 0:
+          self.modify_single_display()
+        else:
+          self.modify_multi_display()
       else:
-        self.modify_multi_display()
+        # Modification d'un SP
+        if len(oidc_clients) == 1:
+          self.modify_single_display()
+        else:
+          self.modify_multi_display()
       
 
   def modify_single_display(self):
@@ -71,19 +79,21 @@ class OIDCClientAdmin(BaseHandler):
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
       30/12/2024 (mpham) End session endpoint HTTP method
       31/01/2025 (mpham) option same_as_oauth2 pour la configuration des endpoints
+      31/01/2025 (mpham) création d'un client pour un IdP existant
     """
 
     idp_id = self.get_query_string_param('idpid', '')
     app_id = self.get_query_string_param('appid', '')
     if idp_id == '':
       # Création
-      app_id = 'client'
-      idp = {'idp_parameters': {'oidc': {}}, 'oidc_clients': {app_id: {}}}
-    if idp_id != '' and app_id != '':
+      idp = {'idp_parameters': {}}
+    else:
       idp = self.conf['idps'][idp_id]
+
     idp_params = idp['idp_parameters']
-    oidc_params = idp_params['oidc']
-    app_params = idp['oidc_clients'][app_id]
+    oidc_params = idp_params.get('oidc', {})
+    oidc_clients = idp.get('oidc_clients', {})
+    app_params = oidc_clients.get(app_id, {})
 
     form_content = {
       'idp_id': idp_id,
@@ -212,21 +222,28 @@ class OIDCClientAdmin(BaseHandler):
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
       30/12/2024 (mpham) End session endpoint HTTP method
       31/12/2024 (mpham) les identifiants des apps sont maintenant préfixés (oidc_<idp_id>_<app_id>) pour les rendre globalement uniques. Les IdP sont en idp_<ipd_id>
+      31/01/2025 (mpham) création d'un client pour un IdP existant
     """
     
     idp_id = self.post_form['idp_id']
     app_id = self.post_form['app_id']
     if idp_id == '':
-      # Création
+      # Création de l'IdP
       idp_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
-      app_id = f'oidc_{idp_id[4:]}_client'
       self.conf['idps'][idp_id] = {'idp_parameters': {'oidc': {}}, 'oidc_clients': {app_id: {}}}
-    
     idp = self.conf['idps'][idp_id]
+
+    if app_id == '':
+      # Création du SP
+      app_id = f'oidc_{idp_id[4:]}_client'
+      if not idp.get('oidc_clients'):
+        idp['oidc_clients'] = {}
+      idp['oidc_clients'][app_id] = {}
+    
     idp_params = idp['idp_parameters']
     oidc_params = idp_params['oidc']
     app_params = idp['oidc_clients'][app_id]
-    
+
     if self.post_form['name'] == '':
       self.post_form['name'] = idp_id
 
