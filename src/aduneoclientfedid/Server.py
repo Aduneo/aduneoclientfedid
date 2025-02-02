@@ -25,6 +25,8 @@ from .WebConsole import WebConsole
 from .WebModules.OIDCClientLogin import OIDCClientLogin
 from .WebModules.OIDCClientLogout import OIDCClientLogout
 from .WebModules.OAuthClientLogin import OAuthClientLogin
+from .WebModules.CASClientLogin import CASClientLogin
+from .WebModules.CASClientLogout import CASClientLogout
 
 import base64
 import datetime
@@ -101,6 +103,7 @@ class Server(BaseServer):
     else:
   
       url_items = urllib.parse.urlparse(self.path)
+
       method_name = 'get' + url_items.path.replace('/', '_')
 
       if (method_name in dir(self)):
@@ -120,7 +123,30 @@ class Server(BaseServer):
           params = urllib.parse.parse_qs(url_items.query)
           if 'state' in params:
             # on a un state, on regarde si on trouve un redirect_uri dans la requête en question
-            #request = self.get_session_value(state)
+            state = params['state'][0]
+            #print('state', state)
+            #print(self.sessions.get(self.session_id))
+            #sessions = self.sessions.get(self.session_id)
+            #print('context_id', sessions.get(state[0]))
+            #print('context_id', sessions.get(state[0]))
+            context_id = self.get_session_value(state)
+            print('context_id', context_id)
+            context = self.get_session_value(context_id)
+            #print('context', context['app_id'])
+            app_params = context.last_app_params
+            print(context.last_app_params)
+            redirect_uri = app_params.get('redirect_uri')
+            session_url = urllib.parse.urlparse(redirect_uri)
+            if session_url.path == url_items.path:
+              print("FOUND")
+              if context['flow_type'] == 'OIDC':
+                callback_found = True
+                self._client_oidc_login_callback()
+              
+            else:
+              print('session_url', session_url.path)
+              print('url_items.path', url_items.path)
+            
             # TODO : continuer !
             #print(request)
             pass
@@ -190,6 +216,7 @@ class Server(BaseServer):
     
       Versions:
         09/08/2024 (mpham) version initiale copiée de do_GET
+        02/02/2025 (mpham) CAS
     """
 
     callback_found = False
@@ -240,6 +267,23 @@ class Server(BaseServer):
               # Bingo
               callback_found = True
               self._client_saml_slo()
+              break
+
+      if not callback_found and idp.get('cas_clients'):
+        for client in idp['cas_clients'].values():
+          if 'service_url' in client:
+            conf_url = urllib.parse.urlparse(client['service_url'])
+            if url_items.path == conf_url.path:
+              # Bingo
+              callback_found = True
+              self._client_cas_login_callback()
+              break
+          if 'logout_service_url' in client:
+            conf_url = urllib.parse.urlparse(client['logout_service_url'])
+            if url_items.path == conf_url.path:
+              # Bingo
+              callback_found = True
+              self._client_cas_logout_callback()
               break
 
     return callback_found
@@ -696,6 +740,26 @@ class Server(BaseServer):
 
     try:
       saml_client_admin.remove()
+    except AduneoError as error:
+      self.send_page(str(error), clear_buffer=True)
+
+
+  def _client_cas_login_callback(self):
+
+    cas_login = CASClientLogin(self)
+
+    try:
+      cas_login.callback()
+    except AduneoError as error:
+      self.send_page(str(error), clear_buffer=True)
+
+
+  def _client_cas_logout_callback(self):
+
+    cas_logout = CASClientLogout(self)
+
+    try:
+      cas_logout.callback()
     except AduneoError as error:
       self.send_page(str(error), clear_buffer=True)
 
