@@ -51,7 +51,7 @@ class Context(dict):
     context: {
       'idp_id': '<identifiant de l'IdP concerné par la cinématique en cours>',
       'app_id': '<identifiant du client ayant réalisé la dernière authentification>',
-      'flow_type': '<dernière cinématique : OIDC, OAuth2 ou SAML>',
+      'flow_type': '<dernière cinématique : OIDC, OAuth2, SAML ou CAS>',
       'idp_params': { paramètres liés à l'IdP },
       'app_params': {
         '<app id>': { paramètres liés à la requête et plus largement au client },
