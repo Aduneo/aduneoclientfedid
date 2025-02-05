@@ -103,6 +103,18 @@ class OAuthClientLogin(FlowHandler):
         self.context['app_params'][app_id] = app_params
         self.set_session_value(self.context['context_id'], self.context)
 
+        if idp_params.get('endpoint_configuration', 'local_configuration') == 'same_as_oidc':
+          # récupération des paramètres OIDC pour les endpoints
+          oidc_params = idp['idp_parameters'].get('oidc')
+          if not oidc_params:
+            raise AduneoError("can't retrieve endpoint parameters from OIDC configuration since OIDC is not configured")
+          if oidc_params.get('endpoint_configuration') == 'same_as_oauth2':
+            raise AduneoError("can't retrieve endpoint parameters from OIDC configuration since OIDC is configured with same_as_oauth2")
+          for param in ['endpoint_configuration', 'discovery_uri', 'authorization_endpoint', 'token_endpoint']:
+            idp_params[param] = oidc_params.get(param, '')
+          if idp_params.get('endpoint_configuration') == 'discovery_uri':
+            idp_params['endpoint_configuration'] = 'metadata_uri'
+            idp_params['metadata_uri'] = oidc_params.get('discovery_uri')
         if idp_params.get('endpoint_configuration', 'local_configuration') == 'metadata_uri':
           fetch_configuration_document = True
 

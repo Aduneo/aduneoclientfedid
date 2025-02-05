@@ -51,7 +51,7 @@ class Context(dict):
     context: {
       'idp_id': '<identifiant de l'IdP concerné par la cinématique en cours>',
       'app_id': '<identifiant du client ayant réalisé la dernière authentification>',
-      'flow_type': '<dernière cinématique : OIDC, OAuth2 ou SAML>',
+      'flow_type': '<dernière cinématique : OIDC, OAuth2, SAML ou CAS>',
       'idp_params': { paramètres liés à l'IdP },
       'app_params': {
         '<app id>': { paramètres liés à la requête et plus largement au client },
@@ -103,6 +103,7 @@ class Context(dict):
     08/08/2024 (mpham) version initiale
     05/09/2024 (mpham) refonte du contexte et intégration des paramètres de la dernière introspection
     28/11/2024 (mpham) on ajoute l'app ayant obtenu le jeton d'accès pour pouvoir le rafraîchir
+    28/01/2025 (mpham) tickets CAS (attention, ils sont inutilisables)
   """
 
   def __init__(self):
@@ -113,6 +114,7 @@ class Context(dict):
     self['id_tokens'] = {}
     self['access_tokens'] = {}
     self['saml_assertions'] = {}
+    self['cas_tickets'] = {}
 
 
   def get_all_access_tokens(self):

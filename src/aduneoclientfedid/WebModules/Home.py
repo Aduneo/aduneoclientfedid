@@ -33,6 +33,7 @@ class Home(BaseHandler):
     Versions:
       08/08/2024 (mpham) version initiale
       23/01/2024 (mpham) on n'affiche les éléments relatifs à SAML que si les saml_prerequisite sont vérifiés
+      24/01/2024 (mpham) CAS client
     """
 
     idps = self.conf['idps']
@@ -47,6 +48,7 @@ class Home(BaseHandler):
         <span><a href="/client/saml/admin/modifyclient" class="middlebutton">Add SAML SP</a></span>
       """)
     self.add_html("""
+        <span><a href="/client/cas/admin/modifyclient" class="middlebutton">Add CAS Client</a></span>
       </div>
     """)
 
@@ -136,6 +138,26 @@ class Home(BaseHandler):
               name = html.escape(app_params.get('name', 'SP')),
               idp_id = urllib.parse.quote_plus(idp_id),
               app_id = urllib.parse.quote_plus(app_id),
+            )
+          )
+
+      # clients CAS
+      if idp.get('cas_clients'):
+        
+        self.add_html("""<div>CAS Clients</div>""")          
+        for client_id in sorted(idp['cas_clients'].keys()):
+          
+          client = idp['cas_clients'][client_id]
+          self.add_html("""
+            <div>
+              <span>{name}</span>
+              <span><a href="/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+              <span><a href="/client/cas/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
+            </div>
+            """.format(
+              name = html.escape(client.get('name', 'Client')),
+              idp_id = urllib.parse.quote_plus(idp_id),
+              app_id = urllib.parse.quote_plus(client_id),
             )
           )
 

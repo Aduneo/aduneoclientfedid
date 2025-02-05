@@ -19,6 +19,7 @@ from ..BaseServer import BaseHandler
 from ..BaseServer import register_web_module, register_url, register_page_url
 from ..CfiForm import CfiForm
 from ..Configuration import Configuration
+from .CASClientAdmin import CASClientAdmin
 from .OIDCClientAdmin import OIDCClientAdmin
 from .OAuthClientAdmin import OAuthClientAdmin
 import copy
@@ -72,6 +73,8 @@ class IdPClientAdmin(BaseHandler):
       31/12/2024 (mpham) les identifiants des IdP sont maintenant préfixés (idp_<idp_id>)
       09/01/2025 (mpham) paramètres SAML
       23/01/2025 (mpham) prise en compte des paramètres SAML uniquement si saml_prerequisite vérifié
+      28/01/2025 (mpham) paramètres CAS
+      31/01/2025 (mpham) SAML : si l'entity ID n'est pas donnée, on n'enregistre pas les bindings (ça permet de conserver saml à {})
     """
     
     idp_id = self.post_form['idp_id']
@@ -84,6 +87,7 @@ class IdPClientAdmin(BaseHandler):
     idp_params = idp['idp_parameters']
     oidc_params = idp_params.get('oidc')
     saml_params = idp_params.get('saml')
+    cas_params = idp_params.get('cas')
     if not oidc_params:
       idp['idp_parameters']['oidc'] = {}
       oidc_params = idp_params['oidc']
@@ -94,6 +98,9 @@ class IdPClientAdmin(BaseHandler):
     if not saml_params:
       idp_params['saml'] = {}
       saml_params = idp_params['saml']
+    if not cas_params:
+      idp_params['cas'] = {}
+      cas_params = idp_params['cas']
     
     if self.post_form['name'] == '':
       self.post_form['name'] = idp_id
@@ -123,13 +130,21 @@ class IdPClientAdmin(BaseHandler):
           saml_params.pop(item, None)
         else:
           saml_params[item] = self.post_form[item].strip()
+      
+      if saml_params.get('idp_entity_id'):
+        for item in ['idp_authentication_binding_capabilities', 'idp_logout_binding_capabilities']:
+          if self.post_form.get(item, '') == '':
+            saml_params.pop(item, None)
+          else:
+            saml_params[item] = self.post_form[item].split('\t')
         
-      for item in ['idp_authentication_binding_capabilities', 'idp_logout_binding_capabilities']:
-        if self.post_form.get(item, '') == '':
-          saml_params.pop(item, None)
-        else:
-          saml_params[item] = self.post_form[item].split('\t')
-        
+    # Paramètres CAS
+    for item in ['cas_server_url']:
+      if self.post_form.get('cas_'+item, '') == '':
+        cas_params.pop(item, None)
+      else:
+        cas_params[item] = self.post_form['cas_'+item].strip()
+      
     # Paramètres communs
     for item in ['verify_certificates']:
       if item in self.post_form:
@@ -149,6 +164,8 @@ class IdPClientAdmin(BaseHandler):
     Versions:
       25/12/2024 (mpham) version initiale
       03/01/2025 (mpham) SAML SP
+      28/01/2025 (mpham) clients CAS
+      31/01/2025 (mpham) on appelle uniquement modifyclient et plus modifymulti
     """
 
 
@@ -156,7 +173,7 @@ class IdPClientAdmin(BaseHandler):
     idp = copy.deepcopy(self.conf['idps'][idp_id])
     
     idp['id'] = idp_id
-    form = self.get_idp_form(idp)  
+    form = self.get_idp_form(idp, display_only=True)  
 
     self.add_html(form.get_html(display_only=True))
 
@@ -172,7 +189,7 @@ class IdPClientAdmin(BaseHandler):
     self.add_html(f""" 
       <h2>OpenID Connect clients</h2>
       <div>
-        <span><a href="/client/oidc/admin/modifymulti?idpid={idp_id}" class="smallbutton">Add client</a></span>
+        <span><a href="/client/oidc/admin/modifyclient?idpid={idp_id}" class="smallbutton">Add client</a></span>
       </div>
     """)
     
@@ -183,7 +200,7 @@ class IdPClientAdmin(BaseHandler):
         <div style="width: 1140px; display: flex; align-items: center; background-color: #fbe1686b; padding: 3px 3px 3px 6px; margin-top: 2px; margin-bottom: 2px;">
           <span style="flex-grow: 1; font-size: 12px;">{name}</span>
           <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">Display parameters</span>
-          <span><a href="/client/oidc/admin/modifymulti?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
+          <span><a href="/client/oidc/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
           <span><a href="/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
           <span><a href="/client/oidc/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
           <span><a href="/client/oidc/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbutton">Remove</a></span>
@@ -210,7 +227,7 @@ class IdPClientAdmin(BaseHandler):
     self.add_html(f""" 
       <h2>OAuth 2 clients</h2>
       <div>
-        <span><a href="/client/oauth2/admin/modifymulti?idpid={idp_id}" class="smallbutton">Add client</a></span>
+        <span><a href="/client/oauth2/admin/modifyclient?idpid={idp_id}" class="smallbutton">Add client</a></span>
       </div>
     """)
     
@@ -221,7 +238,7 @@ class IdPClientAdmin(BaseHandler):
         <div style="width: 1140px; display: flex; align-items: center; background-color: #fbe1686b; padding: 3px 3px 3px 6px; margin-top: 2px; margin-bottom: 2px;">
           <span style="flex-grow: 1; font-size: 12px;">{name}</span>
           <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">Display parameters</span>
-          <span><a href="/client/oauth2/admin/modifymulti?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
+          <span><a href="/client/oauth2/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
           <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
           <span><a href="/client/oauth2/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Revoke</a></span>
           <span><a href="/client/oauth2/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbutton">Remove</a></span>
@@ -286,7 +303,7 @@ class IdPClientAdmin(BaseHandler):
       self.add_html(f""" 
         <h2>SAML service providers (SP)</h2>
         <div>
-          <span><a href="/client/saml/admin/modifymulti?idpid={idp_id}" class="smallbutton">Add SAML SP</a></span>
+          <span><a href="/client/saml/admin/modifyclient?idpid={idp_id}" class="smallbutton">Add SAML SP</a></span>
         </div>
       """)
     
@@ -297,7 +314,7 @@ class IdPClientAdmin(BaseHandler):
           <div style="width: 1140px; display: flex; align-items: center; background-color: #fbe1686b; padding: 3px 3px 3px 6px; margin-top: 2px; margin-bottom: 2px;">
             <span style="flex-grow: 1; font-size: 12px;">{name}</span>
             <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">Display parameters</span>
-            <span><a href="/client/saml/admin/modifymulti?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
+            <span><a href="/client/saml/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
             <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
             <span><a href="/client/saml/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
             <span><a href="/client/saml/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbutton">Remove</a></span>
@@ -320,6 +337,44 @@ class IdPClientAdmin(BaseHandler):
             form = sp_form.get_html(display_only=True),
             ))
     
+    # Clients CAS
+    self.add_html(f""" 
+      <h2>CAS clients</h2>
+      <div>
+        <span><a href="/client/cas/admin/modifyclient?idpid={idp_id}" class="smallbutton">Add client</a></span>
+      </div>
+    """)
+    
+    for client_id in idp.get('cas_clients', {}):
+      client = idp['cas_clients'][client_id]
+      param_uuid = str(uuid.uuid4())
+      self.add_html("""
+        <div style="width: 1140px; display: flex; align-items: center; background-color: #fbe1686b; padding: 3px 3px 3px 6px; margin-top: 2px; margin-bottom: 2px;">
+          <span style="flex-grow: 1; font-size: 12px;">{name}</span>
+          <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">Display parameters</span>
+          <span><a href="/client/cas/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
+          <span><a href="/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+          <span><a href="/client/cas/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
+          <span><a href="/client/cas/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbutton">Remove</a></span>
+        </div>
+        """.format(
+          name = html.escape(client.get('name', '')),
+          idp_id = idp_id,
+          app_id = client_id,
+          div_id = param_uuid,
+          ))
+          
+      client['idp_id'] = idp_id
+      client['app_id'] = client_id
+      client_form = CASClientAdmin.get_app_form(self, client)
+          
+      self.add_html("""
+        <div id="panel_{div_id}" style="display: none;">{form}</div>
+        """.format(
+          div_id = param_uuid,
+          form = client_form.get_html(display_only=True),
+          ))
+
 
   @register_page_url(url='remove', method='GET', template='page_default.html', continuous=False)
   def remove_idp_display(self):
@@ -379,13 +434,14 @@ class IdPClientAdmin(BaseHandler):
       self.send_redirection(e.action)
 
 
-  def get_idp_form(handler, idp:dict):
+  def get_idp_form(handler, idp:dict, display_only:bool=False):
     """ Retourne un RequesterForm avec un IdP
     
     Args:
       handler: objet de type BaseHandler, pour accès à la configuration
       idp: dict avec les paramètres de l'IdP, dans le formalisme du fichier de configuration
              Attention : il faut ajouter le champ id avec l'identifiant unique de l'IdP
+      display_only: adapte le formulaire en fonction du mode, attention, il faut toujours passer le bon display_only à CfiForm.get_html
              
     Returns:
       objet RequesterForm
@@ -394,12 +450,16 @@ class IdPClientAdmin(BaseHandler):
       25/12/2024 (mpham) version initiale
       09/01/2025 (mpham) paramètres SAML
       23/01/2025 (mpham) les paramètres SAML ne sont affichés que si saml_prerequisite est bien vérifié
+      28/01/2025 (mpham) paramètres SAML
+      31/01/2025 (mpham) en lecture seule, l'affiche pas les INPUT des sections non définies
+      31/01/2025 (mpham) option same_as pour la configuration des endpoints OIDC et OAuth 2
     """
 
     idp_params = idp['idp_parameters']
     oidc_params = idp_params.get('oidc', {})
     oauth2_params = idp_params.get('oauth2', {})
     saml_params = idp_params.get('saml', {})
+    cas_params = idp_params.get('cas', {})
 
     # possibilités de SAML en binding
     idp_authentication_binding_capabilities = saml_params.get('idp_authentication_binding_capabilities')
@@ -445,16 +505,21 @@ class IdPClientAdmin(BaseHandler):
       'idp_certificate': saml_params.get('idp_certificate', ''),
       'idp_authentication_binding_capabilities': '\t'.join(idp_authentication_binding_capabilities),
       'idp_logout_binding_capabilities': '\t'.join(idp_logout_binding_capabilities),
+      'cas_cas_server_url': cas_params.get('cas_server_url', ''),
       'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
       }
     
     form = CfiForm('idpadmin', form_content, action='modify', submit_label='Save') \
       .hidden('idp_id') \
       .text('name', label='Name') \
-      .start_section('oidc_configuration', title="OIDC configuration", collapsible=True) \
+      .start_section('oidc_configuration', title="OIDC configuration", collapsible=True) 
+    if oidc_params == {} and display_only:
+      form.raw_html("OpenID Connect not configured")
+    else:
+      form \
         .start_section('op_endpoints', title="OP endpoints") \
           .closed_list('oidc_endpoint_configuration', label='Endpoint configuration', 
-            values={'discovery_uri': 'Discovery URI', 'local_configuration': 'Local configuration'},
+            values={'discovery_uri': 'Discovery URI', 'local_configuration': 'Local configuration', 'same_as_oauth2': 'Same as OAuth 2'},
             default = 'discovery_uri'
             ) \
           .text('oidc_discovery_uri', label='Discovery URI', clipboard_category='discovery_uri', displayed_when="@[oidc_endpoint_configuration] = 'discovery_uri'") \
@@ -475,12 +540,17 @@ class IdPClientAdmin(BaseHandler):
             ) \
           .text('oidc_jwks_uri', label='JWKS URI', displayed_when="@[oidc_signature_key_configuration] = 'jwks_uri'") \
           .text('oidc_signature_key', label='Signature key', displayed_when="@[oidc_signature_key_configuration] = 'local_configuration'") \
-        .end_section() \
+        .end_section() 
+    form \
       .end_section() \
-      .start_section('oauth2_configuration', title="OAuth 2 configuration", collapsible=True) \
+      .start_section('oauth2_configuration', title="OAuth 2 configuration", collapsible=True) 
+    if oauth2_params == {} and display_only:
+      form.raw_html("OAuth 2 not configured")
+    else:
+      form \
         .start_section('as_endpoints', title="Authorization Server Endpoints") \
           .closed_list('oauth2_endpoint_configuration', label='Endpoint configuration', 
-            values={'metadata_uri': 'Authorization Server Metadata URI', 'local_configuration': 'Local configuration'},
+            values={'metadata_uri': 'Authorization Server Metadata URI', 'local_configuration': 'Local configuration', 'same_as_oidc': 'Same as OIDC'},
             default = 'metadata_uri'
             ) \
           .text('oauth2_metadata_uri', label='AS Metadata URI', clipboard_category='metadata_uri', displayed_when="@[oauth2_endpoint_configuration] = 'metadata_uri'") \
@@ -496,21 +566,37 @@ class IdPClientAdmin(BaseHandler):
             default = 'basic'
             ) \
           .text('oauth2_revocation_endpoint', label='Revocation endpoint', clipboard_category='revocation_endpoint', displayed_when="@[oauth2_endpoint_configuration] = 'local_configuration'") \
-        .end_section() \
+        .end_section() 
+    form \
       .end_section() \
       
     if handler.hreq.saml_prerequisite:
-      form.start_section('saml_configuration', title="SAML configuration", collapsible=True) \
+      form \
+      .start_section('saml_configuration', title="SAML configuration", collapsible=True) 
+      if saml_params == {} and display_only:
+        form.raw_html("SAML not configured")
+      else:
+        form \
         .upload_button('upload_idp_metadata', label='Upload IdP metadata', on_upload="parseIdPMetadata(upload_content, cfiForm);") \
         .text('idp_entity_id', label='IdP entity ID', clipboard_category='idp_entity_id') \
         .text('idp_sso_url', label='IdP SSO URL', clipboard_category='idp_sso_url') \
         .text('idp_slo_url', label='IdP SLO URL', clipboard_category='idp_slo_url') \
         .textarea('idp_certificate', label='IdP certificate', rows=10, clipboard_category='idp_certificate', upload_button='Upload IdP certificate') \
         .hidden('idp_authentication_binding_capabilities') \
-        .hidden('idp_logout_binding_capabilities') \
+        .hidden('idp_logout_binding_capabilities') 
+      form \
       .end_section() \
       
-    form.start_section('common_configuration', title="Common configuration", collapsible=True) \
+    form \
+      .start_section('cas_configuration', title="CAS configuration", collapsible=True) 
+    if cas_params == {} and display_only:
+      form.raw_html("CAS not configured")
+    else:
+      form \
+        .text('cas_cas_server_url', label='CAS server URL', clipboard_category='cas_server_url') 
+    form \
+      .end_section() \
+      .start_section('common_configuration', title="Common configuration", collapsible=True) \
         .check_box('verify_certificates', label='Verify certificates') \
       .end_section() 
       

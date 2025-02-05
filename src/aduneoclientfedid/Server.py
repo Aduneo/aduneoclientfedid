@@ -25,6 +25,8 @@ from .WebConsole import WebConsole
 from .WebModules.OIDCClientLogin import OIDCClientLogin
 from .WebModules.OIDCClientLogout import OIDCClientLogout
 from .WebModules.OAuthClientLogin import OAuthClientLogin
+from .WebModules.CASClientLogin import CASClientLogin
+from .WebModules.CASClientLogout import CASClientLogout
 
 import base64
 import datetime
@@ -101,6 +103,7 @@ class Server(BaseServer):
     else:
   
       url_items = urllib.parse.urlparse(self.path)
+
       method_name = 'get' + url_items.path.replace('/', '_')
 
       if (method_name in dir(self)):
@@ -117,13 +120,7 @@ class Server(BaseServer):
         
         if not callback_found:
           # Regarder s'il ne s'agit pas d'un chemin défini comme redirect_uri OIDC dans la page de login
-          params = urllib.parse.parse_qs(url_items.query)
-          if 'state' in params:
-            # on a un state, on regarde si on trouve un redirect_uri dans la requête en question
-            #request = self.get_session_value(state)
-            # TODO : continuer !
-            #print(request)
-            pass
+          callback_found = self._search_callback_in_session()
         
         if not callback_found:
           self.send_page('404 !', code=404)
@@ -190,6 +187,7 @@ class Server(BaseServer):
     
       Versions:
         09/08/2024 (mpham) version initiale copiée de do_GET
+        02/02/2025 (mpham) CAS
     """
 
     callback_found = False
@@ -242,10 +240,125 @@ class Server(BaseServer):
               self._client_saml_slo()
               break
 
+      if not callback_found and idp.get('cas_clients'):
+        for client in idp['cas_clients'].values():
+          if 'service_url' in client:
+            conf_url = urllib.parse.urlparse(client['service_url'])
+            if url_items.path == conf_url.path:
+              # Bingo
+              callback_found = True
+              self._client_cas_login_callback()
+              break
+          if 'logout_service_url' in client:
+            conf_url = urllib.parse.urlparse(client['logout_service_url'])
+            if url_items.path == conf_url.path:
+              # Bingo
+              callback_found = True
+              self._client_cas_logout_callback()
+              break
+
     return callback_found
     
     
-  def get_OBS(self):
+  def _search_callback_in_session(self):
+    """ Regarde si l'URL n'est pas référencée dans la session, parmi les paramètres modifiés par l'utilisateur lors d'une authentification
+      
+      Permet de donner n'importe quelle URL pour redirect_uri ou sp_acs_url
+        Appelle la méthode correspondante (retour d'authentification ou de déconnexion) en fonction du contexte
+    
+      Returns:
+        True si l'URL a bien été trouvée et la requête traitée
+    
+      Versions:
+        02/02/2025 (mpham) version initiale
+    """
+
+    callback_found = False
+
+    url_items = urllib.parse.urlparse(self.path)
+    params = urllib.parse.parse_qs(url_items.query)
+    if 'state' in params:
+      # on a un state, on regarde si on trouve un redirect_uri dans la requête en question
+      state = params['state'][0]
+      
+      go_on = True
+
+      context_id = self.get_session_value(state)
+      if go_on and context_id:
+        context = self.get_session_value(context_id)
+      else:
+        go_on = False
+      
+      if go_on and context:
+        app_params = context.last_app_params
+      else:
+        go_on = False
+
+      if go_on and app_params:
+        redirect_uri = app_params.get('redirect_uri')
+        if redirect_uri:
+          session_url = urllib.parse.urlparse(redirect_uri)
+          if session_url.path == url_items.path:
+            if context['flow_type'] == 'OIDC':
+              callback_found = True
+              self._client_oidc_login_callback()
+            elif context['flow_type'] == 'OAuth2':
+              callback_found = True
+              self._client_oauth_login_callback()
+          
+        if not callback_found:
+          post_logout_redirect_uri = app_params.get('post_logout_redirect_uri')
+          if post_logout_redirect_uri:
+            session_url = urllib.parse.urlparse(post_logout_redirect_uri)
+            if session_url.path == url_items.path:
+              if context['flow_type'] == 'OIDC':
+                callback_found = True
+                self._client_oidc_logout_callback()
+          
+        if not callback_found:
+          sp_acs_slo = app_params.get('sp_acs_url')
+          if sp_acs_url:
+            session_url = urllib.parse.urlparse(sp_acs_url)
+            if session_url.path == url_items.path:
+              if context['flow_type'] == 'SAML':
+                callback_found = True
+                self._client_saml_acs()
+      
+        if not callback_found:
+          sp_acs_url = app_params.get('sp_slo_url')
+          if sp_slo_url:
+            session_url = urllib.parse.urlparse(sp_slo_url)
+            if session_url.path == url_items.path:
+              if context['flow_type'] == 'SAML':
+                callback_found = True
+                self._client_saml_slo()
+      
+      if not callback_found:
+        # les sessions CAS sont différentes (pas de state)
+        context = self.get_session_value('last_cas_context')
+        if context:
+          app_params = context.last_app_params
+          service_url = app_params.get('service_url')
+          if service_url:
+            session_url = urllib.parse.urlparse(service_url)
+            if session_url.path == url_items.path:
+              if context['flow_type'] == 'CAS':
+                callback_found = True
+                self._client_cas_login_callback()
+      
+        if not callback_found:
+          logout_service_url = app_params.get('logout_service_url')
+          if logout_service_url:
+            session_url = urllib.parse.urlparse(logout_service_url)
+            if session_url.path == url_items.path:
+              if context['flow_type'] == 'CAS':
+                callback_found = True
+                self._client_cas_logout_callback()
+
+    return callback_found
+    
+    
+  def get_OBS_obsolete(self):
 
     """
     homepage
@@ -470,66 +583,12 @@ class Server(BaseServer):
       self.send_page(str(error), clear_buffer=True)
 
 
-  def get_oidc_client_preparelogoutrequestazerty(self):
-
-    """
-      Prépare la requête de déconnexion OIDC
-      
-      mpham 01/03/2021
-    """
-
-    oidc_logout = OIDCClientLogout(self)
-    
-    try:
-      oidc_logout.prepare_request()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
-  def post_oidc_client_sendlogoutrequestazerty(self):
-    
-    """
-    Récupère les informations saisies dans /oidc/preparelogoutrequest pour les mettre dans la session
-      (avec le state comme clé)
-    Redirige vers l'IdP grâce à la requête générée dans /oidc/preparelogoutrequest et placée dans le paramètre logout_request
-    
-    mpham 01/03/2021
-    """
-
-    oidc_logout = OIDCClientLogout(self)
-
-    try:
-      oidc_logout.send_request()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
   def _client_oidc_logout_callback(self):
 
     oidc_logout = OIDCClientLogout(self)
 
     try:
       oidc_logout.callback()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
-  def get_oidc_client_modifyclientazerty(self):
-
-    oidc_client_admin = OIDCClientAdmin(self)
-
-    try:
-      oidc_client_admin.display()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
-  def post_oidc_client_modifyclientazerty(self):
-
-    oidc_client_admin = OIDCClientAdmin(self)
-
-    try:
-      oidc_client_admin.modify()
     except AduneoError as error:
       self.send_page(str(error), clear_buffer=True)
 
@@ -553,54 +612,6 @@ class Server(BaseServer):
     except AduneoError as error:
       self.send_page(str(error), clear_buffer=True)
     
-    
-  def get_oidc_client_removeclientazerty(self):
-    
-    """
-    Supprime un client OpenID Connect
-    
-    mpham 28/12/2021
-    """
-
-    oidc_client_admin = OIDCClientAdmin(self)
-
-    try:
-      oidc_client_admin.remove()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-      
-    
-  def get_saml_client_preparerequestazerty(self):
-
-    """
-      Prépare la requête d'authentification SAML
-      
-      mpham 02/03/2021
-    """
-
-    saml_client_login = SAMLClientLogin(self)
-    
-    try:
-      saml_client_login.prepare_request()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
-  #def post_saml_client_sendrequest(self):
-
-    """
-      Envoie la requête d'authentification SAML
-      
-      mpham 04/03/2021
-    
-    saml_client_login = SAMLClientLogin(self)
-    
-    try:
-      saml_client_login.send_request()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-    """
-
 
   def _client_saml_acs(self):
 
@@ -618,40 +629,6 @@ class Server(BaseServer):
       self.send_page(str(error), clear_buffer=True)
 
 
-  def get_saml_client_preparelogoutrequestazerty(self):
-
-    """
-      Prépare la requête de déconnexion SAML
-      
-      mpham 11/03/2021
-    """
-
-    saml_logout = SAMLClientLogout(self)
-    
-    try:
-      saml_logout.prepare_request()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
-  def post_saml_client_sendlogoutrequestazerty(self):
-    
-    """
-    Récupère les informations saisies dans /saml/client/preparelogoutrequest pour les mettre dans la session
-      (avec le state comme clé)
-    Redirige vers l'IdP grâce à la requête générée dans /saml/client/preparelogoutrequest et placée dans le paramètre logout_request
-    
-    mpham 11/03/2021
-    """
-
-    saml_logout = SAMLClientLogout(self)
-
-    try:
-      saml_logout.send_request()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
   def _client_saml_slo(self):
 
     saml_logout = SAMLClientLogout(self)
@@ -662,40 +639,22 @@ class Server(BaseServer):
       self.send_page(str(error), clear_buffer=True)
 
 
-  def get_saml_client_modifyclientazerty(self):
+  def _client_cas_login_callback(self):
 
-
-    saml_client_admin = SAMLClientAdmin(self)
+    cas_login = CASClientLogin(self)
 
     try:
-      saml_client_admin.display()
+      cas_login.callback()
     except AduneoError as error:
       self.send_page(str(error), clear_buffer=True)
 
-  """
-  def post_saml_client_modifyclient(self):
 
+  def _client_cas_logout_callback(self):
 
-    saml_client_admin = SAMLClientAdmin(self)
-
-    try:
-      saml_client_admin.modify()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-  """
-
-  def get_saml_client_removeclientazerty(self):
-    
-    """
-    Supprime un client SAML
-    
-    mpham 06/03/2021
-    """
-
-    saml_client_admin = SAMLClientAdmin(self)
+    cas_logout = CASClientLogout(self)
 
     try:
-      saml_client_admin.remove()
+      cas_logout.callback()
     except AduneoError as error:
       self.send_page(str(error), clear_buffer=True)
 
@@ -807,135 +766,3 @@ class Server(BaseServer):
     except AduneoError as error:
       self.send_page(str(error), clear_buffer=True)
 
-  """
-  def get_oauth_client_prepareoauthrequestazerty(self):
-
-
-    OAuth_client_login = OAuthClientLogin(self)
-    
-    try:
-      OAuth_client_login.prepare_oauth_request()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-   
-   
-  def post_oauth_client_sendrequestazerty(self):
-
-    oidc_client_login = OAuthClientLogin(self)
-    
-    try:
-      oidc_client_login.send_request()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
-  def get_oauth_client_callbackazerty(self):
-
-    oidc_client_login = OAuthClientLogin(self)
-    
-    try:
-      oidc_client_login.callback()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
-  def get_oauth_client_callback_spaazerty(self):
-
-    oauth_client_login = OAuthClientLogin(self)
-    
-    try:
-      oauth_client_login.callback_spa()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
-  def get_oauth_client_token_exchangeazerty(self):
-
-    oauth_client_login = OAuthClientLogin(self)
-    
-    try:
-      oauth_client_login.token_exchange_spa()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
-  def get_oauth_client_preparelogoutrequest(self):
-
-    oidc_logout = OAuthClientLogout(self)
-    
-    try:
-      oidc_logout.prepare_request()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
-  def post_oauth_client_sendlogoutrequest(self):
-    
-    oidc_logout = OAuthClientLogout(self)
-
-    try:
-      oidc_logout.send_request()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
-  def get_oauth_client_logoutcallback(self):
-
-    oidc_logout = OAuthClientLogout(self)
-
-    try:
-      oidc_logout.callback()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
-  def get_oauth_client_modifyclient(self):
-
-    oidc_client_admin = OAuthClientAdmin(self)
-
-    try:
-      oidc_client_admin.display()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
-  def post_oauth_client_modifyclient(self):
-
-    oidc_client_admin = OAuthClientAdmin(self)
-
-    try:
-      oidc_client_admin.modify()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
-  def get_oauth_client_modifyclient_guide(self):
-
-    oidc_client_admin = OAuthClientAdminGuide(self)
-
-    try:
-      oidc_client_admin.display()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-
-
-  def post_oauth_client_modifyclient_guide(self):
-
-    oidc_client_admin = OAuthClientAdminGuide(self)
-
-    try:
-      oidc_client_admin.modify()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-    
-    
-  def get_oauth_client_removeclient(self):
-    
-
-    oidc_client_admin = OAuthClientAdmin(self)
-
-    try:
-      oidc_client_admin.remove()
-    except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
-  """

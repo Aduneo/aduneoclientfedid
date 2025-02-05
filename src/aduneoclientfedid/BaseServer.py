@@ -17,6 +17,7 @@ limitations under the License.
 
 import html
 import http.cookies
+import importlib
 import json
 import os
 import requests
@@ -607,7 +608,9 @@ class BaseHandler:
     """
     hreq est l'instance courante de HTTPRequestHandler
     
-    mpham 01/03/2021
+    Versions:
+      01/03/2021 (mpham) version initiale
+      26/01/2025 (mpham) remontée des en-têtes
     """
     
     from .Server import Server  # pour éviter les imports circulaires
@@ -616,6 +619,7 @@ class BaseHandler:
     self.post_json = hreq.post_json
     self.hreq = hreq
     self.server = hreq.server
+    self.headers = hreq.headers
     
     self.result_in_table = False   # Indique si une table est ouverte (voir start_result_table)
 
@@ -645,7 +649,7 @@ class BaseHandler:
     
     """
     retourne la valeur d'un paramètre de la query string
-      le paramètre ne soit se retrouver qu'une fois dans la query string
+      le paramètre ne doit se retrouver qu'une fois dans la query string
       
     retourne None si le paramètre n'est pas trouvé ou s'il a plusieurs valeurs
     
@@ -1084,21 +1088,20 @@ class WebRouter:
     Args:
       hreq: instance de BaseServer traitant la requête
     
-    mpham 30/09/2022
+    Versions:
+      30/09/2022 (mpham) version initiale basée sur exec et eval
+      30/01/2025 (mpham) récriture avec importlib, pour compatibilité Python 13
     """
     func_def = WebRouter.authorized_urls[self.method].get(self.url)
     if func_def:
       # comme is_authorized_url devrait être appelé avant, ce devrait toujours être vrai
-      exec("from "+func_def['module']+" import "+func_def['class'])
-      web_module = eval(func_def['class']+'(hreq)')
-      eval('web_module.'+func_def['method']+'()')
+      web_module = importlib.import_module(func_def['module']) # par exemple ClientFedID.OAuthClientLogin
+      web_class = getattr(web_module, func_def['class']) # par exemple OAuthClientLogin
+      web_instance = web_class(hreq)
+      http_method = getattr(web_instance, func_def['method']) # par exemple prepare_request
+      http_method()
     else:
       logging.error("Unknown URL "+self.url)
-    """
-    exec("from ClientFedID.OAuthClientLogin import OAuthClientLogin")
-    module = eval('OAuthClientLogin(hreq)')
-    eval('module.send_access_token_introspection_request_spa()')
-    """
 
 
 def register_url(method:str, url:str=None):

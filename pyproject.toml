@@ -20,7 +20,7 @@ license = { file = "LICENSE" }
 classifiers = [
     "Topic :: System :: Systems Administration :: Authentication/Directory",
 ]
-keywords = ["identity", "federation", "openid connect", "oidc", "oauth", "oauth 2", "saml"]
+keywords = ["identity", "federation", "openid connect", "oidc", "oauth", "oauth 2", "saml", "cas"]
 dependencies = [
     "requests",
     "jwcrypto",
