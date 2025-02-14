@@ -191,6 +191,7 @@ class OAuthClientAdmin(BaseHandler):
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
       31/12/2024 (mpham) les identifiants des apps sont maintenant préfixés (oauth2_<idp_id>_<app_id>) pour les rendre globalement uniques. Les IdP sont en idp_<ipd_id>
       31/01/2025 (mpham) création d'un client pour un IdP existant
+      14/02/2025 (mpham) en création, un client vide était créé
     """
     
     idp_id = self.post_form['idp_id']
@@ -198,7 +199,7 @@ class OAuthClientAdmin(BaseHandler):
     if idp_id == '':
       # Création de l'IdP
       idp_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
-      self.conf['idps'][idp_id] = {'idp_parameters': {'oauth2': {}}, 'oauth2_clients': {app_id: {}}}
+      self.conf['idps'][idp_id] = {'idp_parameters': {'oauth2': {}}}
     idp = self.conf['idps'][idp_id]
 
     if app_id == '':
