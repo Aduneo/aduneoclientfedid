@@ -159,6 +159,7 @@ class CASClientAdmin(BaseHandler):
     Versions:
       24/01/2025 (mpham) version initiale adaptée de OIDCClientAdmin
       31/01/2025 (mpham) création d'un client pour un IdP existant
+      14/02/2025 (mpham) en création, un client vide était créé
     """
     
     idp_id = self.post_form['idp_id']
@@ -166,7 +167,7 @@ class CASClientAdmin(BaseHandler):
     if idp_id == '':
       # Création de l'IdP
       idp_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
-      self.conf['idps'][idp_id] = {'idp_parameters': {'cas': {}}, 'cas_clients': {app_id: {}}}
+      self.conf['idps'][idp_id] = {'idp_parameters': {'cas': {}}}
     idp = self.conf['idps'][idp_id]
 
     if app_id == '':
