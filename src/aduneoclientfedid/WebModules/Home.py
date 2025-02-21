@@ -84,12 +84,12 @@ class Home(BaseHandler):
       # clients (OP) OpenID Connect
       if idp.get('oidc_clients'):
         
-        self.add_html("""<div>OIDC OP (clients)</div>""")          
+        self.add_html("""<div style="font-size: 14px">OIDC OP (clients)</div>""")          
         for client_id in sorted(idp['oidc_clients'].keys()):
           
           client = idp['oidc_clients'][client_id]
           self.add_html("""
-            <div>
+            <div style="font-size: 14px; margin-left: 20px;">
               <span>{name}</span>
               <span><a href="/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
               <span><a href="/client/oidc/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
@@ -104,12 +104,12 @@ class Home(BaseHandler):
       # clients OAuth 2
       if idp.get('oauth2_clients'):
         
-        self.add_html("""<div>OAuth 2 Clients</div>""")          
+        self.add_html("""<div style="font-size: 14px">OAuth 2 Clients</div>""")          
         for client_id in sorted(idp['oauth2_clients'].keys()):
           
           client = idp['oauth2_clients'][client_id]
           self.add_html("""
-            <div>
+            <div style="font-size: 14px; margin-left: 20px;">
               <span>{name}</span>
               <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
               <span><a href="/client/oauth2/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
@@ -124,12 +124,12 @@ class Home(BaseHandler):
       # SP SAML
       if self.hreq.saml_prerequisite and idp.get('saml_clients'):
         
-        self.add_html("""<div>SAML SP</div>""")          
+        self.add_html("""<div style="font-size: 14px">SAML SP</div>""")          
         for app_id in sorted(idp['saml_clients'].keys()):
           
           app_params = idp['saml_clients'][app_id]
           self.add_html("""
-            <div>
+            <div style="font-size: 14px; margin-left: 20px;">
               <span>{name}</span>
               <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
               <span><a href="/client/saml/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
@@ -144,12 +144,12 @@ class Home(BaseHandler):
       # clients CAS
       if idp.get('cas_clients'):
         
-        self.add_html("""<div>CAS Clients</div>""")          
+        self.add_html("""<div style="font-size: 14px">CAS Clients</div>""")          
         for client_id in sorted(idp['cas_clients'].keys()):
           
           client = idp['cas_clients'][client_id]
           self.add_html("""
-            <div>
+            <div style="font-size: 14px; margin-left: 20px;">
               <span>{name}</span>
               <span><a href="/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
               <span><a href="/client/cas/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>

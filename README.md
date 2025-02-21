@@ -75,7 +75,7 @@ You can try installing ClientFedID with SAML:
 ```
 
 
-## Installation
+## Normal installation (Windows and Linux)
 
 **aduneoclientfedid** is a web server that is installed locally, most of the time on *localhost* and accessed with a web browser.
 
@@ -181,6 +181,38 @@ This server is only meant to be running for the time when the tests are conducte
 It is not optimized to run as a demon. It is definitely not secure enough.
 
 It is usually run on the tester's computer or on a computer controlled by the tester.
+
+
+## Running from a container
+
+A container image is published on Docker Hub : **aduneo/aduneoclientfedid**.
+
+To retrieve it
+```console
+docker pull aduneo/aduneoclientfedid
+```
+To run it, just map the HTTPS (443) port of the container:
+```console
+docker run -p 443:443 -it aduneo/aduneoclientfedid
+```
+ClientFedID is then available on https://localhost.
+
+Should you prefer a different port, for example 8443:
+```console
+docker run -p 8443:443 -it aduneo/aduneoclientfedid
+```
+As is usual with containers, a restart loses the configuration.
+
+You might want to persist it on the host. Just map the **/opt/conf** directory.
+
+On Windows, create a *conf-for-container* (or any other name) directory and run:
+```console
+docker run -p 443:443 -v .\conf-for-container:/opt/conf -it aduneo/aduneoclientfedid
+```
+The *docker-compose.yml* file in the repository does just that. From the location of the file:
+```console
+docker-compose up
+```
 
 
 ## Running from sources
@@ -620,12 +652,13 @@ It's a JSON file, so be careful of trailing commas. As a reminder, the following
 ```
 (remove the last comma to make it JSON compliant)
 
-There are 6 main sections in the configuration file:
+There are 5 main sections in the configuration file:
 - meta: information about the configuration file itself. It only contains the name of the file containing the key used to encrypt
     passwords
 - server: HTTP server parameters (port, SSL, etc.)
 - preferences
-- oidc_clients, oauth_clients, saml_clients: these parts detail the various clients and configurations in the application
+- default
+- idps: details the various IdP and client configurations
 
 Any manual change in thre configuration file requires the server to be restarted (Ctrl-C then clientfedid/aduneoclientfedid/python -m aduneoclientfedid).
 
