@@ -1567,8 +1567,6 @@ class RequesterForm(CfiForm):
     Versions:
       30/12/2024 (mpham) version initiale
     """
-    print('###############')
-    print(hr_data)
     
     if hr_data.get('hr_mode', 'new_page') == 'api':
       return RequesterForm.send_form_api(page_handler, hr_data, default_secret)

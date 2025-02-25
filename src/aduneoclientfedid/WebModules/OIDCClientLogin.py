@@ -396,14 +396,6 @@ class OIDCClientLogin(FlowHandler):
     
       self.log_info('Authentication callback')
       
-      error = self.get_query_string_param('error')
-      if error is not None:
-        description = ''
-        error_description = self.get_query_string_param('error_description')
-        if error_description is not None:
-          description = ', '+error_description
-        raise AduneoError(self.log_error('IdP returned an error: '+error+description))
-
       # récupération de state pour obtention des paramètres dans la session
       idp_state = self.get_query_string_param('state')
       if not idp_state:
@@ -418,6 +410,14 @@ class OIDCClientLogin(FlowHandler):
       if not self.context:
         raise AduneoError(f"Can't retrieve request context because context id {context_id} not found in session")
       
+      error = self.get_query_string_param('error')
+      if error is not None:
+        description = ''
+        error_description = self.get_query_string_param('error_description')
+        if error_description is not None:
+          description = ', '+error_description
+        raise AduneoError(self.log_error('IdP returned an error: '+error+description))
+        
       # extraction des informations utiles de la session
       idp_id = self.context.idp_id
       app_id = self.context.app_id

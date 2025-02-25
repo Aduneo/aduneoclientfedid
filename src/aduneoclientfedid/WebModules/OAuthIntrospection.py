@@ -29,7 +29,7 @@ from .FlowHandler import FlowHandler
 """
   Validation de jeton d'accès par introspection (RFC 7662)
 
-  Utilise les éléments du contexte et les mets à jour en fonction des saisies de l'utilisateur
+  Utilise les éléments du contexte et les met à jour en fonction des saisies de l'utilisateur
 """
 
 
@@ -45,9 +45,9 @@ class OAuth2Introspection(FlowHandler):
 
       La requête est transmise à sendrequest pour exécution
     
-      Versions:
-        28/08/2024 (mpham) version initiale adaptée de userinfo
-        29/12/2025 (mpham) les méthodes HTTP et Authn peuvent être héritées de celles définis auprès de l'IdP
+    Versions:
+      28/08/2024 (mpham) version initiale adaptée de userinfo
+      29/12/2025 (mpham) les méthodes HTTP et Authn peuvent être héritées de celles définis auprès de l'IdP
     """
     
     try:
@@ -173,8 +173,8 @@ class OAuth2Introspection(FlowHandler):
   def send_request(self):
     """ Effectue la requête d'introspection et l'affiche
 
-      Versions:
-        04/09/2024 (mpham) version initiale adaptée de userinfo
+    Versions:
+      04/09/2024 (mpham) version initiale adaptée de userinfo
     """
     
     #self.add_html('<pre>'+json.dumps(self.post_form, indent=2)+'</pre>')
