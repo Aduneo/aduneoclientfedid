@@ -73,6 +73,7 @@ class CASClientAdmin(BaseHandler):
     Versions:
       24/01/2025 (mpham) version initiale adaptée de OIDCClientAdmin
       31/01/2025 (mpham) création d'un client pour un IdP existant
+      25/02/2025 (mpham) modification du nom du client
     """
 
     idp_id = self.get_query_string_param('idpid', '')
@@ -90,8 +91,9 @@ class CASClientAdmin(BaseHandler):
 
     form_content = {
       'idp_id': idp_id,
+      'idp_name': idp.get('name', ''),
       'app_id': app_id,
-      'name': idp.get('name', ''),
+      'app_name': app_params.get('name', ''),
       'cas_server_url': cas_params.get('cas_server_url', ''),
       'service_url': app_params.get('service_url', ''),
       'renew': app_params.get('renew', '[not set]'),
@@ -105,7 +107,8 @@ class CASClientAdmin(BaseHandler):
     form = CfiForm('casadminsingle', form_content, action='modifyclientsingle', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
-      .text('name', label='Name') \
+      .text('idp_name', label='IdP name') \
+      .text('app_name', label='CAS client name') \
       .start_section('server_configuration', title="Server configuration") \
         .text('cas_server_url', label='CAS server URL', clipboard_category='cas_server_url') \
       .end_section() \
@@ -143,7 +146,7 @@ class CASClientAdmin(BaseHandler):
         .check_box('verify_certificates', label='Verify certificates') \
       .end_section() 
       
-    form.set_title('CAS authentication'+('' if form_content['name'] == '' else ': '+form_content['name']))
+    form.set_title('CAS authentication'+('' if form_content['idp_name'] == '' else ': '+form_content['idp_name']))
     form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     self.add_html(form.get_html())
@@ -160,13 +163,14 @@ class CASClientAdmin(BaseHandler):
       24/01/2025 (mpham) version initiale adaptée de OIDCClientAdmin
       31/01/2025 (mpham) création d'un client pour un IdP existant
       14/02/2025 (mpham) en création, un client vide était créé
+      25/02/2025 (mpham) modification du nom du client
     """
     
     idp_id = self.post_form['idp_id']
     app_id = self.post_form['app_id']
     if idp_id == '':
       # Création de l'IdP
-      idp_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
+      idp_id = self._generate_unique_id(name=self.post_form['idp_name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
       self.conf['idps'][idp_id] = {'idp_parameters': {'cas': {}}}
     idp = self.conf['idps'][idp_id]
 
@@ -181,11 +185,13 @@ class CASClientAdmin(BaseHandler):
     cas_params = idp_params['cas']
     app_params = idp['cas_clients'][app_id]
     
-    if self.post_form['name'] == '':
-      self.post_form['name'] = idp_id
-
-    idp['name'] = self.post_form['name'].strip()
-    app_params['name'] = 'CAS Client'
+    if self.post_form['idp_name'] == '':
+      self.post_form['idp_name'] = idp_id
+    idp['name'] = self.post_form['idp_name'].strip()
+    
+    if self.post_form['app_name'] == '':
+      self.post_form['app_name'] = 'CAS Client'
+    app_params['name'] = self.post_form['app_name'].strip()
     
     for item in ['cas_server_url']:
       if self.post_form.get(item, '') == '':
