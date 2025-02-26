@@ -338,6 +338,9 @@ class OIDCClientLogin(FlowHandler):
         raise AduneoError("Context not found in request")
 
       # Mise à jour dansle contexte des paramètres liés à l'IdP
+      
+      # TODO : ce serait plutôt idp_params = self.context.idp_params['oauth2']!!!!!!!!!!!!!!
+      
       idp_params = self.context.idp_params
       for item in ['authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'userinfo_method', 'issuer', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
         idp_params[item] = self.post_form.get(item, '').strip()
