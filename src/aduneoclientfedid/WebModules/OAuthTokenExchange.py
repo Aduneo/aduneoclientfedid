@@ -57,6 +57,7 @@ class OAuth2TokenExchange(FlowHandler):
       self.log_info(('  ' * 1)+'for context: '+self.context['context_id'])
 
       idp_params = self.context.idp_params
+      oauth2_idp_params = idp_params['oauth2']
       self.log_info(('  ' * 1)+'IdP: '+idp_params['name'])
 
       # Jetons
@@ -85,7 +86,7 @@ class OAuth2TokenExchange(FlowHandler):
 
       form_content = {
         'contextid': self.context['context_id'],
-        'token_endpoint': idp_params.get('token_endpoint', ''),
+        'token_endpoint': oauth2_idp_params.get('token_endpoint', ''),
         'grant_type': 'urn:ietf:params:oauth:grant-type:token-exchange',
         'resource': '',
         'audience': '',

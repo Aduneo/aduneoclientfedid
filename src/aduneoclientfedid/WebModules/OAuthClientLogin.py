@@ -1,5 +1,5 @@
 """
-Copyright 2023 Aduneo
+Copyright 2023-2025 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -55,6 +55,7 @@ class OAuthClientLogin(FlowHandler):
       04/12/2024 (mpham) new auth : on conserve le contexte, mais on récupère les paramètres de la configuration
       23/12/2024 (mpham) les valeurs des select sont maintenant toutes des constantes du type metadata_uri et non plus des libellés comme Authorization Server Metadata URI
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
     """
 
     self.log_info('--- Start OAuth 2 flow ---')
@@ -80,15 +81,15 @@ class OAuthClientLogin(FlowHandler):
       if new_auth:
         # Nouvelle requête
         idp = copy.deepcopy(self.conf['idps'][idp_id])
-        idp_params = idp['idp_parameters'].get('oauth2')
-        if not idp_params:
+        idp_params = idp['idp_parameters']
+        oauth2_idp_params = idp_params.get('oauth2')
+        if not oauth2_idp_params:
           raise AduneoError(f"OAuth2 IdP parameters have not been defined for IdP {idp_id}", button_label="IdP parameters", action=f"/client/idp/admin/modify?idpid={idp_id}")
         
         app_params = idp['oauth2_clients'][app_id]
 
-        # On récupère name et verify_certificates des paramètres de l'IdP
+        # On récupère name des paramètres de l'IdP
         idp_params['name'] = idp['name']
-        idp_params['verify_certificates'] = idp['idp_parameters']['verify_certificates']
 
         # si le contexte existe, on le conserve (cas newauth)
         if self.context is None:
@@ -100,7 +101,7 @@ class OAuthClientLogin(FlowHandler):
         self.context['app_params'][app_id] = app_params
         self.set_session_value(self.context['context_id'], self.context)
 
-        if idp_params.get('endpoint_configuration', 'local_configuration') == 'same_as_oidc':
+        if oauth2_idp_params.get('endpoint_configuration', 'local_configuration') == 'same_as_oidc':
           # récupération des paramètres OIDC pour les endpoints
           oidc_params = idp['idp_parameters'].get('oidc')
           if not oidc_params:
@@ -108,11 +109,11 @@ class OAuthClientLogin(FlowHandler):
           if oidc_params.get('endpoint_configuration') == 'same_as_oauth2':
             raise AduneoError("can't retrieve endpoint parameters from OIDC configuration since OIDC is configured with same_as_oauth2")
           for param in ['endpoint_configuration', 'discovery_uri', 'authorization_endpoint', 'token_endpoint']:
-            idp_params[param] = oidc_params.get(param, '')
-          if idp_params.get('endpoint_configuration') == 'discovery_uri':
-            idp_params['endpoint_configuration'] = 'metadata_uri'
-            idp_params['metadata_uri'] = oidc_params.get('discovery_uri')
-        if idp_params.get('endpoint_configuration', 'local_configuration') == 'metadata_uri':
+            oauth2_idp_params[param] = oidc_params.get(param, '')
+          if oauth2_idp_params.get('endpoint_configuration') == 'discovery_uri':
+            oauth2_idp_params['endpoint_configuration'] = 'metadata_uri'
+            oauth2_idp_params['metadata_uri'] = oidc_params.get('discovery_uri')
+        if oauth2_idp_params.get('endpoint_configuration', 'local_configuration') == 'metadata_uri':
           fetch_configuration_document = True
 
       else:
@@ -120,22 +121,23 @@ class OAuthClientLogin(FlowHandler):
         idp_id = self.context['idp_id']
         app_id = self.context['app_id']
         idp_params = self.context.idp_params
+        oauth2_idp_params = idp_params['oauth2']
         app_params = self.context.last_app_params
       
       self.log_info(('  ' * 1) + f"for client {app_params['name']} of IdP {idp_params['name']}")
       self.add_html(f"<h1>IdP {idp_params['name']} OAuth2 Client {app_params['name']}</h1>")
 
       if fetch_configuration_document:
-        self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=idp_params['metadata_uri']))
+        self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=oauth2_idp_params['metadata_uri']))
         try:
           self.log_info('Starting metadata retrieval')
-          self.log_info('metadata_uri: '+idp_params['metadata_uri'])
+          self.log_info('metadata_uri: '+oauth2_idp_params['metadata_uri'])
           verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
           self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-          r = requests.get(idp_params['metadata_uri'], verify=verify_certificates)
+          r = requests.get(oauth2_idp_params['metadata_uri'], verify=verify_certificates)
           self.log_info(r.text)
           meta_data = r.json()
-          idp_params.update(meta_data)
+          oauth2_idp_params.update(meta_data)
           self.add_html("""<div class="intertable">Success</div>""")
         except Exception as error:
           self.log_error(traceback.format_exc())
@@ -164,15 +166,15 @@ class OAuthClientLogin(FlowHandler):
       form_content = {
         'contextid': self.context['context_id'],
         'redirect_uri': app_params.get('redirect_uri', ''),
-        'authorization_endpoint': idp_params.get('authorization_endpoint', ''),
-        'token_endpoint': idp_params.get('token_endpoint', ''),
-        'introspection_endpoint': idp_params.get('introspection_endpoint', ''),
-        'introspection_http_method': idp_params.get('introspection_http_method', 'post'),
-        'introspection_auth_method': idp_params.get('introspection_auth_method', 'basic'),
-        'issuer': idp_params.get('issuer', ''),
-        'signature_key_configuration': idp_params.get('signature_key_configuration', 'jwks_uri'),
-        'jwks_uri': idp_params.get('jwks_uri', ''),
-        'signature_key': idp_params.get('signature_key', ''),
+        'authorization_endpoint': oauth2_idp_params.get('authorization_endpoint', ''),
+        'token_endpoint': oauth2_idp_params.get('token_endpoint', ''),
+        'introspection_endpoint': oauth2_idp_params.get('introspection_endpoint', ''),
+        'introspection_http_method': oauth2_idp_params.get('introspection_http_method', 'post'),
+        'introspection_auth_method': oauth2_idp_params.get('introspection_auth_method', 'basic'),
+        'issuer': oauth2_idp_params.get('issuer', ''),
+        'signature_key_configuration': oauth2_idp_params.get('signature_key_configuration', 'jwks_uri'),
+        'jwks_uri': oauth2_idp_params.get('jwks_uri', ''),
+        'signature_key': oauth2_idp_params.get('signature_key', ''),
         'oauth_flow': app_params.get('oauth_flow', 'authorization_code'),
         'pkce_method': app_params.get('pkce_method', 'S256'),
         'pkce_code_verifier': pkce_code_verifier,
@@ -310,6 +312,7 @@ class OAuthClientLogin(FlowHandler):
     
     Versions:
       23/08/2024 (mpham) version initiale copiée de OIDC
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas mis à jour au bon endroit
     """
     
     self.log_info('Redirection to IdP requested')
@@ -322,8 +325,9 @@ class OAuthClientLogin(FlowHandler):
 
       # Mise à jour dans le contexte des paramètres liés à l'IdP
       idp_params = self.context.idp_params
+      oauth2_idp_params = idp_params['oauth2']
       for item in ['authorization_endpoint', 'token_endpoint', 'introspection_endpoint', 'introspection_http_method', 'introspection_auth_method', 'issuer', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
-        idp_params[item] = self.post_form.get(item, '').strip()
+        oauth2_idp_params[item] = self.post_form.get(item, '').strip()
 
       # Mise à jour dans le contexte des paramètres liés au client courant
       app_params = self.context.last_app_params
@@ -382,6 +386,7 @@ class OAuthClientLogin(FlowHandler):
       14/09/2022 (mpham) version initiale
       28/11/2024 (mpham) certificate verification is now a configuration parameter attached to the IDP and not the APP
       28/11/2024 (mpham) dans le contexte, on ajoute l'identifiant du client ayant récupéré les jetons
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
     """
   
     self.add_javascript_include('/javascript/resultTable.js')
@@ -408,6 +413,7 @@ class OAuthClientLogin(FlowHandler):
       idp_id = self.context.idp_id
       app_id = self.context.app_id
       idp_params = self.context.idp_params
+      oauth2_idp_params = idp_params['oauth2']
       app_params = self.context.last_app_params
 
       error = self.get_query_string_param('error')
@@ -427,7 +433,7 @@ class OAuthClientLogin(FlowHandler):
       if not code:
         raise AduneoError("Authorization code not found in query string")
 
-      token_endpoint = idp_params.get('token_endpoint', '')
+      token_endpoint = oauth2_idp_params.get('token_endpoint', '')
       if not token_endpoint:
         raise AduneoError("Token endpoint missing from configuration")
       client_id = app_params['client_id']
@@ -541,6 +547,8 @@ class OAuthClientLogin(FlowHandler):
 
   def display_tokens(self, access_token:str, refresh_token:str, idp_params:dict, client_secret:str):
 
+      oauth2_idp_params = idp_params['oauth2']
+
       self.add_result_row('Access Token', access_token, 'access_token')
       if refresh_token:
         self.add_result_row('Refresh token', refresh_token, 'refresh_token')
@@ -571,24 +579,24 @@ class OAuthClientLogin(FlowHandler):
             access_token_jwk = {"alg":alg,"kty":"oct","use":"sig","kid":"1","k":encoded_secret}
           else:
             # Signature asymétrique, on récupère la clé
-            if idp_params['signature_key_configuration'] == 'Local configuration':
+            if oauth2_idp_params['signature_key_configuration'] == 'Local configuration':
             
               # Clé de signature donnée dans la configuration
               self.log_info('Signature JWK:')
-              self.log_info(idp_params['signature_key'])
-              access_token_jwk = json.loads(idp_params['signature_key'])
+              self.log_info(oauth2_idp_params['signature_key'])
+              access_token_jwk = json.loads(oauth2_idp_params['signature_key'])
 
             else:
             
               # Clé à récupérer auprès de l'IdP
               self.log_info("Starting IdP keys retrieval")
-              self.add_result_row('JWKS endpoint', idp_params['jwks_uri'], 'jwks_endpoint')
+              self.add_result_row('JWKS endpoint', oauth2_idp_params['jwks_uri'], 'jwks_endpoint')
               self.end_result_table()
               self.add_html('<div class="intertable">Fetching public keys...</div>')
               try:
                 verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
                 self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-                r = requests.get(idp_params['jwks_uri'], verify=verify_certificates)
+                r = requests.get(oauth2_idp_params['jwks_uri'], verify=verify_certificates)
               except Exception as error:
                 self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
                 raise AduneoError(self.log_error(('  ' * 2)+'IdP keys retrieval error: '+str(error)))

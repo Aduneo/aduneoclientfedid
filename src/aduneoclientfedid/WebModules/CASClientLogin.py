@@ -42,6 +42,7 @@ class CASClientLogin(FlowHandler):
 
     Versions:
       24/01/2025 (mpham) version initiale adaptée de OIDCClientLogin
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
     """
 
     self.log_info('--- Start CAS flow ---')
@@ -65,14 +66,14 @@ class CASClientLogin(FlowHandler):
       if new_auth:
         # Nouvelle requête
         idp = copy.deepcopy(self.conf['idps'][idp_id])
-        idp_params = idp['idp_parameters'].get('cas')
-        if not idp_params:
+        idp_params = idp['idp_parameters']
+        cas_idp_params = idp_params['cas']
+        if not cas_idp_params:
           raise AduneoError(f"CAS IdP configuration missing for {idp.get('name', idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={idp_id}")
         app_params = idp['cas_clients'][app_id]
 
-        # On récupère name et verify_certificates des paramètres de l'IdP
+        # On récupère name des paramètres de l'IdP
         idp_params['name'] = idp['name']
-        idp_params['verify_certificates'] = idp['idp_parameters']['verify_certificates']
 
         # si le contexte existe, on le conserve (cas newauth)
         if self.context is None:
@@ -89,13 +90,14 @@ class CASClientLogin(FlowHandler):
         idp_id = self.context['idp_id']
         app_id = self.context['app_id']
         idp_params = self.context.idp_params
+        cas_idp_params = idp_params['cas']
         app_params = self.context.last_app_params
       
       self.log_info(('  ' * 1) + f"for client {app_params['name']} of IdP {idp_params['name']}")
       self.add_html(f"<h1>Authentication for IdP {idp_params['name']} CAS Client {app_params['name']}</h1>")
 
       # ticket validation version
-      cas_server_validate_url = idp_params.get('cas_server_url', '')
+      cas_server_validate_url = cas_idp_params.get('cas_server_url', '')
       if app_params.get('ticket_validation_version') == 'cas_3.0':
         cas_server_validate_url += '/p3/serviceValidate'
       elif app_params.get('ticket_validation_version') == 'cas_2.0':
@@ -107,7 +109,7 @@ class CASClientLogin(FlowHandler):
 
       form_content = {
         'contextid': self.context['context_id'],  # TODO : remplacer par hr_context ?
-        'cas_server_login_url': idp_params.get('cas_server_url', '')+'/login',
+        'cas_server_login_url': cas_idp_params.get('cas_server_url', '')+'/login',
         'service_url': app_params.get('service_url', ''),
         'cas_server_validate_url': cas_server_validate_url,
         'renew': app_params.get('renew', '[not set]'),
@@ -211,6 +213,7 @@ class CASClientLogin(FlowHandler):
     
     Versions:
       24/01/2025 (mpham) version initiale adaptée de OIDCClientLogin
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas mis à jour au bon endroit
     """
     
     self.log_info('Redirection to IdP requested')
@@ -223,8 +226,9 @@ class CASClientLogin(FlowHandler):
 
       # Mise à jour dansle contexte des paramètres liés à l'IdP
       idp_params = self.context.idp_params
+      cas_idp_params = idp_params['cas']
       for item in ['cas_server_login_url', 'cas_server_validate_url']:
-        idp_params[item] = self.post_form.get(item, '').strip()
+        cas_idp_params[item] = self.post_form.get(item, '').strip()
 
       # Mise à jour dansle contexte des paramètres liés au client courant
       app_params = self.context.last_app_params
@@ -261,6 +265,7 @@ class CASClientLogin(FlowHandler):
     Versions:
       26/01/2025 (mpham) version initiale adaptée de OIDCClientLogin
       18/01/2025 (mpham) parsing de la réponse (XML ou JSON)
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
     """
 
     self.add_javascript_include('/javascript/resultTable.js')
@@ -280,6 +285,7 @@ class CASClientLogin(FlowHandler):
       idp_id = self.context.idp_id
       app_id = self.context.app_id
       idp_params = self.context.idp_params
+      cas_idp_params = idp_params['cas']
       app_params = self.context.last_app_params
 
       self.add_html(f"<h3>CAS callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
@@ -305,7 +311,7 @@ class CASClientLogin(FlowHandler):
 
       # validation du ticket
       self.log_info("  Start validating ticket")
-      cas_server_validate_url = idp_params['cas_server_validate_url']
+      cas_server_validate_url = cas_idp_params['cas_server_validate_url']
 
       self.add_result_row('Validate URL', cas_server_validate_url, 'cas_server_validate_url')
       self.end_result_table()

@@ -1,5 +1,5 @@
 """
-Copyright 2023 Aduneo
+Copyright 2023-2025 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -79,6 +79,7 @@ class SAMLClientLogin(FlowHandler):
 
     Versions:
       02/01/2025 (mpham) version initiale copiée d'OAuth 2 et de l'ancienne version de SAML
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
     """
 
     self.log_info('--- Start SAML flow ---')
@@ -103,8 +104,9 @@ class SAMLClientLogin(FlowHandler):
       if new_auth:
         # Nouvelle requête
         idp = copy.deepcopy(self.conf['idps'][idp_id])
-        idp_params = idp['idp_parameters'].get('saml')
-        if not idp_params:
+        idp_params = idp['idp_parameters']
+        saml_idp_params = idp_params.get('saml')
+        if not saml_idp_params:
           raise AduneoError(f"SAML IdP parameters have not been defined for IdP {idp_id}", button_label="IdP parameters", action=f"/client/idp/admin/modify?idpid={idp_id}")
         
         app_params = idp['saml_clients'][app_id]
@@ -127,6 +129,7 @@ class SAMLClientLogin(FlowHandler):
         idp_id = self.context['idp_id']
         app_id = self.context['app_id']
         idp_params = self.context.idp_params
+        saml_idp_params = idp_params['saml']
         app_params = self.context.last_app_params
       
       self.log_info(('  ' * 1) + f"for SP {app_params['name']} of IdP {idp_params['name']}")
@@ -135,7 +138,7 @@ class SAMLClientLogin(FlowHandler):
       relay_state = str(uuid.uuid4())
 
       # possibilités de SAML en binding
-      idp_authentication_binding_capabilities = idp_params.get('idp_authentication_binding_capabilities')
+      idp_authentication_binding_capabilities = saml_idp_params.get('idp_authentication_binding_capabilities')
       if not idp_authentication_binding_capabilities:
         idp_authentication_binding_capabilities = self.conf.get('/default/saml/idp_authentication_binding_capabilities')
         if not idp_authentication_binding_capabilities:
@@ -144,9 +147,9 @@ class SAMLClientLogin(FlowHandler):
       form_content = {
         'hr_context': self.context['context_id'],
         'name': app_params.get('name', ''),
-        'idp_entity_id': idp_params.get('idp_entity_id', ''),
-        'idp_certificate': idp_params.get('idp_certificate', ''),
-        'idp_sso_url': idp_params.get('idp_sso_url', ''),
+        'idp_entity_id': saml_idp_params.get('idp_entity_id', ''),
+        'idp_certificate': saml_idp_params.get('idp_certificate', ''),
+        'idp_sso_url': saml_idp_params.get('idp_sso_url', ''),
         'sp_entity_id': app_params.get('sp_entity_id', ''),
         'sp_acs_url': app_params.get('sp_acs_url', ''),
         'nameid_policy': app_params.get('nameid_policy', 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'),
@@ -218,6 +221,7 @@ class SAMLClientLogin(FlowHandler):
 
     Versions:
       02/01/2025 (mpham) version initiale copiée d'OAuth 2 et de l'ancienne version de SAML
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas mis à jour au bon endroit
     """
 
     try:
@@ -237,8 +241,9 @@ class SAMLClientLogin(FlowHandler):
 
       # Mise à jour dans le contexte des paramètres liés à l'IdP
       idp_params = self.context.idp_params
+      saml_idp_params = idp_params['saml']
       for item in ['idp_entity_id', 'idp_certificate', 'idp_sso_url']:
-        idp_params[item] = self.post_form.get(item, '').strip()
+        saml_idp_params[item] = self.post_form.get(item, '').strip()
 
       # Mise à jour dans le contexte des paramètres liés au client courant
       app_params = self.context.last_app_params
@@ -294,11 +299,13 @@ class SAMLClientLogin(FlowHandler):
       00/00/2022 (mpham) version initiale
       03/03/2023 (mpham) le protocolBinding était à POST au lieu de Redirect dans la requête
       03/01/2025 (mpham) adaptation à CfiForm
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
     """
     
     self.log_info('  sending request in HTTP Redirect')
 
     idp_params = self.context.idp_params
+    saml_idp_params = idp_params['saml']
     app_params = self.context.last_app_params
     
     request = self.post_form.get('authentication_request', '')
@@ -358,7 +365,7 @@ class SAMLClientLogin(FlowHandler):
       base64_signature = base64.b64encode(signature).decode()
       self.log_info('Signature: '+base64_signature)
 
-      url = idp_params['idp_sso_url'] + '?' + message + '&signature=' + urllib.parse.quote_plus(base64_signature)
+      url = saml_idp_params['idp_sso_url'] + '?' + message + '&signature=' + urllib.parse.quote_plus(base64_signature)
       self.log_info('URL: '+url)
       self.log_info('Sending redirection')
       self.send_redirection(url)
@@ -374,10 +381,17 @@ class SAMLClientLogin(FlowHandler):
 
 
   def send_request_post(self):
+    """ Envoie la requête d'authentification en HTTP-Redirect
+    
+    Versions:
+      00/00/2022 (mpham) version initiale
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
+    """
 
     self.log_info('  sending request in HTTP POST')
     
     idp_params = self.context.idp_params
+    saml_idp_params = idp_params['saml']
     app_params = self.context.last_app_params
     
     request = self.post_form.get('authentication_request', '')
@@ -441,7 +455,7 @@ class SAMLClientLogin(FlowHandler):
       <input type="hidden" name="SAMLRequest" value="{saml_request}" />
       <input type="hidden" name="RelayState" value="{relay_state}" />
       </form></body></html>
-    """.format(idp_sso_url=idp_params['idp_sso_url'], saml_request=html.escape(base64_req), relay_state=html.escape(relay_state))
+    """.format(idp_sso_url=saml_idp_params['idp_sso_url'], saml_request=html.escape(base64_req), relay_state=html.escape(relay_state))
     
     self.log_info("SAML POST form:")
     self.log_info(saml_form)
@@ -476,6 +490,7 @@ class SAMLClientLogin(FlowHandler):
       03/03/2021-05/03/2021 (mpham) version initiale
       28/02/2023 (mpham) le bouton de copie n'est pas affiché pour les résultats de type 'passed'
       03/01/2025 (mpham) adaptation continuous page
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
     """
     
     # Problème cookie SameSite=Lax
@@ -519,6 +534,7 @@ class SAMLClientLogin(FlowHandler):
       idp_id = self.context.idp_id
       app_id = self.context.app_id
       idp_params = self.context.idp_params
+      saml_idp_params = idp_params['saml']
       app_params = self.context.last_app_params
 
       self.add_html(f"<h3>SAML callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
@@ -568,13 +584,13 @@ class SAMLClientLogin(FlowHandler):
           raise AduneoError('Issuer element not found')
         issuer = issuer_el.text
         self.log_info('issuer       : '+issuer)
-        self.log_info('IdP entity id: '+idp_params['idp_entity_id'])
+        self.log_info('IdP entity id: '+saml_idp_params['idp_entity_id'])
         
-        if issuer == idp_params['idp_entity_id']:
+        if issuer == saml_idp_params['idp_entity_id']:
           self.add_result_row('Issuer verification passed', issuer, 'issuer_verification')
         else:
           title = 'Issuer verification failed'
-          value = issuer+' (response) != '+idp_params['idp_entity_id']+' (conf)'
+          value = issuer+' (response) != '+saml_idp_params['idp_entity_id']+' (conf)'
           self.add_result_row(title, value, 'issuer_verification')
           raise AduneoError(title)
         
@@ -586,9 +602,9 @@ class SAMLClientLogin(FlowHandler):
       self.log_info('Response signature verification')
       try:
         self.log_info('IdP Certificate')
-        self.log_info(idp_params['idp_certificate'])
+        self.log_info(saml_idp_params['idp_certificate'])
       
-        cert = '-----BEGIN CERTIFICATE-----\n' + idp_params['idp_certificate'] + '\n-----END CERTIFICATE-----'
+        cert = '-----BEGIN CERTIFICATE-----\n' + saml_idp_params['idp_certificate'] + '\n-----END CERTIFICATE-----'
       
         xmlsec.enable_debug_trace(True)
         xmlsec.tree.add_ids(root_el, ["ID"]) # -> correspond à l'attribut ID dans le tag response, c'est demandé par XML Signature
@@ -708,9 +724,9 @@ class SAMLClientLogin(FlowHandler):
       self.log_info('Assertion signature verification')
       try:
         self.log_info('IdP Certificate')
-        self.log_info(idp_params['idp_certificate'])
+        self.log_info(saml_idp_params['idp_certificate'])
       
-        cert = '-----BEGIN CERTIFICATE-----\n' + idp_params['idp_certificate'] + '\n-----END CERTIFICATE-----'
+        cert = '-----BEGIN CERTIFICATE-----\n' + saml_idp_params['idp_certificate'] + '\n-----END CERTIFICATE-----'
       
         xmlsec.enable_debug_trace(True)
         xmlsec.tree.add_ids(assertion_el, ["ID"]) # -> correspond à l'attribut ID dans le tag response, c'est demandé par XML Signature

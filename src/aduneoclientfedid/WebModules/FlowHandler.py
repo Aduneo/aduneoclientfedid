@@ -746,7 +746,7 @@ class FlowHandler(BaseHandler):
       if logout:
         self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/logout?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Logout</span>')
       if token_exchange:
-        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/tokenexchange/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Exchange Token</span>')
+        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/tokenexchange/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Exchange token</span>')
       if oauth_exchange:
         self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/samltoat/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+urllib.parse.quote_plus(dom_id)+'\')" class="middlebutton">Exchange SAML -> OAuth</span>')
       self.add_html('</div>')
