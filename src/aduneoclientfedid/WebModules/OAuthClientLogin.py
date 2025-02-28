@@ -224,7 +224,7 @@ class OAuthClientLogin(FlowHandler):
             ) \
           .hidden('flow_url') \
           .hidden('flow_http_method') \
-          .text('grant_type', label='Grant type', displayed_when="@[oauth_flow] = 'client_credentials'") \
+          .text('grant_type', label='Grant type', displayed_when="@[oauth_flow] = 'client_credentials' or @[oauth_flow] = 'resource_owner_password_credentials'") \
           .closed_list('code_challenge_method', label='PKCE code challenge method', displayed_when="@[oauth_flow] = 'authorization_code_pkce'",
             values={'plain': 'plain', 'S256': 'S256'},
             default = 'S256'
@@ -232,9 +232,11 @@ class OAuthClientLogin(FlowHandler):
           .text('code_challenge', label='PKCE code challenge', displayed_when="@[oauth_flow] = 'authorization_code_pkce' and @[code_challenge_method] = 'S256'") \
           .text('code_verifier', label='PKCE code verifier', displayed_when="@[oauth_flow] = 'authorization_code_pkce'") \
           .text('client_id', label='Client ID', clipboard_category='client_id') \
-          .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
+          .password('client_secret', label='Client secret', clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
+          .text('username', label='User name', clipboard_category='username', displayed_when="@[oauth_flow] = 'resource_owner_password_credentials'") \
+          .password('password', label='User password', clipboard_category='userpassword', displayed_when="@[oauth_flow] = 'resource_owner_password_credentials'") \
           .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
-          .closed_list('response_type', label='Reponse type', 
+          .closed_list('response_type', label='Reponse type', displayed_when="@[oauth_flow] = 'authorization_code' or @[oauth_flow] = 'authorization_code_pkce'",
             values={'code': 'code'},
             default = 'code'
             ) \
@@ -265,6 +267,8 @@ class OAuthClientLogin(FlowHandler):
           'state': '@[state]',
           'code_challenge_method': '@[code_challenge_method]',
           'code_challenge': '@[code_challenge]',
+          'username': '@[username]',
+          'password': '@[password]',
         }, 
         modifying_fields = ['oauth_flow', 'code_verifier'])
       form.modify_http_parameters({
@@ -329,6 +333,7 @@ class OAuthClientLogin(FlowHandler):
       23/08/2024 (mpham) version initiale copiée de OIDC
       27/02/2025 (mpham) les paramètres IdP n'étaient pas mis à jour au bon endroit
       28/02/2025 (mpham) code_verifier n'était pas conservé
+      28/02/2025 (mpham) cinématiques Client credentials et Resource owner password credentials
     """
     
     self.log_info('Redirection to IdP requested')
@@ -347,7 +352,8 @@ class OAuthClientLogin(FlowHandler):
 
       # Mise à jour dans le contexte des paramètres liés au client courant
       app_params = self.context.last_app_params
-      for item in ['redirect_uri', 'oauth_flow', 'code_challenge_method', 'code_verifier', 'client_id', 'scope', 'token_endpoint_auth_method']:
+      for item in ['redirect_uri', 'oauth_flow', 'code_challenge_method', 'code_verifier', 'client_id', 'scope', 'token_endpoint_auth_method',
+        'grant_type', 'username', 'password']:
         app_params[item] = self.post_form.get(item, '').strip()
         
       # Récupération du secret
@@ -367,8 +373,7 @@ class OAuthClientLogin(FlowHandler):
       # Si on est en Resource Owner Password Credentials ou en Client Credentials, on fait une requête directe
       oauth_flow = self.post_form['oauth_flow']
       if oauth_flow == 'resource_owner_password_credentials':
-        # TODO
-        raise Exception("Resource Owner Password Credentials Flow not yet implemented")
+        self._resource_owner_password_credentials()
       elif oauth_flow == 'client_credentials':
         self._client_credentials()
       else:
@@ -587,8 +592,65 @@ class OAuthClientLogin(FlowHandler):
       refresh_token = json_response.get('refresh_token')
       
       self.start_result_table()
-      self.log_info('Token exchange response'+json.dumps(json_response, indent=2))
-      self.add_result_row('Token exchange response', json.dumps(json_response, indent=2), 'userinfo_response', expanded=True)
+      self.log_info('Token response'+json.dumps(json_response, indent=2))
+      self.add_result_row('Token response', json.dumps(json_response, indent=2), 'token_response', expanded=True)
+      self.display_tokens(access_token, refresh_token, idp_params, None)
+      self.end_result_table()
+
+      # Enregistrement des jetons dans la session pour manipulation ultérieure
+      #   Les jetons sont indexés par timestamp d'obtention
+      token_name = 'Authz OAuth2 '+app_params['name']+' - '+time.strftime("%H:%M:%S", time.localtime())
+      token = {'name': token_name, 'type': 'access_token', 'app_id': app_id, 'access_token': access_token}
+      if refresh_token:
+        token['refresh_token'] = refresh_token
+      self.context['access_tokens'][str(time.time())] = token
+
+    except AduneoError as error:
+      if self.is_result_in_table():
+        self.end_result_table()
+      self.add_html('<h4>Authorization failed: '+html.escape(str(error))+'</h4>')
+      if error.explanation_code:
+        self.add_html(Explanation.get(error.explanation_code))
+    except Exception as error:
+      if self.is_result_in_table():
+        self.end_result_table()
+      self.log_error(('  ' * 1)+traceback.format_exc())
+      self.add_html('<h4>Authorization failed: '+html.escape(str(error))+'</h4>')
+
+    self.log_info('--- End OAuth 2 flow ---')
+
+    self.add_menu() 
+    self.send_page()
+
+
+  def _resource_owner_password_credentials(self):
+    """ Envoi de la requête Resource owner password credentials à l'IdP
+    
+    Versions:
+      28/05/2025 (mpham) version initiale
+    """
+    self.add_html("""<h2>Client Resource owner password credentials</h2>""")
+
+    try:
+
+      self.log_info('Checking authorization with Resource owner password credentials flow')
+
+      idp_params = self.context.idp_params
+      oauth2_idp_params = idp_params['oauth2']
+      app_id = self.context.app_id
+      app_params = self.context.last_app_params
+
+      response = RequesterForm.send_form(self, self.post_form, default_secret=app_params['client_secret'])
+      self.log_info('  Raw response: '+response.text)
+      
+      json_response = response.json()
+
+      access_token = json_response['access_token']
+      refresh_token = json_response.get('refresh_token')
+      
+      self.start_result_table()
+      self.log_info('Token response'+json.dumps(json_response, indent=2))
+      self.add_result_row('Token response', json.dumps(json_response, indent=2), 'token_response', expanded=True)
       self.display_tokens(access_token, refresh_token, idp_params, None)
       self.end_result_table()
 
