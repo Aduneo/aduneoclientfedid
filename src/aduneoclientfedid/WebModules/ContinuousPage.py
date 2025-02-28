@@ -1,5 +1,5 @@
 """
-Copyright 2023 Aduneo
+Copyright 2023-2025 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -111,6 +111,7 @@ class ContinuousPageBuffer(object):
     Versions:
       29/03/2023 (mpham) version initiale
       05/08/2024 (mpham) blocs insécables
+      28/02/2025 (mpham) si la page est déjà en redirection, on ne fait rien
     """
     
     with ContinuousPageBuffer.buffer_lock:
@@ -118,36 +119,56 @@ class ContinuousPageBuffer(object):
       if ContinuousPageBuffer.blocs.get(cp_id):
         # on est dans un bloc insécable
 
-        if html:
-          ContinuousPageBuffer.blocs[cp_id]['html'] += html
+        if ContinuousPageBuffer.buffer.get(cp_id, {'action': 'add_content'})['action'] == 'add_content':
 
-        if javascript:
-          ContinuousPageBuffer.blocs[cp_id]['javascript'] += javascript
-          
-        if javascript_include:
-          ContinuousPageBuffer.blocs[cp_id]['javascript_include'].append(javascript_include)
-          
-        if stop:
-          ContinuousPageBuffer.blocs[cp_id]['stop'] = True
+          if html:
+            ContinuousPageBuffer.blocs[cp_id]['html'] += html
+
+          if javascript:
+            ContinuousPageBuffer.blocs[cp_id]['javascript'] += javascript
+            
+          if javascript_include:
+            ContinuousPageBuffer.blocs[cp_id]['javascript_include'].append(javascript_include)
+            
+          if stop:
+            ContinuousPageBuffer.blocs[cp_id]['stop'] = True
         
       else:
         # alimentation normale du tampon principal
     
         if cp_id not in ContinuousPageBuffer.buffer:
-          ContinuousPageBuffer.buffer[cp_id] = {'html': '', 'javascript': '', 'javascript_include': [], 'stop': False}
+          ContinuousPageBuffer.buffer[cp_id] = {'action': 'add_content', 'html': '', 'javascript': '', 'javascript_include': [], 'stop': False}
           
-        if html:
-          ContinuousPageBuffer.buffer[cp_id]['html'] += html
+        if ContinuousPageBuffer.buffer[cp_id]['action'] == 'add_content':
 
-        if javascript:
-          ContinuousPageBuffer.buffer[cp_id]['javascript'] += javascript
-          
-        if javascript_include:
-          ContinuousPageBuffer.buffer[cp_id]['javascript_include'].append(javascript_include)
-          
-        if stop:
-          ContinuousPageBuffer.buffer[cp_id]['stop'] = True
+          if html:
+            ContinuousPageBuffer.buffer[cp_id]['html'] += html
 
+          if javascript:
+            ContinuousPageBuffer.buffer[cp_id]['javascript'] += javascript
+            
+          if javascript_include:
+            ContinuousPageBuffer.buffer[cp_id]['javascript_include'].append(javascript_include)
+            
+          if stop:
+            ContinuousPageBuffer.buffer[cp_id]['stop'] = True
+
+
+  def redirect(cp_id:str, url:str):
+    """ Demande au navigateur de réaliser une redirection
+    
+    Ignore le contenu déjà envoyé
+    
+    Args:
+      cp_id: identifiant de la page du navigateur devant recevoir le contenu
+      url: URL de redirection
+
+    Versions:
+      28/02/2025 (mpham) version initiale
+    """
+    with ContinuousPageBuffer.buffer_lock:
+      ContinuousPageBuffer.buffer[cp_id] = {'action': 'redirect', 'url': url}
+    
   
   def get_buffer(cp_id:str) -> dict:
     """ Retourne le buffer d'un navigateur
@@ -167,7 +188,7 @@ class ContinuousPageBuffer(object):
       29/03/2023 (mpham) version initiale
     """
 
-    buffer = {'html': '', 'javascript': '', 'javascript_include': [], 'stop': False}
+    buffer = {'action': 'add_content', 'html': '', 'javascript': '', 'javascript_include': [], 'stop': False}
 
     with ContinuousPageBuffer.buffer_lock:
       if cp_id in ContinuousPageBuffer.buffer:
@@ -206,7 +227,8 @@ class ContinuousPageBuffer(object):
       cp_id: identifiant de la page du navigateur devant recevoir le contenu
       
     Versions:
-        05/08/2024 (mpham) version initiale
+      05/08/2024 (mpham) version initiale
+      28/02/2025 (mpham) ajout de l'action dans le buffer
     """
     with ContinuousPageBuffer.buffer_lock:
       
@@ -215,7 +237,7 @@ class ContinuousPageBuffer(object):
         del ContinuousPageBuffer.blocs[cp_id]
 
         if cp_id not in ContinuousPageBuffer.buffer:
-          ContinuousPageBuffer.buffer[cp_id] = {'html': '', 'javascript': '', 'javascript_include': [], 'stop': False}
+          ContinuousPageBuffer.buffer[cp_id] = {'action': 'add_content', 'html': '', 'javascript': '', 'javascript_include': [], 'stop': False}
           
         ContinuousPageBuffer.buffer[cp_id]['html'] += bloc['html']
         ContinuousPageBuffer.buffer[cp_id]['javascript'] += bloc['javascript']

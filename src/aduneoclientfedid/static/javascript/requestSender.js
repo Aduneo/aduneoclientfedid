@@ -119,36 +119,46 @@ function _getHtmlJson(method, thisurl, data, menu_id=null, continueRequest=false
 
     if (xhttp.readyState == 4 && xhttp.status == 200) {
 
-      if (notificationId) {
-        document.getElementById(notificationId).style.display = 'none';
-      }
+      if (xhttp.response.action == 'redirect') {
+        // redirection
+        window.location = xhttp.response.url
+        
+      } else if (xhttp.response.action == 'add_content') {
+        // ajout de contenu dans la page continue
 
-      for (include of xhttp.response.javascript_include) {
-        if (!javascriptIncludes.includes(include)) {
-          await includeJavascript(include);
-          javascriptIncludes.push(include);
+        if (notificationId) {
+          document.getElementById(notificationId).style.display = 'none';
         }
-      }
-  
-      if (xhttp.response.html != '') {
-        document.getElementById('text_ph').insertAdjacentHTML('beforeend', xhttp.response.html);
-        if (!firstBlock) {
-          document.getElementById('end_ph').scrollIntoView();
-        }
-      }
-      
-      //console.log(xhttp.response.javascript)
-      window.eval(xhttp.response.javascript);
 
-      if (continueRequest) {
-        if (xhttp.response.stop === true) {
-          if (intervalId) { clearInterval(intervalId); intervalId = null; }
-          firstBlock = false;
-        } else {
-          if (intervalId === null) {
-            intervalId = setInterval(_getHtmlJson, 500, method, thisurl, data, null, true, null);
+        for (include of xhttp.response.javascript_include) {
+          if (!javascriptIncludes.includes(include)) {
+            await includeJavascript(include);
+            javascriptIncludes.push(include);
           }
         }
+    
+        if (xhttp.response.html != '') {
+          document.getElementById('text_ph').insertAdjacentHTML('beforeend', xhttp.response.html);
+          if (!firstBlock) {
+            document.getElementById('end_ph').scrollIntoView();
+          }
+        }
+        
+        //console.log(xhttp.response.javascript)
+        window.eval(xhttp.response.javascript);
+
+        if (continueRequest) {
+          if (xhttp.response.stop === true) {
+            if (intervalId) { clearInterval(intervalId); intervalId = null; }
+            firstBlock = false;
+          } else {
+            if (intervalId === null) {
+              intervalId = setInterval(_getHtmlJson, 500, method, thisurl, data, null, true, null);
+            }
+          }
+        }
+      } else {
+        console.log("Unknown action "+xhttp.response.action)
       }
     }
   }

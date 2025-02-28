@@ -1232,7 +1232,7 @@ class RequesterForm(CfiForm):
     """ Modifie des paramètres HTTP
     
     Les paramètres sont les suivants :
-      form_method: post, get ou redirect (302). redirect n'est possible qu'en mode new_page
+      form_method: post, get ou redirect (302)
         par défaut post
       body_format: format du corps de la requête finale, possible uniquement en POST et en REDIRECT
         x-www-form-urlencoded: formulaire web classique (défaut)
@@ -1748,6 +1748,7 @@ class RequesterForm(CfiForm):
         30/08/2024 (mpham) liste des méthodes d'authentification dans l'option /requester/auth_method_options
         03/12/2024 (mpham) les champs auth_login et auth_secret ne sont plus affichés en authentification de type form
         30/12/2024 (mpham) le mode (new_page / api) est placé dans le champ caché hr_mode
+        28/02/2024 (mpham) la méthode redirect est désormais possible en mode api
     """
     
     if not self._requester_appened:
@@ -1756,9 +1757,7 @@ class RequesterForm(CfiForm):
       self.hidden('hr_mode')
       self.content['hr_mode'] = self.mode
       
-      http_methods = {'post': 'POST', 'get': 'GET'}
-      if self.mode == 'new_page':
-        http_methods['redirect'] = 'REDIRECT'
+      http_methods = {'post': 'POST', 'get': 'GET', 'redirect': 'REDIRECT'}
       
       displayed_when_dict = {
         'hr_request_url': "True",

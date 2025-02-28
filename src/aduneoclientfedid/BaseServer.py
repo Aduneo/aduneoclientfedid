@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Copyright 2023 Aduneo
+Copyright 2023-2025 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -254,26 +254,30 @@ class BaseServer(BaseHTTPRequestHandler):
     """ Ferme un bloc de contenu insécable
     
     Versions:
-        05/08/2024 (mpham) version initiale
+      05/08/2024 (mpham) version initiale
     """
     if self.continuous_page:
       from .WebModules.ContinuousPage import ContinuousPageBuffer
       ContinuousPageBuffer.end_continuous_page_block(self.continuous_page_id)
 
 
-  def send_redirection(self, url):
-  
-    """
-    envoie une page au navigateur
+  def send_redirection(self, url:str):
+    """ Redirige le navigateur vers une autre page
     
-    mpham 27/01/2021
+    Versions:
+      27/01/2021 (mpham) version initiale
+      28/02/2025 (mpham) compatibilité avec les pages continues (pour le formulaire OAuth 2 qui se conclut par un 302 (code) ou par une continuation (client credentials)
     """
   
-    self.send_response(302)
-    self.send_header('location', url)
-    if self.session_id is not None:
-      self.send_header('Set-Cookie', 'fedclient_sessionid='+self.session_id+'; HttpOnly')
-    self.end_headers()
+    if self.continuous_page:
+      from .WebModules.ContinuousPage import ContinuousPageBuffer
+      ContinuousPageBuffer.redirect(self.continuous_page_id, url)
+    else:
+      self.send_response(302)
+      self.send_header('location', url)
+      if self.session_id is not None:
+        self.send_header('Set-Cookie', 'fedclient_sessionid='+self.session_id+'; HttpOnly')
+      self.end_headers()
     
 
   def send_json_page(self, html:str='', javascript:str=''):

@@ -43,7 +43,7 @@ from .FlowHandler import FlowHandler
 @register_web_module('/client/oauth2/login')
 class OAuthClientLogin(FlowHandler):
 
-  @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=False)
+  @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=True)
   def prepare_request(self):
     """
       Prépare la requête d'autorisation OAuth 2
@@ -154,6 +154,14 @@ class OAuthClientLogin(FlowHandler):
       # pour récupérer le contexte depuis le state (puisque c'est la seule information exploitable retournée par l'IdP)
       self.set_session_value(state, self.context['context_id'])
 
+      oauth_flow = app_params.get('oauth_flow', 'authorization_code')
+      if oauth_flow == 'authorization_code' or oauth_flow == 'authorization_code_pkce':
+        flow_http_method = 'redirect'
+        flow_url = oauth2_idp_params.get('authorization_endpoint', '')
+      elif oauth_flow == 'resource_owner_password_credentials' or oauth_flow == 'client_credentials':
+        flow_http_method = 'post'
+        flow_url = oauth2_idp_params.get('token_endpoint', '')
+
       # Paramètres pour PKCE
       self.log_info(('  ' * 1)+'Code challenge generation in case Authorization code with PKCE flow is used')
       pkce_code_verifier = ''.join(random.choice(string.ascii_letters+string.digits) for i in range(50))   # La RFC recommande de produire une suite de 32 octets encodés en base64url-encoded
@@ -175,17 +183,20 @@ class OAuthClientLogin(FlowHandler):
         'signature_key_configuration': oauth2_idp_params.get('signature_key_configuration', 'jwks_uri'),
         'jwks_uri': oauth2_idp_params.get('jwks_uri', ''),
         'signature_key': oauth2_idp_params.get('signature_key', ''),
-        'oauth_flow': app_params.get('oauth_flow', 'authorization_code'),
-        'pkce_method': app_params.get('pkce_method', 'S256'),
-        'pkce_code_verifier': pkce_code_verifier,
-        'pkce_code_challenge': pkce_code_challenge,
+        'oauth_flow': oauth_flow,
+        'flow_url': flow_url,
+        'flow_http_method': flow_http_method,
+        'grant_type': 'client_credentials',
+        'code_challenge_method': app_params.get('code_challenge_method', 'S256'),
+        'code_challenge': pkce_code_challenge,
+        'code_verifier': pkce_code_verifier,
         'client_id': app_params.get('client_id', ''),
         'scope': app_params.get('scope', ''),
-        'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+        'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'basic'),
         'state': state,
       }
       
-      form = RequesterForm('oauth2auth', form_content, action='/client/oauth2/login/sendrequest', mode='new_page', request_url='@[authorization_endpoint]') \
+      form = RequesterForm('oauth2auth', form_content, action='/client/oauth2/login/sendrequest', mode='api', request_url='@[authorization_endpoint]') \
         .hidden('contextid') \
         .start_section('clientfedid_params', title="ClientFedID parameters") \
           .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri') \
@@ -205,25 +216,31 @@ class OAuthClientLogin(FlowHandler):
         .end_section() \
         .start_section('client_params', title="Client parameters", collapsible=True, collapsible_default=False) \
           .closed_list('oauth_flow', label='OAuth flow', 
-            values={'authorization_code': 'Authorization Code', 'authorization_code_pkce': 'Authorization Code with PKCE', 'resource_owner_password_predentials': 'Resource Owner Password Credentials', 'client_credentials': 'Client Credentials'},
-            default = 'authorization_code'
+            values={'authorization_code': 'Authorization Code', 'authorization_code_pkce': 'Authorization Code with PKCE', 'resource_owner_password_credentials': 'Resource Owner Password Credentials', 'client_credentials': 'Client Credentials'},
+            default = 'authorization_code',
+            on_change = """ 
+              updateForFlow(cfiForm);
+              """,
             ) \
-          .closed_list('pkce_method', label='PKCE code challenge method', displayed_when="@[oauth_flow] = 'authorization_code_pkce'",
+          .hidden('flow_url') \
+          .hidden('flow_http_method') \
+          .text('grant_type', label='Grant type', displayed_when="@[oauth_flow] = 'client_credentials'") \
+          .closed_list('code_challenge_method', label='PKCE code challenge method', displayed_when="@[oauth_flow] = 'authorization_code_pkce'",
             values={'plain': 'plain', 'S256': 'S256'},
             default = 'S256'
             ) \
-          .text('pkce_code_verifier', label='PKCE code verifier', displayed_when="@[oauth_flow] = 'authorization_code_pkce'") \
-          .text('pkce_code_challenge', label='PKCE code challenge', displayed_when="@[oauth_flow] = 'authorization_code_pkce' and @[pkce_method] = 'S256'") \
+          .text('code_challenge', label='PKCE code challenge', displayed_when="@[oauth_flow] = 'authorization_code_pkce' and @[code_challenge_method] = 'S256'") \
+          .text('code_verifier', label='PKCE code verifier', displayed_when="@[oauth_flow] = 'authorization_code_pkce'") \
           .text('client_id', label='Client ID', clipboard_category='client_id') \
-          .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+          .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
           .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
           .closed_list('response_type', label='Reponse type', 
             values={'code': 'code'},
             default = 'code'
             ) \
           .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
-            values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
-            default = 'client_secret_basic'
+            values={'none': 'None', 'basic': 'Basic', 'form': 'Form'},
+            default = 'basic'
             ) \
         .end_section() \
         .start_section('token_validation', title="Token validation (if JWT)", collapsible=True, collapsible_default=True) \
@@ -240,42 +257,40 @@ class OAuthClientLogin(FlowHandler):
         .end_section() \
 
       form.set_request_parameters({
+          'grant_type': '@[grant_type]',
           'client_id': '@[client_id]',
           'redirect_uri': '@[redirect_uri]',
           'scope': '@[scope]',
           'response_type': '@[response_type]',
           'state': '@[state]',
-          'pkce_method': '@[pkce_method]',
-          'pkce_code_challenge': '@[pkce_code_challenge]',
+          'code_challenge_method': '@[code_challenge_method]',
+          'code_challenge': '@[code_challenge]',
         }, 
-        modifying_fields = ['oauth_flow', 'pkce_code_verifier'])
+        modifying_fields = ['oauth_flow', 'code_verifier'])
       form.modify_http_parameters({
-        'form_method': 'redirect',
+        'request_url': '@[flow_url]',
+        'form_method': '@[flow_http_method]',
         'body_format': 'x-www-form-urlencoded',
+        'auth_method': '@[token_endpoint_auth_method]',
+        'auth_login': '@[client_id]',
+        'auth_secret': '@[client_secret]',
         'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
         })
       form.modify_visible_requester_fields({
         'request_url': True,
         'request_data': True,
         'body_format': False,
-        'form_method': False,
-        'auth_method': False,
+        'form_method': True,
+        'auth_method': True,
         'verify_certificates': True,
         })
       form.set_data_generator_code("""
-        if (cfiForm.getField('oauth_flow').value == 'authorization_code_pkce') {
-          if (cfiForm.getField('pkce_method').value == 'plain') {
-            paramValues['pkce_code_challenge'] = cfiForm.getField('pkce_code_verifier').value;
-          }
-        } else {
-          delete paramValues['pkce_method'];
-          delete paramValues['pkce_code_challenge'];
-        }
-        return paramValues;
+        return generateOAuth2Request(paramValues, cfiForm);;
       """)
       form.set_option('/requester/include_empty_items', False)
 
       self.add_html(form.get_html())
+      self.add_javascript_include('/javascript/OAuthClientLogin.js')
       self.add_javascript(form.get_javascript())
 
     except AduneoError as error:
@@ -302,7 +317,7 @@ class OAuthClientLogin(FlowHandler):
           """)
 
 
-  @register_url(url='sendrequest', method='POST')
+  @register_page_url(url='sendrequest', method='POST', continuous=True)
   def send_request(self):
     
     """
@@ -313,6 +328,7 @@ class OAuthClientLogin(FlowHandler):
     Versions:
       23/08/2024 (mpham) version initiale copiée de OIDC
       27/02/2025 (mpham) les paramètres IdP n'étaient pas mis à jour au bon endroit
+      28/02/2025 (mpham) code_verifier n'était pas conservé
     """
     
     self.log_info('Redirection to IdP requested')
@@ -331,7 +347,7 @@ class OAuthClientLogin(FlowHandler):
 
       # Mise à jour dans le contexte des paramètres liés au client courant
       app_params = self.context.last_app_params
-      for item in ['redirect_uri', 'oauth_flow', 'pkce_method', 'client_id', 'scope', 'token_endpoint_auth_method']:
+      for item in ['redirect_uri', 'oauth_flow', 'code_challenge_method', 'code_verifier', 'client_id', 'scope', 'token_endpoint_auth_method']:
         app_params[item] = self.post_form.get(item, '').strip()
         
       # Récupération du secret
@@ -350,12 +366,11 @@ class OAuthClientLogin(FlowHandler):
 
       # Si on est en Resource Owner Password Credentials ou en Client Credentials, on fait une requête directe
       oauth_flow = self.post_form['oauth_flow']
-      if oauth_flow == 'resource_owner_password_predentials':
+      if oauth_flow == 'resource_owner_password_credentials':
         # TODO
         raise Exception("Resource Owner Password Credentials Flow not yet implemented")
       elif oauth_flow == 'client_credentials':
-        # TODO
-        raise Exception("Client Credentials Flow not yet implemented")
+        self._client_credentials()
       else:
 
         # Redirection vers l'IdP
@@ -434,7 +449,7 @@ class OAuthClientLogin(FlowHandler):
         raise AduneoError("Authorization code not found in query string")
 
       token_endpoint = oauth2_idp_params.get('token_endpoint', '')
-      if not token_endpoint:
+      if token_endpoint == '':
         raise AduneoError("Token endpoint missing from configuration")
       client_id = app_params['client_id']
       redirect_uri = app_params['redirect_uri']
@@ -451,17 +466,18 @@ class OAuthClientLogin(FlowHandler):
         'client_id': client_id,
       }
       if app_params['oauth_flow'] == 'authorization_code_pkce':
-        api_call_data['code_verifier'] = app_params['pkce_code_verifier']
+        api_call_data['code_verifier'] = app_params['code_verifier']
 
       token_endpoint_auth_method = app_params['token_endpoint_auth_method'].casefold()
       auth = None
+      client_secret = None
       if app_params['oauth_flow'] == 'authorization_code':
       
         client_secret = app_params['client_secret']
 
-        if token_endpoint_auth_method == 'client_secret_basic':
+        if token_endpoint_auth_method == 'basic':
           auth = (app_params['client_id'], client_secret)
-        elif token_endpoint_auth_method == 'client_secret_post':
+        elif token_endpoint_auth_method == 'form':
           api_call_data['client_secret'] = client_secret
         else:
           raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be Basic or POST')
@@ -542,6 +558,63 @@ class OAuthClientLogin(FlowHandler):
 
     self.add_menu() 
 
+    self.send_page()
+
+
+  def _client_credentials(self):
+    """ Envoi de la requête Client Credentials à l'IdP
+    
+    Versions:
+      28/05/2025 (mpham) version initiale
+    """
+    self.add_html("""<h2>Client credentials response</h2>""")
+
+    try:
+
+      self.log_info('Checking authorization with Client credentials flow')
+
+      idp_params = self.context.idp_params
+      oauth2_idp_params = idp_params['oauth2']
+      app_id = self.context.app_id
+      app_params = self.context.last_app_params
+
+      response = RequesterForm.send_form(self, self.post_form, default_secret=app_params['client_secret'])
+      self.log_info('  Raw response: '+response.text)
+      
+      json_response = response.json()
+
+      access_token = json_response['access_token']
+      refresh_token = json_response.get('refresh_token')
+      
+      self.start_result_table()
+      self.log_info('Token exchange response'+json.dumps(json_response, indent=2))
+      self.add_result_row('Token exchange response', json.dumps(json_response, indent=2), 'userinfo_response', expanded=True)
+      self.display_tokens(access_token, refresh_token, idp_params, None)
+      self.end_result_table()
+
+      # Enregistrement des jetons dans la session pour manipulation ultérieure
+      #   Les jetons sont indexés par timestamp d'obtention
+      token_name = 'Authz OAuth2 '+app_params['name']+' - '+time.strftime("%H:%M:%S", time.localtime())
+      token = {'name': token_name, 'type': 'access_token', 'app_id': app_id, 'access_token': access_token}
+      if refresh_token:
+        token['refresh_token'] = refresh_token
+      self.context['access_tokens'][str(time.time())] = token
+
+    except AduneoError as error:
+      if self.is_result_in_table():
+        self.end_result_table()
+      self.add_html('<h4>Authorization failed: '+html.escape(str(error))+'</h4>')
+      if error.explanation_code:
+        self.add_html(Explanation.get(error.explanation_code))
+    except Exception as error:
+      if self.is_result_in_table():
+        self.end_result_table()
+      self.log_error(('  ' * 1)+traceback.format_exc())
+      self.add_html('<h4>Authorization failed: '+html.escape(str(error))+'</h4>')
+
+    self.log_info('--- End OAuth 2 flow ---')
+
+    self.add_menu() 
     self.send_page()
 
 

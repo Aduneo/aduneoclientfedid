@@ -203,6 +203,7 @@ class OAuth2TokenExchange(FlowHandler):
     """
     
     #self.add_html('<pre>'+json.dumps(self.post_form, indent=2)+'</pre>')
+    self.add_html("""<h2>Token exchange response</h2>""")
 
     try:
 
@@ -228,7 +229,7 @@ class OAuth2TokenExchange(FlowHandler):
       
       self.start_result_table()
       self.log_info('Token exchange response'+json.dumps(json_response, indent=2))
-      self.add_result_row('Token exchange response', json.dumps(json_response, indent=2), 'userinfo_response', expanded=True)
+      self.add_result_row('Token exchange response', json.dumps(json_response, indent=2), 'token_exchange_response', expanded=True)
       self.end_result_table()
       
       if response.status_code == 200:
