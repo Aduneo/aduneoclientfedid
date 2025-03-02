@@ -202,7 +202,7 @@ class OAuthClientLogin(FlowHandler):
           .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri') \
         .end_section() \
         .start_section('as_endpoints', title="AS endpoints", collapsible=True, collapsible_default=False) \
-          .text('authorization_endpoint', label='Authorization endpoint', clipboard_category='authorization_endpoint') \
+          .text('authorization_endpoint', label='Authorization endpoint', clipboard_category='authorization_endpoint', displayed_when="@[oauth_flow] = 'authorization_code' or @[oauth_flow] = 'authorization_code_pkce'") \
           .text('token_endpoint', label='Token Endpoint', clipboard_category='token_endpoint') \
           .text('introspection_endpoint', label='Introspection endpoint', clipboard_category='introspection_endpoint') \
           .closed_list('introspection_http_method', label='Introspection request method', 
@@ -255,7 +255,7 @@ class OAuthClientLogin(FlowHandler):
           .text('signature_key', label='Signature key', displayed_when="@[signature_key_configuration] = 'local_configuration'") \
         .end_section() \
         .start_section('security_params', title="Security", collapsible=True, collapsible_default=False) \
-          .text('state', label='State') \
+          .text('state', label='State', displayed_when="@[oauth_flow] = 'authorization_code' or @[oauth_flow] = 'authorization_code_pkce'") \
         .end_section() \
 
       form.set_request_parameters({
