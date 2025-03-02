@@ -57,7 +57,6 @@ class JWT():
       jwt = JWT(token)
       result = True
     except Exception as e:
-      print(e)
       pass
     
     return result

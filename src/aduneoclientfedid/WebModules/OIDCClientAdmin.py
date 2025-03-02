@@ -1,5 +1,5 @@
 """
-Copyright 2023 Aduneo
+Copyright 2023-2025 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -80,6 +80,7 @@ class OIDCClientAdmin(BaseHandler):
       30/12/2024 (mpham) End session endpoint HTTP method
       31/01/2025 (mpham) option same_as_oauth2 pour la configuration des endpoints
       31/01/2025 (mpham) création d'un client pour un IdP existant
+      25/02/2025 (mpham) modification du nom du client
     """
 
     idp_id = self.get_query_string_param('idpid', '')
@@ -97,8 +98,9 @@ class OIDCClientAdmin(BaseHandler):
 
     form_content = {
       'idp_id': idp_id,
+      'idp_name': idp.get('name', ''),
       'app_id': app_id,
-      'name': idp.get('name', ''),
+      'app_name': app_params.get('name', ''),
       'endpoint_configuration': oidc_params.get('endpoint_configuration', 'discovery_uri'),
       'discovery_uri': oidc_params.get('discovery_uri', ''),
       'authorization_endpoint': oidc_params.get('', ''),
@@ -130,7 +132,8 @@ class OIDCClientAdmin(BaseHandler):
     form = CfiForm('oidcadminsingle', form_content, action='modifyclientsingle', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
-      .text('name', label='Name') \
+      .text('idp_name', label='IdP name') \
+      .text('app_name', label='Client name') \
       .start_section('op_endpoints', title="OP endpoints") \
         .closed_list('endpoint_configuration', label='Endpoint configuration', 
           values={'discovery_uri': 'Discovery URI', 'local_configuration': 'Local configuration', 'same_as_oauth2': 'Same as OAuth 2'},
@@ -199,7 +202,7 @@ class OIDCClientAdmin(BaseHandler):
         .check_box('verify_certificates', label='Verify certificates') \
       .end_section() 
       
-    form.set_title('OpenID Connect authentication'+('' if form_content['name'] == '' else ': '+form_content['name']))
+    form.set_title('OpenID Connect authentication'+('' if form_content['idp_name'] == '' else ': '+form_content['idp_name']))
     form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     self.add_html(form.get_html())
@@ -224,13 +227,14 @@ class OIDCClientAdmin(BaseHandler):
       31/12/2024 (mpham) les identifiants des apps sont maintenant préfixés (oidc_<idp_id>_<app_id>) pour les rendre globalement uniques. Les IdP sont en idp_<ipd_id>
       31/01/2025 (mpham) création d'un client pour un IdP existant
       14/02/2025 (mpham) en création, un client vide était créé
+      25/02/2025 (mpham) modification du nom du client
     """
     
     idp_id = self.post_form['idp_id']
     app_id = self.post_form['app_id']
     if idp_id == '':
       # Création de l'IdP
-      idp_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
+      idp_id = self._generate_unique_id(name=self.post_form['idp_name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
       self.conf['idps'][idp_id] = {'idp_parameters': {'oidc': {}}}
     idp = self.conf['idps'][idp_id]
 
@@ -245,11 +249,13 @@ class OIDCClientAdmin(BaseHandler):
     oidc_params = idp_params['oidc']
     app_params = idp['oidc_clients'][app_id]
 
-    if self.post_form['name'] == '':
-      self.post_form['name'] = idp_id
-
-    idp['name'] = self.post_form['name'].strip()
-    app_params['name'] = 'OIDC Client'
+    if self.post_form['idp_name'] == '':
+      self.post_form['idp_name'] = idp_id
+    idp['name'] = self.post_form['idp_name'].strip()
+    
+    if self.post_form['app_name'] == '':
+      self.post_form['app_name'] = 'OIDC Client'
+    app_params['name'] = self.post_form['app_name'].strip()
     
     for item in ['endpoint_configuration', 'discovery_uri', 'issuer', 'authorization_endpoint', 'token_endpoint', 
     'end_session_endpoint', 'userinfo_endpoint', 'userinfo_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:

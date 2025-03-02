@@ -1,5 +1,5 @@
 """
-Copyright 2023 Aduneo
+Copyright 2023-2025 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -79,6 +79,7 @@ class SAMLClientLogin(FlowHandler):
 
     Versions:
       02/01/2025 (mpham) version initiale copiée d'OAuth 2 et de l'ancienne version de SAML
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
     """
 
     self.log_info('--- Start SAML flow ---')
@@ -103,8 +104,9 @@ class SAMLClientLogin(FlowHandler):
       if new_auth:
         # Nouvelle requête
         idp = copy.deepcopy(self.conf['idps'][idp_id])
-        idp_params = idp['idp_parameters'].get('saml')
-        if not idp_params:
+        idp_params = idp['idp_parameters']
+        saml_idp_params = idp_params.get('saml')
+        if not saml_idp_params:
           raise AduneoError(f"SAML IdP parameters have not been defined for IdP {idp_id}", button_label="IdP parameters", action=f"/client/idp/admin/modify?idpid={idp_id}")
         
         app_params = idp['saml_clients'][app_id]
@@ -127,6 +129,7 @@ class SAMLClientLogin(FlowHandler):
         idp_id = self.context['idp_id']
         app_id = self.context['app_id']
         idp_params = self.context.idp_params
+        saml_idp_params = idp_params['saml']
         app_params = self.context.last_app_params
       
       self.log_info(('  ' * 1) + f"for SP {app_params['name']} of IdP {idp_params['name']}")
@@ -135,7 +138,7 @@ class SAMLClientLogin(FlowHandler):
       relay_state = str(uuid.uuid4())
 
       # possibilités de SAML en binding
-      idp_authentication_binding_capabilities = idp_params.get('idp_authentication_binding_capabilities')
+      idp_authentication_binding_capabilities = saml_idp_params.get('idp_authentication_binding_capabilities')
       if not idp_authentication_binding_capabilities:
         idp_authentication_binding_capabilities = self.conf.get('/default/saml/idp_authentication_binding_capabilities')
         if not idp_authentication_binding_capabilities:
@@ -144,9 +147,9 @@ class SAMLClientLogin(FlowHandler):
       form_content = {
         'hr_context': self.context['context_id'],
         'name': app_params.get('name', ''),
-        'idp_entity_id': idp_params.get('idp_entity_id', ''),
-        'idp_certificate': idp_params.get('idp_certificate', ''),
-        'idp_sso_url': idp_params.get('idp_sso_url', ''),
+        'idp_entity_id': saml_idp_params.get('idp_entity_id', ''),
+        'idp_certificate': saml_idp_params.get('idp_certificate', ''),
+        'idp_sso_url': saml_idp_params.get('idp_sso_url', ''),
         'sp_entity_id': app_params.get('sp_entity_id', ''),
         'sp_acs_url': app_params.get('sp_acs_url', ''),
         'nameid_policy': app_params.get('nameid_policy', 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'),
@@ -218,6 +221,7 @@ class SAMLClientLogin(FlowHandler):
 
     Versions:
       02/01/2025 (mpham) version initiale copiée d'OAuth 2 et de l'ancienne version de SAML
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas mis à jour au bon endroit
     """
 
     try:
@@ -237,8 +241,9 @@ class SAMLClientLogin(FlowHandler):
 
       # Mise à jour dans le contexte des paramètres liés à l'IdP
       idp_params = self.context.idp_params
+      saml_idp_params = idp_params['saml']
       for item in ['idp_entity_id', 'idp_certificate', 'idp_sso_url']:
-        idp_params[item] = self.post_form.get(item, '').strip()
+        saml_idp_params[item] = self.post_form.get(item, '').strip()
 
       # Mise à jour dans le contexte des paramètres liés au client courant
       app_params = self.context.last_app_params
@@ -294,11 +299,13 @@ class SAMLClientLogin(FlowHandler):
       00/00/2022 (mpham) version initiale
       03/03/2023 (mpham) le protocolBinding était à POST au lieu de Redirect dans la requête
       03/01/2025 (mpham) adaptation à CfiForm
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
     """
     
     self.log_info('  sending request in HTTP Redirect')
 
     idp_params = self.context.idp_params
+    saml_idp_params = idp_params['saml']
     app_params = self.context.last_app_params
     
     request = self.post_form.get('authentication_request', '')
@@ -358,7 +365,7 @@ class SAMLClientLogin(FlowHandler):
       base64_signature = base64.b64encode(signature).decode()
       self.log_info('Signature: '+base64_signature)
 
-      url = idp_params['idp_sso_url'] + '?' + message + '&signature=' + urllib.parse.quote_plus(base64_signature)
+      url = saml_idp_params['idp_sso_url'] + '?' + message + '&signature=' + urllib.parse.quote_plus(base64_signature)
       self.log_info('URL: '+url)
       self.log_info('Sending redirection')
       self.send_redirection(url)
@@ -374,10 +381,17 @@ class SAMLClientLogin(FlowHandler):
 
 
   def send_request_post(self):
+    """ Envoie la requête d'authentification en HTTP-Redirect
+    
+    Versions:
+      00/00/2022 (mpham) version initiale
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
+    """
 
     self.log_info('  sending request in HTTP POST')
     
     idp_params = self.context.idp_params
+    saml_idp_params = idp_params['saml']
     app_params = self.context.last_app_params
     
     request = self.post_form.get('authentication_request', '')
@@ -441,7 +455,7 @@ class SAMLClientLogin(FlowHandler):
       <input type="hidden" name="SAMLRequest" value="{saml_request}" />
       <input type="hidden" name="RelayState" value="{relay_state}" />
       </form></body></html>
-    """.format(idp_sso_url=idp_params['idp_sso_url'], saml_request=html.escape(base64_req), relay_state=html.escape(relay_state))
+    """.format(idp_sso_url=saml_idp_params['idp_sso_url'], saml_request=html.escape(base64_req), relay_state=html.escape(relay_state))
     
     self.log_info("SAML POST form:")
     self.log_info(saml_form)
@@ -476,6 +490,7 @@ class SAMLClientLogin(FlowHandler):
       03/03/2021-05/03/2021 (mpham) version initiale
       28/02/2023 (mpham) le bouton de copie n'est pas affiché pour les résultats de type 'passed'
       03/01/2025 (mpham) adaptation continuous page
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
     """
     
     # Problème cookie SameSite=Lax
@@ -519,6 +534,7 @@ class SAMLClientLogin(FlowHandler):
       idp_id = self.context.idp_id
       app_id = self.context.app_id
       idp_params = self.context.idp_params
+      saml_idp_params = idp_params['saml']
       app_params = self.context.last_app_params
 
       self.add_html(f"<h3>SAML callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
@@ -568,13 +584,13 @@ class SAMLClientLogin(FlowHandler):
           raise AduneoError('Issuer element not found')
         issuer = issuer_el.text
         self.log_info('issuer       : '+issuer)
-        self.log_info('IdP entity id: '+idp_params['idp_entity_id'])
+        self.log_info('IdP entity id: '+saml_idp_params['idp_entity_id'])
         
-        if issuer == idp_params['idp_entity_id']:
+        if issuer == saml_idp_params['idp_entity_id']:
           self.add_result_row('Issuer verification passed', issuer, 'issuer_verification')
         else:
           title = 'Issuer verification failed'
-          value = issuer+' (response) != '+idp_params['idp_entity_id']+' (conf)'
+          value = issuer+' (response) != '+saml_idp_params['idp_entity_id']+' (conf)'
           self.add_result_row(title, value, 'issuer_verification')
           raise AduneoError(title)
         
@@ -586,9 +602,9 @@ class SAMLClientLogin(FlowHandler):
       self.log_info('Response signature verification')
       try:
         self.log_info('IdP Certificate')
-        self.log_info(idp_params['idp_certificate'])
+        self.log_info(saml_idp_params['idp_certificate'])
       
-        cert = '-----BEGIN CERTIFICATE-----\n' + idp_params['idp_certificate'] + '\n-----END CERTIFICATE-----'
+        cert = '-----BEGIN CERTIFICATE-----\n' + saml_idp_params['idp_certificate'] + '\n-----END CERTIFICATE-----'
       
         xmlsec.enable_debug_trace(True)
         xmlsec.tree.add_ids(root_el, ["ID"]) # -> correspond à l'attribut ID dans le tag response, c'est demandé par XML Signature
@@ -708,9 +724,9 @@ class SAMLClientLogin(FlowHandler):
       self.log_info('Assertion signature verification')
       try:
         self.log_info('IdP Certificate')
-        self.log_info(idp_params['idp_certificate'])
+        self.log_info(saml_idp_params['idp_certificate'])
       
-        cert = '-----BEGIN CERTIFICATE-----\n' + idp_params['idp_certificate'] + '\n-----END CERTIFICATE-----'
+        cert = '-----BEGIN CERTIFICATE-----\n' + saml_idp_params['idp_certificate'] + '\n-----END CERTIFICATE-----'
       
         xmlsec.enable_debug_trace(True)
         xmlsec.tree.add_ids(assertion_el, ["ID"]) # -> correspond à l'attribut ID dans le tag response, c'est demandé par XML Signature
@@ -872,163 +888,6 @@ class SAMLClientLogin(FlowHandler):
     self.add_menu() 
 
     self.send_page()
-
-
-  @register_url(url='oauthexchange_spa', method='GET')
-  def oauth_exchange_spa(self):
-  
-    try:
-
-      self.log_info('Security Assertion Markup Language (SAML) 2.0 Profile for OAuth 2.0 Client Authentication and Authorization Grants (RFC7522)')
-
-      # récupération de l'identifiant de contexte pour obtention des paramètres dans la session
-      context_id = self.get_query_string_param('contextid')
-      self.log_info(('  ' * 1)+'for context: '+context_id)
-      context = self.get_session_value(context_id)
-      if (context is None):
-        raise AduneoError(self.log_error('context not found in session'))
-
-      tokens = context.get('tokens')
-      if (tokens is None):
-        raise AduneoError(self.log_error('tokens not found in session'))
-        
-      saml_assertion = tokens.get('saml_assertion')
-      if not saml_assertion:
-        raise AduneoError(self.log_error('SAML assertion not found'))
-      self.log_info(('  ' * 1)+'with SAML assertion '+saml_assertion)
-
-      self.display_form_http_request(
-        method = 'POST', 
-        url = '', 
-        table = {
-          'title': 'SAML profile for OAuth 2',
-          'fields': [
-            {'name': 'grant_type', 'label': 'Grant type', 'help_id': 'tk_exch_grant_type', 'type': 'display_text', 'value': 'urn:ietf:params:oauth:grant-type:saml2-bearer'},
-            {'name': 'assertion', 'label': 'SAML assertion', 'help_id': 'tk_exch_saml_assertion', 'type': 'edit_text', 'value': saml_assertion},
-            {'name': 'scope', 'label': 'Scope', 'help_id': 'exchange_scope', 'type': 'edit_text', 'value': ''},
-            ]
-          },
-        data_generator = """
-          let data = {'grant_type': 'urn:ietf:params:oauth:grant-type:saml2-bearer'};
-          
-          // il faut coder l'assertion en Base64url
-          xml_assertion = get_form_value_with_dom(domId, 'assertion');
-          data['assertion'] = btoa(Array.from(Uint8Array.from(xml_assertion.split("").map(x => x.charCodeAt())), b => String.fromCharCode(b)).join(''))
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=+$/, '');
-          
-          ['scope'].forEach(function(field, index) {
-            let value = get_form_value_with_dom(domId, field);
-            if (value != '') {
-              data[field] = value;
-            }
-          });
-          return data;
-        """, 
-        http_parameters = {
-          'url_label': 'Token endpoint',
-          'url_clipboard_category': 'token_endpoint',
-          'auth_method': 'Basic',
-          'auth_login': '',
-          },
-        sender_url = '/client/saml/login/send_oauth_exchange_request_spa',
-        context = context_id,
-        verify_certificates = Configuration.is_on(context.get('verify_certificates', 'on')),
-        )
-          
-    except AduneoError as error:
-      self.add_content('<h4>OAuth exchange: '+html.escape(str(error))+'</h4>')
-      if context:
-        self._add_footer_menu(context)
-      self.send_json_page()
-    except Exception as error:
-      self.log_error(('  ' * 1)+traceback.format_exc())
-      self.add_content('<h4>OAuth exchange: '+html.escape(str(error))+'</h4>')
-      if context:
-        self._add_footer_menu(context)
-      self.send_json_page()
-  
-  
-  @register_url(method='POST')
-  def send_oauth_exchange_request_spa(self):
-
-    context = None
-    self.start_result_table()
-    try:
-
-      context_id = self.post_form.get('context')
-      if context_id is None:
-        raise AduneoError(self.log_error("tracking identifier (state) not found in request"))
-      self.log_info("  for context id "+context_id)
-      
-      context = self.get_session_value(context_id)
-      if (context is None):
-        raise AduneoError(self.log_error('context not found in session'))
-
-      self.log_info("Submitting RFC7522 exchange request")
-      r = self.send_form_http_request(default_secret='PB0solutions')
-
-      response = r.json()
-      self.log_info('AS response:')
-      self.log_info(json.dumps(response, indent=2))
-      self.add_result_row('Raw AS response', json.dumps(response, indent=2), 'as_raw_response')
-
-      if 'access_token' not in response:
-        raise AduneoError(self.log_error('token not found in response'))
-      token = response['access_token']
-      
-      if 'tokens' not in context:
-        context['tokens'] = {}
-        
-      self.add_result_row('Access token', token, 'access_token')
-      context['tokens']['access_token'] = token
-      
-      self.end_result_table()
-      
-      self.set_session_value(context_id, context)
-      
-    except AduneoError as error:
-      if self.is_result_in_table():
-        self.end_result_table()
-      self.add_content('<h3>OAuth exchange failed: '+html.escape(str(error))+'</h3>')
-    except Exception as error:
-      if self.is_result_in_table():
-        self.end_result_table()
-      self.log_error(('  ' * 1)+traceback.format_exc())
-      self.add_content('<h3>OAuth exchange failed: '+html.escape(str(error))+'</h3>')
-
-    self._add_footer_menu(context) 
-      
-    self.send_page_raw()
- 
-
-  def _add_footer_menu(self, context):
-
-    # identifiant du menu, ce qui permet de le masquer quand on clique sur un bouton
-    dom_id = 'id'+str(uuid.uuid4())
-    
-    context_id = context['context_id']
-    
-    saml_assertion = None
-    access_token = None
-    id_token = None
-    tokens = context.get('tokens')
-    if tokens:
-      access_token = tokens.get('access_token')
-      id_token = tokens.get('id_token')
-      saml_assertion = tokens.get('saml_assertion')
-
-    self.add_content('<div id="'+html.escape(dom_id)+'">')
-    self.add_content('<span><a href="/client/saml/login/preparerequest?contextid='+urllib.parse.quote(context_id)+'&id='+urllib.parse.quote(context['initial_flow']['app_id'])+'" class="button">Retry original flow</a></span>')
-    if access_token:
-      self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/introspection_spa?contextid='+urllib.parse.quote(context_id)+'\', \'\', \''+urllib.parse.quote(dom_id)+'\')" class="button">Introspection</span>')
-      self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote(context_id)+'&token_type=access_token_token\', \'\', \''+urllib.parse.quote(dom_id)+'\')" class="button">Exchange AT</span>')
-    if id_token:
-      self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/oidc/login/tokenexchange_spa?contextid='+urllib.parse.quote(context_id)+'&token_type=id_token_token\', \'\', \''+urllib.parse.quote(dom_id)+'\')" class="button">Exchange ID Token</span>')
-    if saml_assertion:
-      self.add_content('<span onClick="getHtmlJson(\'GET\',\'/client/saml/login/oauthexchange_spa?contextid='+urllib.parse.quote(context_id)+'\', \'\', \''+urllib.parse.quote(dom_id)+'\')" class="button">Exchange SAML -> OAuth</span>')
-    self.add_content('</div>')
 
 
   def _parse_saml_date(self, date_str:str) -> datetime:

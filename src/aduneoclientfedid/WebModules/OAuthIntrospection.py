@@ -29,7 +29,7 @@ from .FlowHandler import FlowHandler
 """
   Validation de jeton d'accès par introspection (RFC 7662)
 
-  Utilise les éléments du contexte et les mets à jour en fonction des saisies de l'utilisateur
+  Utilise les éléments du contexte et les met à jour en fonction des saisies de l'utilisateur
 """
 
 
@@ -45,9 +45,10 @@ class OAuth2Introspection(FlowHandler):
 
       La requête est transmise à sendrequest pour exécution
     
-      Versions:
-        28/08/2024 (mpham) version initiale adaptée de userinfo
-        29/12/2025 (mpham) les méthodes HTTP et Authn peuvent être héritées de celles définis auprès de l'IdP
+    Versions:
+      28/08/2024 (mpham) version initiale adaptée de userinfo
+      29/12/2025 (mpham) les méthodes HTTP et Authn peuvent être héritées de celles définis auprès de l'IdP
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
     """
     
     try:
@@ -60,6 +61,7 @@ class OAuth2Introspection(FlowHandler):
       self.log_info(('  ' * 1)+'for context: '+self.context['context_id'])
 
       idp_params = self.context.idp_params
+      oauth2_idp_params = idp_params['oauth2']
       app_params = self.context.last_app_params
       api_params = self.context.last_api_params
 
@@ -100,10 +102,10 @@ class OAuth2Introspection(FlowHandler):
 
       form_content = {
         'contextid': self.context['context_id'],
-        'introspection_endpoint': idp_params.get('introspection_endpoint', ''),
+        'introspection_endpoint': oauth2_idp_params.get('introspection_endpoint', ''),
         'access_token': default_access_token,
-        'introspection_http_method': api_params.get('introspection_http_method', idp_params.get('introspection_http_method', 'post')),
-        'introspection_auth_method': api_params.get('introspection_auth_method', idp_params.get('introspection_auth_method', 'basic')),
+        'introspection_http_method': api_params.get('introspection_http_method', oauth2_idp_params.get('introspection_http_method', 'post')),
+        'introspection_auth_method': api_params.get('introspection_auth_method', oauth2_idp_params.get('introspection_auth_method', 'basic')),
         'introspection_api': api_params.get('introspection_api', '__input__'),
         'introspection_login': api_params.get('introspection_login', ''),
         'introspection_secret': '',
@@ -173,8 +175,9 @@ class OAuth2Introspection(FlowHandler):
   def send_request(self):
     """ Effectue la requête d'introspection et l'affiche
 
-      Versions:
-        04/09/2024 (mpham) version initiale adaptée de userinfo
+    Versions:
+      04/09/2024 (mpham) version initiale adaptée de userinfo
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas mis à jour au bon endroit
     """
     
     #self.add_html('<pre>'+json.dumps(self.post_form, indent=2)+'</pre>')
@@ -186,8 +189,9 @@ class OAuth2Introspection(FlowHandler):
       
       # Mise à jour de la requête en cours
       idp_params = self.context.idp_params
+      oauth2_idp_params = idp_params['oauth2']
       for item in ['introspection_endpoint']:
-        idp_params[item] = self.post_form.get(item, '')
+        oauth2_idp_params[item] = self.post_form.get(item, '')
 
       if 'hr_verify_certificates' in self.post_form:
         idp_params['verify_certificates'] = 'on'

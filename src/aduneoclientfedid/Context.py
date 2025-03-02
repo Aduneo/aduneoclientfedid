@@ -117,9 +117,9 @@ class Context(dict):
     self['cas_tickets'] = {}
 
 
-  def get_all_access_tokens(self):
+  def get_all_access_tokens(self) -> dict:
     """ Retourne l'ensemble des jetons d'accès
-          - ceux obtenus par O1uth 2
+          - ceux obtenus par OAuth 2
           - ainsi que ceux récupérés avec un jeton d'identité en OIDC
 
     Returns:
@@ -152,6 +152,91 @@ class Context(dict):
         access_tokens[token_wrapper_key]['refresh_token'] = token_wrapper['refresh_token']
 
     return access_tokens
+    
+
+  def get_all_tokens(self) -> dict:
+    """ Retourne l'ensemble des jetons et assertions du contexte : 
+          - identité (OIDC), accès (OAuth2, OIDC), rafraîchissement (OAuth2, OIDC), SAML
+          - obtenus par Token Exchange
+
+    Returns:
+      list de la forme
+        [
+          {
+            'name': '<nom du jeton';
+            'type': '<id_token|access_token|refresh_token|saml_assertion>', 
+            'app_id': '<app id du client ayant obtenu les jetons>',
+            'token': '<jeton>',
+            'timestamp': <timestamp de l'obtention du jeton>,
+          },
+          {
+          ...
+          }
+        ]
+      
+          
+    Versions:
+      25/02/2025 (mpham) version initiale
+    """
+
+    all_token_wrappers = []
+
+    # OIDC tokens
+    for token_wrapper_key, token_wrapper in self.get('id_tokens', {}).items():
+      all_token_wrappers.append({
+        'name': 'ID: '+token_wrapper['name'], 
+        'type': 'id_token',
+        'token': token_wrapper['id_token'],
+        'app_id': token_wrapper['app_id'],
+        'timestamp': token_wrapper_key,
+        })
+      if token_wrapper.get('access_token'):
+        all_token_wrappers.append({
+          'name': 'AT: '+token_wrapper['name'], 
+          'type': 'access_token',
+          'token': token_wrapper['access_token'],
+          'app_id': token_wrapper['app_id'],
+          'timestamp': token_wrapper_key,
+          })
+      if token_wrapper.get('refresh_token'):
+        all_token_wrappers.append({
+          'name': 'RT: '+token_wrapper['name'], 
+          'type': 'refresh_token',
+          'token': token_wrapper['refresh_token'],
+          'app_id': token_wrapper['app_id'],
+          'timestamp': token_wrapper_key,
+          })
+    
+    # OAuth tokens
+    for token_wrapper_key, token_wrapper in self.get('access_tokens', {}).items():
+      if token_wrapper.get('access_token'):
+        all_token_wrappers.append({
+          'name': 'AT: '+token_wrapper['name'], 
+          'type': 'access_token',
+          'token': token_wrapper['access_token'],
+          'app_id': token_wrapper['app_id'],
+          'timestamp': token_wrapper_key,
+          })
+      if token_wrapper.get('refresh_token'):
+        all_token_wrappers.append({
+          'name': 'RT: '+token_wrapper['name'], 
+          'type': 'refresh_token',
+          'token': token_wrapper['refresh_token'],
+          'app_id': token_wrapper['app_id'],
+          'timestamp': token_wrapper_key,
+          })
+
+    # SAML assertions
+    for token_wrapper_key, token_wrapper in self.get('saml_assertions', {}).items():
+      all_token_wrappers.append({
+        'name': 'SAML: '+token_wrapper['name'], 
+        'type': 'saml_assertion',
+        'token': token_wrapper['saml_assertion'],
+        'app_id': token_wrapper['app_id'],
+        'timestamp': token_wrapper_key,
+        })
+
+    return all_token_wrappers
     
 
   @property

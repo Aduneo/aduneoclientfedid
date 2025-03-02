@@ -81,6 +81,7 @@ class SAMLClientAdmin(BaseHandler):
       01/01/2025 (mpham) version initiale adaptée de OIDCClientAdmin
       09/01/2025 (mpham) possibilités de l'IdP en termes de binding
       31/01/2025 (mpham) création d'un SP pour un IdP existant
+      25/02/2025 (mpham) modification du nom du client
     """
 
     idp_id = self.get_query_string_param('idpid', '')
@@ -111,8 +112,9 @@ class SAMLClientAdmin(BaseHandler):
 
     form_content = {
       'idp_id': idp_id,
+      'idp_name': idp.get('name', ''),
       'app_id': app_id,
-      'name': idp.get('name', ''),
+      'app_name': app_params.get('name', ''),
       'idp_entity_id': saml_params.get('idp_entity_id', ''),
       'idp_sso_url': saml_params.get('idp_sso_url', ''),
       'idp_slo_url': saml_params.get('idp_slo_url', ''),
@@ -135,7 +137,8 @@ class SAMLClientAdmin(BaseHandler):
     form = CfiForm('samladminsingle', form_content, action='modifyclientsingle', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
-      .text('name', label='Name') \
+      .text('idp_name', label='IdP name') \
+      .text('app_name', label='SP name') \
       .start_section('idp_parameters', title="IdP parameters") \
         .upload_button('upload_idp_metadata', label='Upload IdP metadata', on_upload="parseIdPMetadata(upload_content, cfiForm);") \
         .text('idp_entity_id', label='IdP entity ID', clipboard_category='idp_entity_id') \
@@ -190,7 +193,7 @@ class SAMLClientAdmin(BaseHandler):
         .check_box('sign_logout_request', label='Sign logout request') \
       .end_section() \
       
-    form.set_title('SAML SP configuration'+('' if form_content['name'] == '' else ': '+form_content['name']))
+    form.set_title('SAML SP configuration'+('' if form_content['idp_name'] == '' else ': '+form_content['idp_name']))
     form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
     form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
@@ -212,13 +215,14 @@ class SAMLClientAdmin(BaseHandler):
       09/01/2025 (mpham) possibilités de l'IdP en termes de binding
       31/01/2025 (mpham) création d'un SP pour un IdP existant
       14/02/2025 (mpham) en création, un client vide était créé
+      25/02/2025 (mpham) modification du nom du client
     """
     
     idp_id = self.post_form['idp_id']
     app_id = self.post_form['app_id']
     if idp_id == '':
       # Création de l'IdP
-      idp_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
+      idp_id = self._generate_unique_id(name=self.post_form['idp_name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
       self.conf['idps'][idp_id] = {'idp_parameters': {'saml': {}}}
     idp = self.conf['idps'][idp_id]
 
@@ -233,11 +237,13 @@ class SAMLClientAdmin(BaseHandler):
     saml_params = idp_params['saml']
     app_params = idp['saml_clients'][app_id]
     
-    if self.post_form['name'] == '':
-      self.post_form['name'] = idp_id
-
-    idp['name'] = self.post_form['name'].strip()
-    app_params['name'] = 'SAML SP'
+    if self.post_form['idp_name'] == '':
+      self.post_form['idp_name'] = idp_id
+    idp['name'] = self.post_form['idp_name'].strip()
+    
+    if self.post_form['app_name'] == '':
+      self.post_form['app_name'] = 'SAML SP'
+    app_params['name'] = self.post_form['app_name'].strip()
     
     for item in ['idp_entity_id', 'idp_sso_url', 'idp_slo_url', 'idp_certificate']:
       if self.post_form.get(item, '') == '':

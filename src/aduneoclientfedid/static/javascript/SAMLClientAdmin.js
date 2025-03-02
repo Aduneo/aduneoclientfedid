@@ -142,7 +142,7 @@ function downloadSPMetadata(cfiForm) {
   
   filename = cfiForm.getFieldValue('app_id');
   if (filename == '') {
-    filename = cfiForm.getFieldValue('name');
+    filename = cfiForm.getFieldValue('app_name');
   }
   if (filename == '') {
     filename = 'spMetadata'

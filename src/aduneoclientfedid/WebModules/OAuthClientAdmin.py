@@ -23,9 +23,6 @@ import copy
 import html
 import uuid
 
-"""
-  TODO : je crois qu'on ne peut pas donner la clé publique (drop down list qui ne fonctionne pas)
-"""
 
 @register_web_module('/client/oauth2/admin')
 class OAuthClientAdmin(BaseHandler):
@@ -83,6 +80,7 @@ class OAuthClientAdmin(BaseHandler):
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
       31/01/2025 (mpham) option same_as_oidc pour la configuration des endpoints
       31/01/2025 (mpham) création d'un client pour un IdP existant
+      25/02/2025 (mpham) modification du nom du client
     """
 
     idp_id = self.get_query_string_param('idpid', '')
@@ -100,8 +98,9 @@ class OAuthClientAdmin(BaseHandler):
 
     form_content = {
       'idp_id': idp_id,
+      'idp_name': idp.get('name', ''),
       'app_id': app_id,
-      'name': idp.get('name', ''),
+      'app_name': app_params.get('name', ''),
       'endpoint_configuration': oauth2_params.get('endpoint_configuration', 'metadata_uri'),
       'metadata_uri': oauth2_params.get('metadata_uri', ''),
       'authorization_endpoint': oauth2_params.get('', ''),
@@ -125,7 +124,8 @@ class OAuthClientAdmin(BaseHandler):
     form = CfiForm('oauth2adminsingle', form_content, action='modifyclientsingle', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
-      .text('name', label='Name') \
+      .text('idp_name', label='IdP name') \
+      .text('app_name', label='Client name') \
       .start_section('as_endpoints', title="Authorization Server Endpoints") \
         .closed_list('endpoint_configuration', label='Endpoint configuration', 
           values={'metadata_uri': 'Authorization Server Metadata URI', 'local_configuration': 'Local configuration', 'same_as_oidc': 'Same as OIDC'},
@@ -171,7 +171,7 @@ class OAuthClientAdmin(BaseHandler):
         .check_box('verify_certificates', label='Verify certificates') \
       .end_section() 
       
-    form.set_title('OAuth 2 Authorization'+('' if form_content['name'] == '' else ': '+form_content['name']))
+    form.set_title('OAuth 2 Authorization'+('' if form_content['idp_name'] == '' else ': '+form_content['idp_name']))
     form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     self.add_html(form.get_html())
@@ -192,13 +192,14 @@ class OAuthClientAdmin(BaseHandler):
       31/12/2024 (mpham) les identifiants des apps sont maintenant préfixés (oauth2_<idp_id>_<app_id>) pour les rendre globalement uniques. Les IdP sont en idp_<ipd_id>
       31/01/2025 (mpham) création d'un client pour un IdP existant
       14/02/2025 (mpham) en création, un client vide était créé
+      25/02/2025 (mpham) modification du nom du client
     """
     
     idp_id = self.post_form['idp_id']
     app_id = self.post_form['app_id']
     if idp_id == '':
       # Création de l'IdP
-      idp_id = self._generate_unique_id(name=self.post_form['name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
+      idp_id = self._generate_unique_id(name=self.post_form['idp_name'].strip(), existing_ids=self.conf['idps'].keys(), default='idp', prefix='idp_')
       self.conf['idps'][idp_id] = {'idp_parameters': {'oauth2': {}}}
     idp = self.conf['idps'][idp_id]
 
@@ -213,11 +214,13 @@ class OAuthClientAdmin(BaseHandler):
     oauth2_params = idp_params['oauth2']
     app_params = idp['oauth2_clients'][app_id]
     
-    if self.post_form['name'] == '':
-      self.post_form['name'] = idp_id
-
-    idp['name'] = self.post_form['name']
-    app_params['name'] = 'OAuth2 Client'
+    if self.post_form['idp_name'] == '':
+      self.post_form['idp_name'] = idp_id
+    idp['name'] = self.post_form['idp_name'].strip()
+    
+    if self.post_form['app_name'] == '':
+      self.post_form['app_name'] = 'OAuth2 Client'
+    app_params['name'] = self.post_form['app_name'].strip()
     
     for item in ['endpoint_configuration', 'metadata_uri', 'authorization_endpoint', 'token_endpoint', 
     'revocation_endpoint', 'introspection_endpoint', 'introspection_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:

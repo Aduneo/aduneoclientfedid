@@ -1,5 +1,5 @@
 """
-Copyright 2023 Aduneo
+Copyright 2023-2025 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -75,6 +75,7 @@ class OIDCClientLogin(FlowHandler):
       28/11/2024 (mpham) on modifiait l'objet de configuration, de manière permanente s'il était enregistré par la suite
       04/12/2024 (mpham) new auth : on conserve le contexte, mais on récupère les paramètres de la configuration
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
     """
 
     self.log_info('--- Start OpenID Connect flow ---')
@@ -100,14 +101,14 @@ class OIDCClientLogin(FlowHandler):
       if new_auth:
         # Nouvelle requête
         idp = copy.deepcopy(self.conf['idps'][idp_id])
-        idp_params = idp['idp_parameters'].get('oidc')
-        if not idp_params:
+        idp_params = idp['idp_parameters']
+        oidc_idp_params = idp_params.get('oidc')
+        if not oidc_idp_params:
           raise AduneoError(f"OIDC IdP configuration missing for {idp.get('name', idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={idp_id}")
         app_params = idp['oidc_clients'][app_id]
 
-        # On récupère name et verify_certificates des paramètres de l'IdP
+        # On récupère name des paramètres de l'IdP
         idp_params['name'] = idp['name']
-        idp_params['verify_certificates'] = idp['idp_parameters']['verify_certificates']
 
         # si le contexte existe, on le conserve (cas newauth)
         if self.context is None:
@@ -119,7 +120,7 @@ class OIDCClientLogin(FlowHandler):
         self.context['app_params'][app_id] = app_params
         self.set_session_value(self.context['context_id'], self.context)
 
-        if idp_params.get('endpoint_configuration', 'local_configuration') == 'same_as_oauth2':
+        if oidc_idp_params.get('endpoint_configuration', 'local_configuration') == 'same_as_oauth2':
           # récupération des paramètres OIDC pour les endpoints
           oauth2_params = idp['idp_parameters'].get('oauth2')
           if not oauth2_params:
@@ -127,11 +128,11 @@ class OIDCClientLogin(FlowHandler):
           if oauth2_params.get('endpoint_configuration') == 'same_as_oauth2':
             raise AduneoError("can't retrieve endpoint parameters from OAuth 2 configuration since OAuth 2 is configured with same_as_oidc")
           for param in ['endpoint_configuration', 'metadata_uri', 'authorization_endpoint', 'token_endpoint']:
-            idp_params[param] = oauth2_params.get(param, '')
-          if idp_params.get('endpoint_configuration') == 'metadata_uri':
-            idp_params['endpoint_configuration'] = 'discovery_uri'
-            idp_params['discovery_uri'] = oauth2_params.get('metadata_uri')
-        if idp_params.get('endpoint_configuration', 'local_configuration') == 'discovery_uri':
+            oidc_idp_params[param] = oauth2_params.get(param, '')
+          if oidc_idp_params.get('endpoint_configuration') == 'metadata_uri':
+            oidc_idp_params['endpoint_configuration'] = 'discovery_uri'
+            oidc_idp_params['discovery_uri'] = oauth2_params.get('metadata_uri')
+        if oidc_idp_params.get('endpoint_configuration', 'local_configuration') == 'discovery_uri':
           fetch_configuration_document = True
 
       else:
@@ -139,22 +140,23 @@ class OIDCClientLogin(FlowHandler):
         idp_id = self.context['idp_id']
         app_id = self.context['app_id']
         idp_params = self.context.idp_params
+        oidc_idp_params = idp_params['oidc']
         app_params = self.context.last_app_params
       
       self.log_info(('  ' * 1) + f"for client {app_params['name']} of IdP {idp_params['name']}")
       self.add_html(f"<h1>IdP {idp_params['name']} OIDC Client {app_params['name']}</h1>")
 
       if fetch_configuration_document:
-        self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=idp_params['discovery_uri']))
+        self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=oidc_idp_params['discovery_uri']))
         try:
           self.log_info('Starting metadata retrieval')
-          self.log_info('discovery_uri: '+idp_params['discovery_uri'])
-          verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
+          self.log_info('discovery_uri: '+oidc_idp_params['discovery_uri'])
+          verify_certificates = Configuration.is_on(oidc_idp_params.get('verify_certificates', 'on'))
           self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-          r = requests.get(idp_params['discovery_uri'], verify=verify_certificates)
+          r = requests.get(oidc_idp_params['discovery_uri'], verify=verify_certificates)
           self.log_info(r.text)
           meta_data = r.json()
-          idp_params.update(meta_data)
+          oidc_idp_params.update(meta_data)
           self.add_html("""<div class="intertable">Success</div>""")
         except Exception as error:
           self.log_error(traceback.format_exc())
@@ -177,14 +179,14 @@ class OIDCClientLogin(FlowHandler):
       form_content = {
         'contextid': self.context['context_id'],  # TODO : remplacer par hr_context ?
         'redirect_uri': app_params.get('redirect_uri', ''),
-        'authorization_endpoint': idp_params.get('authorization_endpoint', ''),
-        'token_endpoint': idp_params.get('token_endpoint', ''),
-        'userinfo_endpoint': idp_params.get('userinfo_endpoint', ''),
-        'userinfo_method': idp_params.get('userinfo_method', 'get'),
-        'issuer': idp_params.get('issuer', ''),
-        'signature_key_configuration': idp_params.get('signature_key_configuration', 'jwks_uri'),
-        'jwks_uri': idp_params.get('jwks_uri', ''),
-        'signature_key': idp_params.get('signature_key', ''),
+        'authorization_endpoint': oidc_idp_params.get('authorization_endpoint', ''),
+        'token_endpoint': oidc_idp_params.get('token_endpoint', ''),
+        'userinfo_endpoint': oidc_idp_params.get('userinfo_endpoint', ''),
+        'userinfo_method': oidc_idp_params.get('userinfo_method', 'get'),
+        'issuer': oidc_idp_params.get('issuer', ''),
+        'signature_key_configuration': oidc_idp_params.get('signature_key_configuration', 'jwks_uri'),
+        'jwks_uri': oidc_idp_params.get('jwks_uri', ''),
+        'signature_key': oidc_idp_params.get('signature_key', ''),
         'client_id': app_params.get('client_id', ''),
         'scope': app_params.get('scope', ''),
         'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
@@ -327,6 +329,7 @@ class OIDCClientLogin(FlowHandler):
       22/02/2023 (mpham) on retire les références à fetch_userinfo car l'appel à userinfo est maintenant manuel
       08/08/2024 (mpham) nouvelle organisation du contexte
       23/08/2024 (mpham) strip des données du formulaire
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas mis à jour au bon endroit
     """
     
     self.log_info('Redirection to IdP requested')
@@ -337,10 +340,11 @@ class OIDCClientLogin(FlowHandler):
         self.log_error("""context_id not found in form data {data}""".format(data=self.post_form))
         raise AduneoError("Context not found in request")
 
-      # Mise à jour dansle contexte des paramètres liés à l'IdP
+      # Mise à jour dans le contexte des paramètres liés à l'IdP
       idp_params = self.context.idp_params
+      oidc_idp_params = idp_params['oidc']
       for item in ['authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'userinfo_method', 'issuer', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
-        idp_params[item] = self.post_form.get(item, '').strip()
+        oidc_idp_params[item] = self.post_form.get(item, '').strip()
 
       # Mise à jour dansle contexte des paramètres liés au client courant
       app_params = self.context.last_app_params
@@ -388,6 +392,7 @@ class OIDCClientLogin(FlowHandler):
       04/09/2024 (mpham) récupération du jeton de raraichissement du jeton d'accès
       28/11/2024 (mpham) dans le contexte, on ajoute l'identifiant du client ayant récupéré les jetons
       23/12/2024 (mpham) les clés HMAC peuvent être données en JWK ou directement avec le secret
+      27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
     """
 
     self.add_javascript_include('/javascript/resultTable.js')
@@ -396,14 +401,6 @@ class OIDCClientLogin(FlowHandler):
     
       self.log_info('Authentication callback')
       
-      error = self.get_query_string_param('error')
-      if error is not None:
-        description = ''
-        error_description = self.get_query_string_param('error_description')
-        if error_description is not None:
-          description = ', '+error_description
-        raise AduneoError(self.log_error('IdP returned an error: '+error+description))
-
       # récupération de state pour obtention des paramètres dans la session
       idp_state = self.get_query_string_param('state')
       if not idp_state:
@@ -418,12 +415,21 @@ class OIDCClientLogin(FlowHandler):
       if not self.context:
         raise AduneoError(f"Can't retrieve request context because context id {context_id} not found in session")
       
+      error = self.get_query_string_param('error')
+      if error is not None:
+        description = ''
+        error_description = self.get_query_string_param('error_description')
+        if error_description is not None:
+          description = ', '+error_description
+        raise AduneoError(self.log_error('IdP returned an error: '+error+description))
+        
       # extraction des informations utiles de la session
       idp_id = self.context.idp_id
       app_id = self.context.app_id
       idp_params = self.context.idp_params
+      oidc_idp_params = self.context.idp_params['oidc']
       app_params = self.context.last_app_params
-      token_endpoint = idp_params['token_endpoint']
+      token_endpoint = oidc_idp_params['token_endpoint']
       client_id = app_params['client_id']
       redirect_uri = app_params['redirect_uri']
 
@@ -541,15 +547,15 @@ class OIDCClientLogin(FlowHandler):
       
       # On vérifie l'origine du jeton 
       token_issuer = json_token['iss']
-      if 'issuer' not in idp_params:
+      if 'issuer' not in oidc_idp_params:
         raise AduneoError("Issuer missing in authentication configuration", explanation_code='oidc_missing_issuer')
-      if token_issuer == idp_params['issuer']:
+      if token_issuer == oidc_idp_params['issuer']:
         self.log_info("Token issuer verification OK: "+token_issuer)
         self.add_result_row('Issuer verification', 'OK: '+token_issuer, 'issuer_verification')
       else:
         self.log_error(('  ' * 1)+"Expiration verification failed:")
         self.log_error(('  ' * 2)+"Token issuer   : "+token_issuer)
-        self.log_error(('  ' * 2)+"Metadata issuer: "+idp_params['issuer'])
+        self.log_error(('  ' * 2)+"Metadata issuer: "+oidc_idp_params['issuer'])
         self.add_result_row('Issuer verification', "Failed\n  token issuer: "+token_issuer+"\n  metadata issuer:"+meta_data['issuer'], 'issuer_verification')
         raise AduneoError('token issuer verification failed')
       
@@ -592,10 +598,10 @@ class OIDCClientLogin(FlowHandler):
         self.add_result_row('Signature algorithm', f'Asymmetric: {alg}', 'signature_algorithm')
       
         # On regarde si on doit aller chercher les clés avec l'endpoint JWKS ou si la clé a été donnée localement
-        if idp_params['signature_key_configuration'] == 'Local configuration':
+        if oidc_idp_params['signature_key_configuration'] == 'Local configuration':
           self.log_info('Signature JWK:')
-          self.log_info(idp_params['signature_key'])
-          token_jwk = json.loads(idp_params['signature_key'])
+          self.log_info(oidc_idp_params['signature_key'])
+          token_jwk = json.loads(oidc_idp_params['signature_key'])
         else:
         
           # On extrait l'identifiant de la clé depuis l'id token
@@ -605,13 +611,13 @@ class OIDCClientLogin(FlowHandler):
           
           # on va chercher la liste des clés
           self.log_info("Starting IdP keys retrieval")
-          self.add_result_row('JWKS endpoint', idp_params['jwks_uri'], 'jwks_endpoint')
+          self.add_result_row('JWKS endpoint', oidc_idp_params['jwks_uri'], 'jwks_endpoint')
           self.end_result_table()
           self.add_html('<div class="intertable">Fetching public keys...</div>')
           try:
             verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
             self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-            r = requests.get(idp_params['jwks_uri'], verify=verify_certificates)
+            r = requests.get(oidc_idp_params['jwks_uri'], verify=verify_certificates)
           except Exception as error:
             self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
             raise AduneoError(self.log_error(('  ' * 2)+'IdP keys retrieval error: '+str(error)))
@@ -653,13 +659,13 @@ class OIDCClientLogin(FlowHandler):
         default_case = True
         # Si on est en HS256, peut-être que le serveur a utilisé une clé autre que celle du client_secret (cas Keycloak)
         if alg.startswith('HS'):
-          if idp_params['signature_key_configuration'] != 'local_configuration':
+          if oidc_idp_params['signature_key_configuration'] != 'local_configuration':
             self.log_info('HMAC signature (e.g HS256, HX512, etc.), client_secret not working. The server might have used another key. Put this key in configuration. Set Signature key configuration to Local configuration and enter the key in Signature key.')
           else:
             default_case = False
             self.log_info('HMAC signature (e.g HS256, HX512, etc.), client_secret not working, trying key from configuration')
             
-            configuration_key = idp_params['signature_key']
+            configuration_key = oidc_idp_params['signature_key']
             self.log_info('Configuration key:')
             self.log_info(configuration_key)
             

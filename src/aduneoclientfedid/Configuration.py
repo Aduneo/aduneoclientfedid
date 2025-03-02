@@ -187,7 +187,6 @@ class Configuration():
   conf_dir = os.path.join(os.getcwd(), 'conf')
 
   def read_configuration(conf_filename, listen_host:str=None, listen_port:int=None):
-
     """
     Lit un fichier de configuration JSON du répertoire conf (lu dans le dossier en cours, celui d'où a été lancée la commande python -m ClientFedID)
     Met le nom du fichier dans /meta/filename
@@ -378,7 +377,7 @@ class ConfCrypto():
 
 
   def read(self, conf_filepath):
-    
+
     self.conf_filepath = conf_filepath
     self.cipher = None
     self.modification = False
@@ -405,8 +404,9 @@ class ConfCrypto():
       00/00/2021 (mpham) version initiale
       22/12/2023 (mpham) la configuration n'est plus un dict, mais un conf_dict
       17/02/2024 (mpham) conversion de valeur de token_endpoint_auth_method
+      28/02/2025 (mpham) adaptation de la conversion de valeur de token_endpoint_auth_method
     """
-    
+
     self.app_conf = conf_dict.copy(self.file_conf)
     self.decrypt_json(self.app_conf)
     
@@ -417,6 +417,7 @@ class ConfCrypto():
   def decrypt_json(self, data):
     
     if isinstance(data, dict):
+    
       for key in list(data.keys()):
         value = data[key]
         if key.endswith('!'):
@@ -429,9 +430,9 @@ class ConfCrypto():
           else:
             self.modification = True
         elif key == 'token_endpoint_auth_method':
-          # Conversion de valeur de février 2024
-          if value in ['Basic', 'POST']:
-            data[key] = {'Basic': 'client_secret_basic', 'POST': 'client_secret_post'}[value]
+          # Conversion de valeur de février 2024 - modifiée le 28 février 2025
+          if value in ['Basic', 'POST', 'client_secret_basic', 'client_secret_post']:
+            data[key] = {'Basic': 'basic', 'POST': 'form', 'client_secret_basic': 'basic', 'client_secret_post': 'form'}[value]
             self.modification = True
         else:
           self.decrypt_json(value)

@@ -756,39 +756,46 @@ class CodeGenerator():
     """
     Versions:
       25/12/2024 (mpham) ajout de display_only
+      26/02/2025 (mpham) exception management
+      26/02/2025 (mpham) values are escaped
     """
 
-    self._start_table()
+    try:
 
-    display = self._evaluate_display(template_item['displayed_when'])
-    if not self.display_only:
-      self._add_display_javascript(template_item['id'], template_item['displayed_when'])
-    
-    if self.display_only:
-      value = template_item['values'].get(self.form.content.get(template_item['id'], template_item['default']), '')
-      self.html += '<tr style="display: {display}"><td>{label}</td><td>{value}</td><td></td><td></td></tr>'.format(
-        label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
-        value = html.escape(value),
-        display = 'table-row' if display else 'none',
-        )
-    else:
-      self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><select id={input_uuid} name="{field_id}" class="intable {form_uuid}" {disabled}{readonly}/>'.format(
-        form_uuid = self.form.form_uuid,
-        tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
-        input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
-        label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
-        field_id = html.escape(template_item['id']),
-        display = 'table-row' if display else 'none',
-        disabled = 'disabled ' if not display else '',
-        readonly = 'readonly' if self.form.content.get(template_item['readonly'], False) else '',
-        )
+      self._start_table()
 
-      for value, option_label in template_item['values'].items():
-        selected = ''
-        if value.casefold() == self.form.content.get(template_item['id'], template_item['default']).casefold():
-          selected = ' selected'
-        self.html += '<option value="'+value+'"'+selected+'>'+html.escape(option_label)+'</value>'
-      self.html += '</td><td></td><td></td></tr>'
+      display = self._evaluate_display(template_item['displayed_when'])
+      if not self.display_only:
+        self._add_display_javascript(template_item['id'], template_item['displayed_when'])
+      
+      if self.display_only:
+        value = template_item['values'].get(self.form.content.get(template_item['id'], template_item['default']), '')
+        self.html += '<tr style="display: {display}"><td>{label}</td><td>{value}</td><td></td><td></td></tr>'.format(
+          label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+          value = html.escape(value),
+          display = 'table-row' if display else 'none',
+          )
+      else:
+        self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><select id={input_uuid} name="{field_id}" class="intable {form_uuid}" {disabled}{readonly}/>'.format(
+          form_uuid = self.form.form_uuid,
+          tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
+          input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
+          label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+          field_id = html.escape(template_item['id']),
+          display = 'table-row' if display else 'none',
+          disabled = 'disabled ' if not display else '',
+          readonly = 'readonly' if self.form.content.get(template_item['readonly'], False) else '',
+          )
+
+        for value, option_label in template_item['values'].items():
+          selected = ''
+          if value.casefold() == self.form.content.get(template_item['id'], template_item['default']).casefold():
+            selected = ' selected'
+          self.html += '<option value="'+html.escape(value)+'"'+selected+'>'+html.escape(option_label)+'</value>'
+        self.html += '</td><td></td><td></td></tr>'
+        
+    except Exception as error:
+      raise DesignError('error in closed_list '+str(template_item)+': '+str(error))
 
 
   def _generate_code_open_list(self, template_item:str):
@@ -1225,7 +1232,7 @@ class RequesterForm(CfiForm):
     """ Modifie des paramètres HTTP
     
     Les paramètres sont les suivants :
-      form_method: post, get ou redirect (302). redirect n'est possible qu'en mode new_page
+      form_method: post, get ou redirect (302)
         par défaut post
       body_format: format du corps de la requête finale, possible uniquement en POST et en REDIRECT
         x-www-form-urlencoded: formulaire web classique (défaut)
@@ -1567,8 +1574,6 @@ class RequesterForm(CfiForm):
     Versions:
       30/12/2024 (mpham) version initiale
     """
-    print('###############')
-    print(hr_data)
     
     if hr_data.get('hr_mode', 'new_page') == 'api':
       return RequesterForm.send_form_api(page_handler, hr_data, default_secret)
@@ -1743,6 +1748,7 @@ class RequesterForm(CfiForm):
         30/08/2024 (mpham) liste des méthodes d'authentification dans l'option /requester/auth_method_options
         03/12/2024 (mpham) les champs auth_login et auth_secret ne sont plus affichés en authentification de type form
         30/12/2024 (mpham) le mode (new_page / api) est placé dans le champ caché hr_mode
+        28/02/2024 (mpham) la méthode redirect est désormais possible en mode api
     """
     
     if not self._requester_appened:
@@ -1751,9 +1757,7 @@ class RequesterForm(CfiForm):
       self.hidden('hr_mode')
       self.content['hr_mode'] = self.mode
       
-      http_methods = {'post': 'POST', 'get': 'GET'}
-      if self.mode == 'new_page':
-        http_methods['redirect'] = 'REDIRECT'
+      http_methods = {'post': 'POST', 'get': 'GET', 'redirect': 'REDIRECT'}
       
       displayed_when_dict = {
         'hr_request_url': "True",

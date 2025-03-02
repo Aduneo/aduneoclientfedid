@@ -719,10 +719,8 @@ class FlowHandler(BaseHandler):
         if 'refresh_token' in access_token:
           refresh = True
 
-      if len(self.context['access_tokens']) > 0:
+      if len(self.context['saml_assertions']) > 0:
         oauth_exchange = True
-
-      for saml_assertion_wrapper in self.context['saml_assertions'].values():
         logout = True
       
       for cas_ticket in self.context['cas_tickets'].values():
@@ -748,7 +746,7 @@ class FlowHandler(BaseHandler):
       if logout:
         self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/logout?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Logout</span>')
       if token_exchange:
-        self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/oauth/login/tokenexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Exchange Token</span>')
+        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/tokenexchange/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Exchange token</span>')
       if oauth_exchange:
-        self.add_html('<span onClick="getHtmlJson(\'GET\',\'/client/saml/login/oauthexchange_spa?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+urllib.parse.quote_plus(dom_id)+'\')" class="middlebutton">Exchange SAML -> OAuth</span>')
+        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/samltoat/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+urllib.parse.quote_plus(dom_id)+'\')" class="middlebutton">Exchange SAML -> OAuth</span>')
       self.add_html('</div>')
