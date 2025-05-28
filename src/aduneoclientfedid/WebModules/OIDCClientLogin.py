@@ -556,7 +556,7 @@ class OIDCClientLogin(FlowHandler):
         self.log_error(('  ' * 1)+"Expiration verification failed:")
         self.log_error(('  ' * 2)+"Token issuer   : "+token_issuer)
         self.log_error(('  ' * 2)+"Metadata issuer: "+oidc_idp_params['issuer'])
-        self.add_result_row('Issuer verification', "Failed\n  token issuer: "+token_issuer+"\n  metadata issuer:"+meta_data['issuer'], 'issuer_verification')
+        self.add_result_row('Issuer verification', "Failed\n  token issuer: "+token_issuer+"\n  metadata issuer:"+oidc_idp_params['issuer'], 'issuer_verification')
         raise AduneoError('token issuer verification failed')
       
       # On vérifie l'audience du jeton, qui doit être le client ID
