@@ -44,8 +44,9 @@ class OIDCUserinfo(FlowHandler):
 
       La requête est transmise à sendrequest pour exécution
     
-      Versions:
-        08/08/2024 (mpham) : version initiale
+    Versions:
+      08/08/2024 (mpham) version initiale
+      29/05/2025 (mpham) adaptation à la nouvelle structure de idp_params
     """
     
     try:
@@ -58,6 +59,9 @@ class OIDCUserinfo(FlowHandler):
       self.log_info(('  ' * 1)+'for context: '+self.context['context_id'])
 
       idp_params = self.context.idp_params
+      oidc_idp_params = idp_params.get('oidc')
+      if not oidc_idp_params:
+        raise AduneoError(f"OIDC IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
       app_params = self.context.last_app_params
 
       access_tokens = {}
@@ -71,9 +75,9 @@ class OIDCUserinfo(FlowHandler):
 
       form_content = {
         'contextid': self.context['context_id'],
-        'userinfo_endpoint': idp_params.get('userinfo_endpoint', ''),
+        'userinfo_endpoint': oidc_idp_params.get('userinfo_endpoint', ''),
         'access_token': default_access_token,
-        'userinfo_method': idp_params.get('userinfo_method', 'get'),
+        'userinfo_method': oidc_idp_params.get('userinfo_method', 'get'),
       }
       form = RequesterForm('userinfo', form_content, action='/client/oidc/userinfo/sendrequest', request_url='@[userinfo_endpoint]', mode='api') \
         .hidden('contextid') \
@@ -124,8 +128,9 @@ class OIDCUserinfo(FlowHandler):
   def send_request(self):
     """ Effectue la requête userinfo et l'affiche
 
-      Versions:
-        08/08/2024 (mpham) : version initiale
+    Versions:
+      08/08/2024 (mpham) version initiale
+      29/05/2025 (mpham) adaptation à la nouvelle structure de idp_params
     """
     
     #self.add_html('<pre>'+json.dumps(self.post_form, indent=2)+'</pre>')
@@ -134,8 +139,11 @@ class OIDCUserinfo(FlowHandler):
     
       # Mise à jour de la requête en cours
       idp_params = self.context.idp_params
+      oidc_idp_params = idp_params.get('oidc')
+      if not oidc_idp_params:
+        raise AduneoError(f"OIDC IdP configuration missing for {idp_params.get('name', idp_id)}")
       for item in ['userinfo_endpoint', 'userinfo_method']:
-        idp_params[item] = self.post_form.get(item, '')
+        oidc_idp_params[item] = self.post_form.get(item, '')
 
       if 'hr_verify_certificates' in self.post_form:
         idp_params['verify_certificates'] = 'on'
