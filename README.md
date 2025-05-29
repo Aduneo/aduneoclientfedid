@@ -114,6 +114,16 @@ $ pip install aduneoclientfedid[saml]
 You may have to manually install some Linux packages. Please refer to the xmlsec documentation (https://pypi.org/project/xmlsec)
 for more information.
 
+If SAML is not working, the console displays
+```console
+SAML disabled because xmlsec is not installed
+```
+
+You may have to reinstall xmlsec without binaries:
+```console
+pip install --force-reinstall --no-binary lxml,xmlsec lxml xmlsec
+```
+
 
 ## Running aduneoclientfedid
 
