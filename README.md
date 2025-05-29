@@ -67,9 +67,7 @@ If you don't have Python installed on your Windows computer, follow this procedu
 Attention: this version does not have SAML support. Installing SAML capabilies might prove tricky, because of the *xmlsec* library. 
 It is not compatible with all Python versions on Windows.
 
-At the moment, it seems that it's working fine with Python 12 but not with Python 13.
-
-You can try installing ClientFedID with SAML:
+You can install ClientFedID with SAML:
 ```console
 > pip install aduneoclientfedid[saml]
 ```
@@ -115,6 +113,16 @@ $ pip install aduneoclientfedid[saml]
 
 You may have to manually install some Linux packages. Please refer to the xmlsec documentation (https://pypi.org/project/xmlsec)
 for more information.
+
+If SAML is not working, the console displays
+```console
+SAML disabled because xmlsec is not installed
+```
+
+You may have to reinstall xmlsec without binaries:
+```console
+pip install --force-reinstall --no-binary lxml,xmlsec lxml xmlsec
+```
 
 
 ## Running aduneoclientfedid
