@@ -56,6 +56,7 @@ class OAuthClientLogin(FlowHandler):
       23/12/2024 (mpham) les valeurs des select sont maintenant toutes des constantes du type metadata_uri et non plus des libellés comme Authorization Server Metadata URI
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
       27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
+      30/05/2025 (mpham) les méthodes d'authentification auprès de token étaient envore basic et form au client de client_secret_basic et lient_secret_post
     """
 
     self.log_info('--- Start OAuth 2 flow ---')
@@ -241,8 +242,8 @@ class OAuthClientLogin(FlowHandler):
             default = 'code'
             ) \
           .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
-            values={'none': 'None', 'basic': 'Basic', 'form': 'Form'},
-            default = 'basic'
+            values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
+            default = 'client_secret_basic'
             ) \
         .end_section() \
         .start_section('token_validation', title="Token validation (if JWT)", collapsible=True, collapsible_default=True) \
@@ -407,6 +408,7 @@ class OAuthClientLogin(FlowHandler):
       28/11/2024 (mpham) certificate verification is now a configuration parameter attached to the IDP and not the APP
       28/11/2024 (mpham) dans le contexte, on ajoute l'identifiant du client ayant récupéré les jetons
       27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
+      30/05/2025 (mpham) les méthodes d'authentification auprès de token étaient envore basic et form au client de client_secret_basic et lient_secret_post
     """
   
     self.add_javascript_include('/javascript/resultTable.js')
@@ -480,12 +482,12 @@ class OAuthClientLogin(FlowHandler):
       
         client_secret = app_params['client_secret']
 
-        if token_endpoint_auth_method == 'basic':
+        if token_endpoint_auth_method == 'client_secret_basic':
           auth = (app_params['client_id'], client_secret)
-        elif token_endpoint_auth_method == 'form':
+        elif token_endpoint_auth_method == 'client_secret_post':
           api_call_data['client_secret'] = client_secret
         else:
-          raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be Basic or POST')
+          raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be client_secret_basic or client_secret_post')
 
       self.log_info(('  ' * 1)+'Token request data: '+str(api_call_data))
       self.add_result_row('Token request data', json.dumps(api_call_data, indent=2), 'token_request_data')
