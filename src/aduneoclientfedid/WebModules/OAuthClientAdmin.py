@@ -50,7 +50,7 @@ class OAuthClientAdmin(BaseHandler):
       if not idp:
         raise AduneoError(f"IdP {idp_id} not found in configuration")
 
-      oauth2_clients = idp.get('oauth2_clients', {})  
+      oauth2_clients = idp.get('oauth2_clients', {})
       
       app_id = self.get_query_string_param('appid', '')
       if app_id == '':
@@ -193,6 +193,7 @@ class OAuthClientAdmin(BaseHandler):
       31/01/2025 (mpham) création d'un client pour un IdP existant
       14/02/2025 (mpham) en création, un client vide était créé
       25/02/2025 (mpham) modification du nom du client
+      30/05/2025 (mpham) les paramètres Oauth 2 de l'IdP n'était pas créés quand on ajoutait une fonctionnalité OAuth2 d'un Idp n'en ayant pas
     """
     
     idp_id = self.post_form['idp_id']
@@ -211,6 +212,8 @@ class OAuthClientAdmin(BaseHandler):
       idp['oauth2_clients'][app_id] = {}
 
     idp_params = idp['idp_parameters']
+    if not idp_params.get('oauth2'):
+      idp_params['oauth2'] = {}
     oauth2_params = idp_params['oauth2']
     app_params = idp['oauth2_clients'][app_id]
     

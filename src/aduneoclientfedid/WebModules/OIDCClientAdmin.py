@@ -228,6 +228,7 @@ class OIDCClientAdmin(BaseHandler):
       31/01/2025 (mpham) création d'un client pour un IdP existant
       14/02/2025 (mpham) en création, un client vide était créé
       25/02/2025 (mpham) modification du nom du client
+      30/05/2025 (mpham) les paramètres OIDC de l'IdP n'était pas créés quand on ajoutait une fonctionnalité OIDC d'un Idp n'en ayant pas
     """
     
     idp_id = self.post_form['idp_id']
@@ -246,6 +247,8 @@ class OIDCClientAdmin(BaseHandler):
       idp['oidc_clients'][app_id] = {}
     
     idp_params = idp['idp_parameters']
+    if not idp_params.get('oidc'):
+      idp_params['oidc'] = {}
     oidc_params = idp_params['oidc']
     app_params = idp['oidc_clients'][app_id]
 
