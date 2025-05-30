@@ -16,7 +16,7 @@ version = "2.0.6"
 description = "Identity Federation Test Client"
 readme = "README.md"
 authors = [{ name = "Aduneo", email = "contact@aduneo.com" }]
-license = { file = "LICENSE" }
+license = "Apache-2.0"
 classifiers = [
     "Topic :: System :: Systems Administration :: Authentication/Directory",
 ]
