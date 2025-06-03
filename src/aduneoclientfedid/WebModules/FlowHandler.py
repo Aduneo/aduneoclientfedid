@@ -88,89 +88,97 @@ class FlowHandler(BaseHandler):
     """
     self.add_html("""<h2>New auth in same context</h2>""")
     
-    idp_id = self.context.idp_id
-    idp = self.conf['idps'][idp_id]
+    if not self.context:
+      self.add_html("""IdP context not found
+        <div>
+          <span><a href="/" class="smallbutton">Home</a></span>
+        </div>
+      """)
 
-    if idp.get('oidc_clients'):
-      
-      self.add_html("""<div>OIDC Clients</div>""")          
-      for client_id in sorted(idp['oidc_clients'].keys()):
+    else:
+      idp_id = self.context.idp_id
+      idp = self.conf['idps'][idp_id]
+
+      if idp.get('oidc_clients'):
         
-        client = idp['oidc_clients'][client_id]
-        self.add_html("""
-          <div>
-            <span>{name}</span>
-            <span><a href="/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
-          </div>
-          """.format(
-            name = html.escape(client.get('name', 'Client')),
-            idp_id = urllib.parse.quote_plus(idp_id),
-            app_id = urllib.parse.quote_plus(client_id),
-            context_id = self.context.context_id,
+        self.add_html("""<div>OIDC Clients</div>""")          
+        for client_id in sorted(idp['oidc_clients'].keys()):
+          
+          client = idp['oidc_clients'][client_id]
+          self.add_html("""
+            <div>
+              <span>{name}</span>
+              <span><a href="/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
+            </div>
+            """.format(
+              name = html.escape(client.get('name', 'Client')),
+              idp_id = urllib.parse.quote_plus(idp_id),
+              app_id = urllib.parse.quote_plus(client_id),
+              context_id = self.context.context_id,
+            )
           )
-        )
 
-    if idp.get('oauth2_clients'):
-        
-      self.add_html("""<div>OAuth 2 Clients</div>""")          
-      for client_id in sorted(idp['oauth2_clients'].keys()):
-        
-        client = idp['oauth2_clients'][client_id]
-        self.add_html("""
-          <div>
-            <span>{name}</span>
-            <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
-          </div>
-          """.format(
-            name = html.escape(client.get('name', 'Client')),
-            idp_id = urllib.parse.quote_plus(idp_id),
-            app_id = urllib.parse.quote_plus(client_id),
-            context_id = self.context.context_id,
+      if idp.get('oauth2_clients'):
+          
+        self.add_html("""<div>OAuth 2 Clients</div>""")          
+        for client_id in sorted(idp['oauth2_clients'].keys()):
+          
+          client = idp['oauth2_clients'][client_id]
+          self.add_html("""
+            <div>
+              <span>{name}</span>
+              <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
+            </div>
+            """.format(
+              name = html.escape(client.get('name', 'Client')),
+              idp_id = urllib.parse.quote_plus(idp_id),
+              app_id = urllib.parse.quote_plus(client_id),
+              context_id = self.context.context_id,
+            )
           )
-        )
 
-    if idp.get('saml_clients'):
-        
-      self.add_html("""<div>SAML Service Providers (SP)</div>""")          
-      for client_id in sorted(idp['saml_clients'].keys()):
-        
-        client = idp['saml_clients'][client_id]
-        self.add_html("""
-          <div>
-            <span>{name}</span>
-            <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
-          </div>
-          """.format(
-            name = html.escape(client.get('name', 'Client')),
-            idp_id = urllib.parse.quote_plus(idp_id),
-            app_id = urllib.parse.quote_plus(client_id),
-            context_id = self.context.context_id,
+      if idp.get('saml_clients'):
+          
+        self.add_html("""<div>SAML Service Providers (SP)</div>""")          
+        for client_id in sorted(idp['saml_clients'].keys()):
+          
+          client = idp['saml_clients'][client_id]
+          self.add_html("""
+            <div>
+              <span>{name}</span>
+              <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
+            </div>
+            """.format(
+              name = html.escape(client.get('name', 'Client')),
+              idp_id = urllib.parse.quote_plus(idp_id),
+              app_id = urllib.parse.quote_plus(client_id),
+              context_id = self.context.context_id,
+            )
           )
-        )
 
-    if idp.get('cas_clients'):
-        
-      self.add_html("""<div>CAS Clients</div>""")          
-      for client_id in sorted(idp['cas_clients'].keys()):
-        
-        client = idp['cas_clients'][client_id]
-        self.add_html("""
-          <div>
-            <span>{name}</span>
-            <span><a href="/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
-          </div>
-          """.format(
-            name = html.escape(client.get('name', 'Client')),
-            idp_id = urllib.parse.quote_plus(idp_id),
-            app_id = urllib.parse.quote_plus(client_id),
-            context_id = self.context.context_id,
+      if idp.get('cas_clients'):
+          
+        self.add_html("""<div>CAS Clients</div>""")          
+        for client_id in sorted(idp['cas_clients'].keys()):
+          
+          client = idp['cas_clients'][client_id]
+          self.add_html("""
+            <div>
+              <span>{name}</span>
+              <span><a href="/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
+            </div>
+            """.format(
+              name = html.escape(client.get('name', 'Client')),
+              idp_id = urllib.parse.quote_plus(idp_id),
+              app_id = urllib.parse.quote_plus(client_id),
+              context_id = self.context.context_id,
+            )
           )
-        )
 
-    dom_id = 'id'+str(uuid.uuid4())
-    self.add_html('<div id="'+html.escape(dom_id)+'">')
-    self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/cancelrequest?contextid='+urllib.parse.quote_plus(self.context.context_id)+'\', \'\', \''+dom_id+'\')" class="button">Cancel</span>')
-    self.add_html('</div>')
+      dom_id = 'id'+str(uuid.uuid4())
+      self.add_html('<div id="'+html.escape(dom_id)+'">')
+      self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/cancelrequest?contextid='+urllib.parse.quote_plus(self.context.context_id)+'\', \'\', \''+dom_id+'\')" class="button">Cancel</span>')
+      self.add_html('</div>')
     
     self.send_page()
   
