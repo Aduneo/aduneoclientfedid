@@ -117,7 +117,7 @@ class OAuthClientAdmin(BaseHandler):
       'client_id': app_params.get('client_id', ''),
       'scope': app_params.get('scope', ''),
       'response_type': app_params.get('response_type', 'code'),
-      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'basic'),
       'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
       }
     
@@ -162,10 +162,10 @@ class OAuthClientAdmin(BaseHandler):
           default = 'code'
           ) \
         .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
-          values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
-          default = 'client_secret_basic'
+          values={'none': 'none', 'basic': 'client_secret_basic', 'form': 'client_secret_post'},
+          default = 'basic'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
       .end_section() \
       .start_section('connection_options', title="Connection options") \
         .check_box('verify_certificates', label='Verify certificates') \
@@ -475,7 +475,7 @@ class OAuthClientAdmin(BaseHandler):
       'client_id': app_params.get('client_id', ''),
       'scope': app_params.get('scope', ''),
       'response_type': app_params.get('response_type', 'code'),
-      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'basic'),
       }
     
     form = CfiForm('oauth2adminmulti', form_content, action='modifymulti', submit_label='Save') \
@@ -503,10 +503,10 @@ class OAuthClientAdmin(BaseHandler):
           default = 'code'
           ) \
         .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
-          values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
-          default = 'client_secret_basic'
+          values={'none': 'none', 'basic': 'client_secret_basic', 'form': 'client_secret_post'},
+          default = 'basic'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
       .end_section() 
       
     form.set_title('OAuth 2 Authorization'+('' if form_content['name'] == '' else ': '+form_content['name']))

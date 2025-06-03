@@ -203,8 +203,16 @@ class OAuthClientLogin(FlowHandler):
           .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri') \
         .end_section() \
         .start_section('as_endpoints', title="AS endpoints", collapsible=True, collapsible_default=False) \
-          .text('authorization_endpoint', label='Authorization endpoint', clipboard_category='authorization_endpoint', displayed_when="@[oauth_flow] = 'authorization_code' or @[oauth_flow] = 'authorization_code_pkce'") \
-          .text('token_endpoint', label='Token Endpoint', clipboard_category='token_endpoint') \
+          .text('authorization_endpoint', label='Authorization endpoint', clipboard_category='authorization_endpoint', displayed_when="@[oauth_flow] = 'authorization_code' or @[oauth_flow] = 'authorization_code_pkce'",
+            on_change = """ 
+              updateForFlow(cfiForm);
+              """,
+            ) \
+          .text('token_endpoint', label='Token Endpoint', clipboard_category='token_endpoint',
+            on_change = """ 
+              updateForFlow(cfiForm);
+              """,
+            ) \
           .text('introspection_endpoint', label='Introspection endpoint', clipboard_category='introspection_endpoint') \
           .closed_list('introspection_http_method', label='Introspection request method', 
             values={'get': 'GET', 'post': 'POST'},
@@ -242,7 +250,7 @@ class OAuthClientLogin(FlowHandler):
             default = 'code'
             ) \
           .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
-            values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
+            values={'none': 'none', 'basic': 'client_secret_basic', 'form': 'client_secret_post'},
             default = 'client_secret_basic'
             ) \
         .end_section() \
@@ -482,12 +490,12 @@ class OAuthClientLogin(FlowHandler):
       
         client_secret = app_params['client_secret']
 
-        if token_endpoint_auth_method == 'client_secret_basic':
+        if token_endpoint_auth_method == 'basic':
           auth = (app_params['client_id'], client_secret)
-        elif token_endpoint_auth_method == 'client_secret_post':
+        elif token_endpoint_auth_method == 'form':
           api_call_data['client_secret'] = client_secret
         else:
-          raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be client_secret_basic or client_secret_post')
+          raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be basic or form')
 
       self.log_info(('  ' * 1)+'Token request data: '+str(api_call_data))
       self.add_result_row('Token request data', json.dumps(api_call_data, indent=2), 'token_request_data')
