@@ -16,13 +16,13 @@ limitations under the License.
 
 import html
 import json
-import requests
 import urllib
 import uuid
 
 from .BaseServer import AduneoError
 from .BaseServer import DesignError
 from .Proposition import Proposition
+from .WebRequest import WebRequest
 
 
 class CfiForm():
@@ -1569,7 +1569,7 @@ class RequesterForm(CfiForm):
       default_secret: secret à utiliser s'il n'a pas été saisi dans le formulaire
       
     Returns:
-      en mode API, réponse de requests API
+      en mode API, réponse de urllib3.request()
   
     Versions:
       30/12/2024 (mpham) version initiale
@@ -1589,13 +1589,14 @@ class RequesterForm(CfiForm):
       default_secret: secret à utiliser s'il n'a pas été saisi dans le formulaire
       
     Returns:
-      réponse de requests
+      réponse de urllib3.request()
   
     Versions:
       09/08/2024 (mpham) version initiale adaptée de FlowHandler.send_form_http_request
       05/09/2024 (mpham) POST ne fonctionnait pas
       27/11/2024 (mpham) les checkbox, donc en particulier la vérification des certificats, ont le même comportement que les formulaires
                            l'élement est présent si la case est cochée, absent sinon
+      04/06/2025 (mpham) remplacement de requests par WebRequest et DNS override
     """
     
     service_endpoint = hr_data.get('hr_request_url')
@@ -1639,6 +1640,11 @@ class RequesterForm(CfiForm):
     else:
       raise AduneoError(page_handler.log_error("authentication scheme "+auth_method+" not supported"))
 
+    # DNS override
+    print("==================================")
+    print(hr_data.get('hr_dns_override'))
+    print("==================================")
+
     verify_cert = hr_data.get('hr_verify_certificates') != None
 
     page_handler.log_info("  Submitting request")
@@ -1647,26 +1653,27 @@ class RequesterForm(CfiForm):
       page_handler.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_cert else "disabled"))
       page_handler.log_info(f"{'  ' * 1}Authentication {auth_method} with login {auth_login}")
       if method == 'get':
-        response = requests.get(service_endpoint, headers=request_headers, auth=request_auth, verify=verify_cert)
+        #response = requests.get(service_endpoint, headers=request_headers, auth=request_auth, verify=verify_cert)
+        response = WebRequest.get(service_endpoint, headers=request_headers, basic_auth=request_auth, verify_certificate=verify_cert)
       elif method == 'post':
         page_handler.log_info(f"{'  ' * 1}Body: {service_data}")
         body_format = hr_data.get('hr_body_format', 'x-www-form-urlencoded')
         if  body_format == 'x-www-form-urlencoded':
           request_headers['Content-Type'] = 'application/x-www-form-urlencoded'
-          response = requests.post(service_endpoint, data=service_data, headers=request_headers, auth=request_auth, verify=verify_cert)
+          #response = requests.post(service_endpoint, data=service_data, headers=request_headers, auth=request_auth, verify=verify_cert)
+          response = WebRequest.post(service_endpoint, raw_data=service_data, headers=request_headers, basic_auth=request_auth, verify_certificate=verify_cert)
         elif body_format == 'json':
           request_headers['Content-Type'] = 'application/json'
-          response = requests.post(service_endpoint, json=service_data, headers=request_headers, auth=request_auth, verify=verify_cert)
+          #response = requests.post(service_endpoint, json=service_data, headers=request_headers, auth=request_auth, verify=verify_cert)
+          response = WebRequest.post(service_endpoint, json=service_data, headers=request_headers, basic_auth=request_auth, verify_certificate=verify_cert)
         else:
           raise AduneoError(f"body format {body_format} not supported")
       else:
         raise AduneoError(page_handler.log_error("HTTP method "+method+" not supported"))
     except Exception as error:
       raise AduneoError(page_handler.log_error(('  ' * 1)+'http service error: '+str(error)))
-    if response.status_code != 200:
+    if response.status != 200:
       raise AduneoError(page_handler.log_error('http service error: status code '+str(response.status_code)+", "+response.text))
-    
-    print(response)
     
     return response
 
@@ -1743,12 +1750,13 @@ class RequesterForm(CfiForm):
   def _append_requester(self):
     """ Ajoute le requester HTTP
     
-      Versions:
-        00/12/2023 (mpham) version initiale
-        30/08/2024 (mpham) liste des méthodes d'authentification dans l'option /requester/auth_method_options
-        03/12/2024 (mpham) les champs auth_login et auth_secret ne sont plus affichés en authentification de type form
-        30/12/2024 (mpham) le mode (new_page / api) est placé dans le champ caché hr_mode
-        28/02/2024 (mpham) la méthode redirect est désormais possible en mode api
+    Versions:
+      00/12/2023 (mpham) version initiale
+      30/08/2024 (mpham) liste des méthodes d'authentification dans l'option /requester/auth_method_options
+      03/12/2024 (mpham) les champs auth_login et auth_secret ne sont plus affichés en authentification de type form
+      30/12/2024 (mpham) le mode (new_page / api) est placé dans le champ caché hr_mode
+      28/02/2024 (mpham) la méthode redirect est désormais possible en mode api
+      04/06/2025 (mpham) ajout de DNS override
     """
     
     if not self._requester_appened:
@@ -1770,6 +1778,7 @@ class RequesterForm(CfiForm):
         'hr_auth_login_param': "@[hr_auth_method] = 'form' and (@[hr_form_method] = 'post' or @[hr_form_method] = 'redirect')",
         'hr_auth_secret_param': "@[hr_auth_method] = 'form' and (@[hr_form_method] = 'post' or @[hr_form_method] = 'redirect')",
         'hr_verify_certificates': "True",
+        'hr_dns_override': "@[hr_form_method] = 'post' or @[hr_form_method] = 'get'" if self.mode == 'api' else 'False',
       }
 
       for field, visibility in self.visible_requester_fields.items():
@@ -1803,6 +1812,7 @@ class RequesterForm(CfiForm):
         .password('hr_auth_secret', label='HTTP secret', clipboard_category='client_secret', displayed_when=displayed_when_dict['hr_auth_secret']) \
         .text('hr_auth_secret_param', label='Secret parameter name', displayed_when=displayed_when_dict['hr_auth_secret_param']) \
         .check_box('hr_verify_certificates', label='Verify certificates', displayed_when=displayed_when_dict['hr_verify_certificates']) \
+        .text('hr_dns_override', label='DNS override', clipboard_category='dns_override', displayed_when=displayed_when_dict['hr_dns_override']) \
       .end_section()
 
     
