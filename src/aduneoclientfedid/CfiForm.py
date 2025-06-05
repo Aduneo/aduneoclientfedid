@@ -1641,9 +1641,9 @@ class RequesterForm(CfiForm):
       raise AduneoError(page_handler.log_error("authentication scheme "+auth_method+" not supported"))
 
     # DNS override
-    print("==================================")
-    print(hr_data.get('hr_dns_override'))
-    print("==================================")
+    dns_override = hr_data.get('hr_dns_override', '')
+    if dns_override == '':
+      dns_override = None
 
     verify_cert = hr_data.get('hr_verify_certificates') != None
 
@@ -1654,18 +1654,18 @@ class RequesterForm(CfiForm):
       page_handler.log_info(f"{'  ' * 1}Authentication {auth_method} with login {auth_login}")
       if method == 'get':
         #response = requests.get(service_endpoint, headers=request_headers, auth=request_auth, verify=verify_cert)
-        response = WebRequest.get(service_endpoint, headers=request_headers, basic_auth=request_auth, verify_certificate=verify_cert)
+        response = WebRequest.get(service_endpoint, headers=request_headers, basic_auth=request_auth, verify_certificate=verify_cert, dns_override=dns_override)
       elif method == 'post':
         page_handler.log_info(f"{'  ' * 1}Body: {service_data}")
         body_format = hr_data.get('hr_body_format', 'x-www-form-urlencoded')
         if  body_format == 'x-www-form-urlencoded':
           request_headers['Content-Type'] = 'application/x-www-form-urlencoded'
           #response = requests.post(service_endpoint, data=service_data, headers=request_headers, auth=request_auth, verify=verify_cert)
-          response = WebRequest.post(service_endpoint, raw_data=service_data, headers=request_headers, basic_auth=request_auth, verify_certificate=verify_cert)
+          response = WebRequest.post(service_endpoint, raw_data=service_data, headers=request_headers, basic_auth=request_auth, verify_certificate=verify_cert, dns_override=dns_override)
         elif body_format == 'json':
           request_headers['Content-Type'] = 'application/json'
           #response = requests.post(service_endpoint, json=service_data, headers=request_headers, auth=request_auth, verify=verify_cert)
-          response = WebRequest.post(service_endpoint, json=service_data, headers=request_headers, basic_auth=request_auth, verify_certificate=verify_cert)
+          response = WebRequest.post(service_endpoint, json=service_data, headers=request_headers, basic_auth=request_auth, verify_certificate=verify_cert, dns_override=dns_override)
         else:
           raise AduneoError(f"body format {body_format} not supported")
       else:
@@ -1673,7 +1673,7 @@ class RequesterForm(CfiForm):
     except Exception as error:
       raise AduneoError(page_handler.log_error(('  ' * 1)+'http service error: '+str(error)))
     if response.status != 200:
-      raise AduneoError(page_handler.log_error('http service error: status code '+str(response.status_code)+", "+response.text))
+      raise AduneoError(page_handler.log_error('http service error: status code '+str(response.status)+", "+str(response.data)))
     
     return response
 

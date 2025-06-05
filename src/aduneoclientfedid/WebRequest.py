@@ -33,36 +33,14 @@ class WebRequest():
   """
   
   def get(url:str, query:dict={}, headers={}, basic_auth:tuple=None, verify_certificate:bool=True, dns_override:str=None):
-
-    parsed_url = urllib3.util.parse_url(url)
-    
-    pool = None
-    request_url = None
-    assert_same_host = True
-    if not dns_override:
-      # appel normal, on prend le pool normal
-      pool = urllib3.PoolManager()
-      request_url = url
-    else:
-      # appel en remplacement de DNS, on suit la documentation
-      if parsed_url.scheme == 'http':
-        pool = urllib3.HTTPConnectionPool(dns_override, parsed_url.port)
-      elif parsed_url.scheme == 'https':
-        pool = urllib3.HTTPSConnectionPool(dns_override, parsed_url.port, server_hostname=parsed_url.host, cert_reqs=None if verify_certificate else 'CERT_NONE')
-      
-      headers['Host'] = parsed_url.host
-      request_url = parsed_url.path
-      if request_url is None:
-        request_url = '/'
-      assert_same_host = False
-
-    if basic_auth:
-      headers['Authorization'] = "Basic " + base64.b64encode(f"{basic_auth[0]}:{basic_auth[1]}".encode()).decode()
+    return WebRequest._request('GET', url, fields=query, raw_data=None, headers=headers, basic_auth=basic_auth, verify_certificate=verify_certificate, dns_override=dns_override)
   
-    return pool.request("GET", request_url, fields=query, headers=headers, assert_same_host=assert_same_host)
-  
-    
+
   def post(url:str, form:dict=None, raw_data:str=None, headers={}, basic_auth:tuple=None, verify_certificate:bool=True, dns_override:str=None):
+    return WebRequest._request('POST', url, fields=form, raw_data=raw_data, headers=headers, basic_auth=basic_auth, verify_certificate=verify_certificate, dns_override=dns_override)
+
+    
+  def _request(method:str, url:str, fields:dict=None, raw_data:str=None, headers={}, basic_auth:tuple=None, verify_certificate:bool=True, dns_override:str=None):
 
     parsed_url = urllib3.util.parse_url(url)
     
@@ -75,12 +53,17 @@ class WebRequest():
       request_url = url
     else:
       # appel en remplacement de DNS, on suit la documentation
+      headers['Host'] = parsed_url.host
+
       if parsed_url.scheme == 'http':
         pool = urllib3.HTTPConnectionPool(dns_override, parsed_url.port)
+        if parsed_url.port != 80:
+          headers['Host'] += ':'+str(parsed_url.port)
       elif parsed_url.scheme == 'https':
         pool = urllib3.HTTPSConnectionPool(dns_override, parsed_url.port, server_hostname=parsed_url.host, cert_reqs=None if verify_certificate else 'CERT_NONE')
-      
-      headers['Host'] = parsed_url.host
+        if parsed_url.port != 443:
+          headers['Host'] += ':'+str(parsed_url.port)
+        
       request_url = parsed_url.path
       if request_url is None:
         request_url = '/'
@@ -89,7 +72,7 @@ class WebRequest():
     if basic_auth:
       headers['Authorization'] = "Basic " + base64.b64encode(f"{basic_auth[0]}:{basic_auth[1]}".encode()).decode()
     
-    return pool.request("POST", request_url, fields=form, body=raw_data, headers=headers, assert_same_host=assert_same_host)
+    return pool.request(method, request_url, fields=fields, body=raw_data, headers=headers, assert_same_host=assert_same_host)
   
     
 
