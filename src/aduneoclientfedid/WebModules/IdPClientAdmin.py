@@ -75,6 +75,7 @@ class IdPClientAdmin(BaseHandler):
       23/01/2025 (mpham) prise en compte des paramètres SAML uniquement si saml_prerequisite vérifié
       28/01/2025 (mpham) paramètres CAS
       31/01/2025 (mpham) SAML : si l'entity ID n'est pas donnée, on n'enregistre pas les bindings (ça permet de conserver saml à {})
+      03/06/2025 (mpham) DNS override for OAuth 2 token endpoint
     """
     
     idp_id = self.post_form['idp_id']
@@ -117,7 +118,8 @@ class IdPClientAdmin(BaseHandler):
       
     # Paramètres OAuth 2
     for item in ['endpoint_configuration', 'metadata_uri', 'authorization_endpoint', 'token_endpoint', 
-    'revocation_endpoint', 'introspection_endpoint', 'introspection_http_method', 'introspection_auth_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
+    'revocation_endpoint', 'introspection_endpoint', 'introspection_http_method', 'introspection_auth_method', 'signature_key_configuration', 'jwks_uri', 'signature_key',
+    'token_endpoint_dns_override']:
       if self.post_form.get('oauth2_'+item, '') == '':
         oauth2_params.pop(item, None)
       else:
@@ -453,6 +455,7 @@ class IdPClientAdmin(BaseHandler):
       28/01/2025 (mpham) paramètres SAML
       31/01/2025 (mpham) en lecture seule, l'affiche pas les INPUT des sections non définies
       31/01/2025 (mpham) option same_as pour la configuration des endpoints OIDC et OAuth 2
+      03/06/2025 (mpham) DNS override for OAuth 2 token endpoint
     """
 
     idp_params = idp['idp_parameters']
@@ -499,6 +502,7 @@ class IdPClientAdmin(BaseHandler):
       'oauth2_signature_key_configuration': oauth2_params.get('signature_key_configuration', 'jwks_uri'),
       'oauth2_jwks_uri': oauth2_params.get('jwks_uri', ''),
       'oauth2_signature_key': oauth2_params.get('signature_key', ''),
+      'oauth2_token_endpoint_dns_override': oauth2_params.get('token_endpoint_dns_override', ''),
       'idp_entity_id': saml_params.get('idp_entity_id', ''),
       'idp_sso_url': saml_params.get('idp_sso_url', ''),
       'idp_slo_url': saml_params.get('idp_slo_url', ''),
@@ -566,6 +570,9 @@ class IdPClientAdmin(BaseHandler):
             default = 'basic'
             ) \
           .text('oauth2_revocation_endpoint', label='Revocation endpoint', clipboard_category='revocation_endpoint', displayed_when="@[oauth2_endpoint_configuration] = 'local_configuration'") \
+        .end_section() \
+        .start_section('oauth2_clientfedid', title="OAuth 2 ClientFedID configuration") \
+          .text('oauth2_token_endpoint_dns_override', label='Token endpoint DNS override', clipboard_category='token_endpoint_dns_override') \
         .end_section() 
     form \
       .end_section() \

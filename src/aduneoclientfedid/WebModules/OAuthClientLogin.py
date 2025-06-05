@@ -25,6 +25,7 @@ import requests
 import string
 import time
 import traceback
+import urllib.parse
 import uuid
 
 from ..BaseServer import AduneoError
@@ -34,6 +35,7 @@ from ..Configuration import Configuration
 from ..Context import Context
 from ..Help import Help
 from ..JWT import JWT
+from ..WebRequest import WebRequest
 from .Clipboard import Clipboard
 from .FlowHandler import FlowHandler
 
@@ -57,6 +59,7 @@ class OAuthClientLogin(FlowHandler):
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
       27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
       30/05/2025 (mpham) les méthodes d'authentification auprès de token étaient envore basic et form au client de client_secret_basic et lient_secret_post
+      03/06/2025 (mpham) DNS override for OAuth 2 token endpoint
     """
 
     self.log_info('--- Start OAuth 2 flow ---')
@@ -184,6 +187,7 @@ class OAuthClientLogin(FlowHandler):
         'signature_key_configuration': oauth2_idp_params.get('signature_key_configuration', 'jwks_uri'),
         'jwks_uri': oauth2_idp_params.get('jwks_uri', ''),
         'signature_key': oauth2_idp_params.get('signature_key', ''),
+        'token_endpoint_dns_override': oauth2_idp_params.get('token_endpoint_dns_override', ''),
         'oauth_flow': oauth_flow,
         'flow_url': flow_url,
         'flow_http_method': flow_http_method,
@@ -251,7 +255,7 @@ class OAuthClientLogin(FlowHandler):
             ) \
           .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
             values={'none': 'none', 'basic': 'client_secret_basic', 'form': 'client_secret_post'},
-            default = 'client_secret_basic'
+            default = 'basic'
             ) \
         .end_section() \
         .start_section('token_validation', title="Token validation (if JWT)", collapsible=True, collapsible_default=True) \
@@ -265,6 +269,9 @@ class OAuthClientLogin(FlowHandler):
         .end_section() \
         .start_section('security_params', title="Security", collapsible=True, collapsible_default=False) \
           .text('state', label='State', displayed_when="@[oauth_flow] = 'authorization_code' or @[oauth_flow] = 'authorization_code_pkce'") \
+        .end_section() \
+        .start_section('clientfedid_configuration', title="ClientFedID Configuration", collapsible=True, collapsible_default=False) \
+          .text('token_endpoint_dns_override', label='Token endpoint DNS override', clipboard_category='token_endpoint_dns_override') \
         .end_section() \
 
       form.set_request_parameters({
@@ -343,6 +350,7 @@ class OAuthClientLogin(FlowHandler):
       27/02/2025 (mpham) les paramètres IdP n'étaient pas mis à jour au bon endroit
       28/02/2025 (mpham) code_verifier n'était pas conservé
       28/02/2025 (mpham) cinématiques Client credentials et Resource owner password credentials
+      03/06/2025 (mpham) DNS override for OAuth 2 token endpoint
     """
     
     self.log_info('Redirection to IdP requested')
@@ -356,7 +364,8 @@ class OAuthClientLogin(FlowHandler):
       # Mise à jour dans le contexte des paramètres liés à l'IdP
       idp_params = self.context.idp_params
       oauth2_idp_params = idp_params['oauth2']
-      for item in ['authorization_endpoint', 'token_endpoint', 'introspection_endpoint', 'introspection_http_method', 'introspection_auth_method', 'issuer', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
+      for item in ['authorization_endpoint', 'token_endpoint', 'introspection_endpoint', 'introspection_http_method', 'introspection_auth_method', 'issuer', 'signature_key_configuration', 'jwks_uri', 'signature_key',
+      'token_endpoint_dns_override']:
         oauth2_idp_params[item] = self.post_form.get(item, '').strip()
 
       # Mise à jour dans le contexte des paramètres liés au client courant
@@ -417,6 +426,7 @@ class OAuthClientLogin(FlowHandler):
       28/11/2024 (mpham) dans le contexte, on ajoute l'identifiant du client ayant récupéré les jetons
       27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
       30/05/2025 (mpham) les méthodes d'authentification auprès de token étaient envore basic et form au client de client_secret_basic et lient_secret_post
+      03/06/2025 (mpham) DNS override for OAuth 2 token endpoint
     """
   
     self.add_javascript_include('/javascript/resultTable.js')
@@ -506,15 +516,24 @@ class OAuthClientLogin(FlowHandler):
         self.log_info(('  ' * 1)+"sending request to "+token_endpoint)
         verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
         self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-        r = requests.post(token_endpoint, api_call_data, auth=auth, verify=verify_certificates)
+        
+        token_endpoint_fqdn = urllib.parse.urlparse(token_endpoint).hostname
+        dns_override = oauth2_idp_params.get('token_endpoint_dns_override', '')
+        if dns_override != '':
+          self.log_info(('  ' * 1)+f"DNS override: {token_endpoint_fqdn} is revolved to {dns_override}")
+        else:
+          dns_override = None
+        
+        r = WebRequest.post(token_endpoint, form=api_call_data, basic_auth=auth, verify_certificate=verify_certificates, dns_override=dns_override)
+
       except Exception as error:
         self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
         raise AduneoError(self.log_error(('  ' * 1)+'token retrieval error: '+str(error)))
-      if r.status_code == 200:
+      if r.status == 200:
         self.add_html('<div class="intertable">Success</div>')
       else:
-        self.add_html('<div class="intertable">Error, status code '+str(r.status_code)+'</div>')
-        raise AduneoError(self.log_error('token retrieval error: status code '+str(r.status_code)+", "+r.text))
+        self.add_html('<div class="intertable">Error, status code '+str(r.status)+'</div>')
+        raise AduneoError(self.log_error('token retrieval error: status code '+str(r.status)+", "+str(r.data)))
       
       response = r.json()
       self.log_info('AS response:')

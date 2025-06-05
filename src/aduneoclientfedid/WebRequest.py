@@ -52,7 +52,7 @@ class WebRequest():
       pool = urllib3.PoolManager()
       request_url = url
     else:
-      # appel en remplacement de DNS, on suit la documentation
+      # appel en remplacement de DNS, on suit la documentation : https://urllib3.readthedocs.io/en/stable/advanced-usage.html#custom-sni-hostname
       headers['Host'] = parsed_url.host
 
       if parsed_url.scheme == 'http':

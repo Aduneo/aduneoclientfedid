@@ -189,7 +189,7 @@ class OIDCClientLogin(FlowHandler):
         'signature_key': oidc_idp_params.get('signature_key', ''),
         'client_id': app_params.get('client_id', ''),
         'scope': app_params.get('scope', ''),
-        'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+        'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'basic'),
         'display': app_params.get('display', ''),
         'prompt': app_params.get('prompt', ''),
         'max_age': app_params.get('max_age', ''),
@@ -233,8 +233,8 @@ class OIDCClientLogin(FlowHandler):
             default = 'code'
             ) \
           .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
-            values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
-            default = 'client_secret_basic'
+            values={'none': 'none', 'basic': 'client_secret_basic', 'form': 'client_secret_post'},
+            default = 'basic'
             ) \
         .end_section() \
         .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=False) \
@@ -460,12 +460,12 @@ class OIDCClientLogin(FlowHandler):
         }
       
       auth = None
-      if token_endpoint_auth_method == 'client_secret_basic':
+      if token_endpoint_auth_method == 'basic':
         auth = (client_id, client_secret)
-      elif token_endpoint_auth_method == 'client_secret_post':
+      elif token_endpoint_auth_method == 'form':
         data['client_secret'] = client_secret
       else:
-        raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be client_secret_basic or client_secret_post')
+        raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be basic or form')
       
       self.add_result_row('Token endpoint', token_endpoint, 'token_endpoint')
       self.end_result_table()
