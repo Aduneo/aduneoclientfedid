@@ -59,7 +59,7 @@ class OAuthClientLogin(FlowHandler):
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
       27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
       30/05/2025 (mpham) les méthodes d'authentification auprès de token étaient envore basic et form au client de client_secret_basic et lient_secret_post
-      03/06/2025 (mpham) DNS override for OAuth 2 token endpoint
+      03/06/2025 (mpham) DNS override for OAuth 2 token and introspection endpoints
     """
 
     self.log_info('--- Start OAuth 2 flow ---')
@@ -188,6 +188,7 @@ class OAuthClientLogin(FlowHandler):
         'jwks_uri': oauth2_idp_params.get('jwks_uri', ''),
         'signature_key': oauth2_idp_params.get('signature_key', ''),
         'token_endpoint_dns_override': oauth2_idp_params.get('token_endpoint_dns_override', ''),
+        'introspection_endpoint_dns_override': oauth2_idp_params.get('introspection_endpoint_dns_override', ''),
         'oauth_flow': oauth_flow,
         'flow_url': flow_url,
         'flow_http_method': flow_http_method,
@@ -272,6 +273,7 @@ class OAuthClientLogin(FlowHandler):
         .end_section() \
         .start_section('clientfedid_configuration', title="ClientFedID Configuration", collapsible=True, collapsible_default=False) \
           .text('token_endpoint_dns_override', label='Token endpoint DNS override', clipboard_category='token_endpoint_dns_override') \
+          .text('introspection_endpoint_dns_override', label='Introspection endpoint DNS override', clipboard_category='introspection_endpoint_dns_override') \
         .end_section() \
 
       form.set_request_parameters({
@@ -350,7 +352,7 @@ class OAuthClientLogin(FlowHandler):
       27/02/2025 (mpham) les paramètres IdP n'étaient pas mis à jour au bon endroit
       28/02/2025 (mpham) code_verifier n'était pas conservé
       28/02/2025 (mpham) cinématiques Client credentials et Resource owner password credentials
-      03/06/2025 (mpham) DNS override for OAuth 2 token endpoint
+      03/06/2025 (mpham) DNS override for OAuth 2 token and introspection endpoints
     """
     
     self.log_info('Redirection to IdP requested')
@@ -365,7 +367,7 @@ class OAuthClientLogin(FlowHandler):
       idp_params = self.context.idp_params
       oauth2_idp_params = idp_params['oauth2']
       for item in ['authorization_endpoint', 'token_endpoint', 'introspection_endpoint', 'introspection_http_method', 'introspection_auth_method', 'issuer', 'signature_key_configuration', 'jwks_uri', 'signature_key',
-      'token_endpoint_dns_override']:
+      'token_endpoint_dns_override', 'introspection_endpoint_dns_override']:
         oauth2_idp_params[item] = self.post_form.get(item, '').strip()
 
       # Mise à jour dans le contexte des paramètres liés au client courant

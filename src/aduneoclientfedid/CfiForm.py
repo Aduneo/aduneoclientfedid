@@ -1244,6 +1244,7 @@ class RequesterForm(CfiForm):
       auth_login: login ou jeton, pour récupérer la valeur d'un champ du formulaire, mettre par exemple @['client_id']
       auth_secret: mot de passe
       verify_certificates: booléen indiquant le requêteur HTTP doit vérifier le certificat présenté par le serveur
+      dns_override: adresse IP/nom à utiliser pour se connecter au serveur au lieu de réaliser une résolution DNS du domaine de l'URL
       
     Toutes les valeurs des paramètres peuvent être récupérées depuis le formulaire, par @field_id (par exemple @verify_certificates)
     

@@ -81,7 +81,7 @@ class OAuthClientAdmin(BaseHandler):
       31/01/2025 (mpham) option same_as_oidc pour la configuration des endpoints
       31/01/2025 (mpham) création d'un client pour un IdP existant
       25/02/2025 (mpham) modification du nom du client
-      03/06/2025 (mpham) DNS override for OAuth 2 token endpoint
+      03/06/2025 (mpham) DNS override for OAuth 2 token and introspection endpoints
     """
 
     idp_id = self.get_query_string_param('idpid', '')
@@ -113,6 +113,7 @@ class OAuthClientAdmin(BaseHandler):
       'jwks_uri': oauth2_params.get('jwks_uri', ''),
       'signature_key': oauth2_params.get('signature_key', ''),
       'token_endpoint_dns_override': oauth2_params.get('token_endpoint_dns_override', ''),
+      'introspection_endpoint_dns_override': oauth2_params.get('introspection_endpoint_dns_override', ''),
       'oauth_flow': app_params.get('oauth_flow', 'Authorization Code'),
       'pkce_method': app_params.get('pkce_method', 'S256'),
       'redirect_uri': app_params.get('redirect_uri', ''),
@@ -171,6 +172,7 @@ class OAuthClientAdmin(BaseHandler):
       .end_section() \
       .start_section('clientfedid_configuration', title="ClientFedID Configuration") \
         .text('token_endpoint_dns_override', label='Token endpoint DNS override', clipboard_category='token_endpoint_dns_override') \
+        .text('introspection_endpoint_dns_override', label='Introspection endpoint DNS override', clipboard_category='introspection_endpoint_dns_override') \
       .end_section() \
       .start_section('connection_options', title="Connection options") \
         .check_box('verify_certificates', label='Verify certificates') \
@@ -199,7 +201,7 @@ class OAuthClientAdmin(BaseHandler):
       14/02/2025 (mpham) en création, un client vide était créé
       25/02/2025 (mpham) modification du nom du client
       30/05/2025 (mpham) les paramètres Oauth 2 de l'IdP n'était pas créés quand on ajoutait une fonctionnalité OAuth2 d'un Idp n'en ayant pas
-      03/06/2025 (mpham) DNS override for OAuth 2 token endpoint
+      03/06/2025 (mpham) DNS override for OAuth 2 token and introspection endpoints
     """
     
     idp_id = self.post_form['idp_id']
@@ -233,7 +235,7 @@ class OAuthClientAdmin(BaseHandler):
     
     for item in ['endpoint_configuration', 'metadata_uri', 'authorization_endpoint', 'token_endpoint', 
     'revocation_endpoint', 'introspection_endpoint', 'introspection_method', 'signature_key_configuration', 'jwks_uri', 'signature_key',
-    'token_endpoint_dns_override']:
+    'token_endpoint_dns_override', 'introspection_endpoint_dns_override']:
       if self.post_form.get(item, '') == '':
         oauth2_params.pop(item, None)
       else:
