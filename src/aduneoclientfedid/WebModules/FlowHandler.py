@@ -723,6 +723,7 @@ class FlowHandler(BaseHandler):
       
       for access_token in self.context['access_tokens'].values():
         introspection = True
+        revocation = True
         token_exchange = True
         if 'refresh_token' in access_token:
           refresh = True
@@ -749,6 +750,8 @@ class FlowHandler(BaseHandler):
         self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oidc/userinfo/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Userinfo</span>')
       if introspection:
         self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/introspection/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Introspect AT</span>')
+      if revocation:
+        self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/revocation/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Revoke AT</span>')
       if refresh:
         self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/refresh/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">Refresh AT</span>')
       if logout:

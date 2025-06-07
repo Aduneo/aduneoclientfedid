@@ -109,7 +109,7 @@ class OAuth2Refresh(FlowHandler):
       form = RequesterForm('refresh', form_content, action='/client/oauth2/refresh/sendrequest', request_url='@[token_endpoint]', mode='api') \
         .hidden('contextid') \
         .text('token_endpoint', label='Token endpoint', clipboard_category='token_endpoint') \
-        .closed_list('refresh_tokens', label='Select refresh tokens', 
+        .closed_list('refresh_tokens', label='Select refresh token', 
           values = refresh_tokens,
           default = default_refresh_token,
           on_change = """let value = cfiForm.getThisFieldValue();
