@@ -709,6 +709,7 @@ class FlowHandler(BaseHandler):
       logout = False
       introspection = False
       refresh = False
+      revocation = False
       token_exchange = False
       oauth_exchange = False
       

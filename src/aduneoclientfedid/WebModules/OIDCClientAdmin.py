@@ -81,6 +81,7 @@ class OIDCClientAdmin(BaseHandler):
       31/01/2025 (mpham) option same_as_oauth2 pour la configuration des endpoints
       31/01/2025 (mpham) création d'un client pour un IdP existant
       25/02/2025 (mpham) modification du nom du client
+      08/06/2025 (mpham) DNS override for OIDC token and userinfo endpoints
     """
 
     idp_id = self.get_query_string_param('idpid', '')
@@ -112,12 +113,14 @@ class OIDCClientAdmin(BaseHandler):
       'signature_key_configuration': oidc_params.get('signature_key_configuration', 'discovery_uri'),
       'jwks_uri': oidc_params.get('jwks_uri', ''),
       'signature_key': oidc_params.get('signature_key', ''),
+      'token_endpoint_dns_override': oidc_params.get('token_endpoint_dns_override', ''),
+      'userinfo_endpoint_dns_override': oidc_params.get('userinfo_endpoint_dns_override', ''),
       'redirect_uri': app_params.get('redirect_uri', ''),
       'post_logout_redirect_uri': app_params.get('post_logout_redirect_uri', ''),
       'client_id': app_params.get('client_id', ''),
       'scope': app_params.get('scope', 'openid'),
       'response_type': app_params.get('response_type', 'code'),
-      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'basic'),
       'end_session_endpoint_method': app_params.get('end_session_endpoint_method', 'post'),
       'display': app_params.get('display', ''),
       'prompt': app_params.get('prompt', ''),
@@ -174,14 +177,14 @@ class OIDCClientAdmin(BaseHandler):
           default = 'code'
           ) \
         .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
-          values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
-          default = 'client_secret_basic'
+          values={'none': 'none', 'basic': 'client_secret_basic', 'form': 'client_secret_post'},
+          default = 'basic'
           ) \
         .closed_list('end_session_endpoint_method', label='End session endpoint HTTP method', 
           values={'get': 'GET', 'post': 'POST'},
           default = 'post'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
       .end_section() \
       .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=True) \
         .closed_list('display', label='Display', 
@@ -197,6 +200,10 @@ class OIDCClientAdmin(BaseHandler):
         .text('id_token_hint', label='ID Token Hint', clipboard_category='id_token_hint') \
         .text('login_hint', label='Login Hint', clipboard_category='login_hint') \
         .text('acr_values', label='ACR Values', clipboard_category='acr_values') \
+      .end_section() \
+      .start_section('clientfedid_configuration', title="ClientFedID Configuration", collapsible=True, collapsible_default=True) \
+        .text('token_endpoint_dns_override', label='Token endpoint DNS override', clipboard_category='token_endpoint_dns_override') \
+        .text('userinfo_endpoint_dns_override', label='Userinfo endpoint DNS override', clipboard_category='userinfo_endpoint_dns_override') \
       .end_section() \
       .start_section('connection_options', title="Connection options") \
         .check_box('verify_certificates', label='Verify certificates') \
@@ -229,6 +236,7 @@ class OIDCClientAdmin(BaseHandler):
       14/02/2025 (mpham) en création, un client vide était créé
       25/02/2025 (mpham) modification du nom du client
       30/05/2025 (mpham) les paramètres OIDC de l'IdP n'était pas créés quand on ajoutait une fonctionnalité OIDC d'un Idp n'en ayant pas
+      08/06/2025 (mpham) DNS override for OIDC token and userinfo endpoints
     """
     
     idp_id = self.post_form['idp_id']
@@ -261,7 +269,8 @@ class OIDCClientAdmin(BaseHandler):
     app_params['name'] = self.post_form['app_name'].strip()
     
     for item in ['endpoint_configuration', 'discovery_uri', 'issuer', 'authorization_endpoint', 'token_endpoint', 
-    'end_session_endpoint', 'userinfo_endpoint', 'userinfo_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
+    'end_session_endpoint', 'userinfo_endpoint', 'userinfo_method', 'signature_key_configuration', 'jwks_uri', 'signature_key',
+    'token_endpoint_dns_override', 'userinfo_endpoint_dns_override']:
       if self.post_form.get(item, '') == '':
         oidc_params.pop(item, None)
       else:
@@ -511,7 +520,7 @@ class OIDCClientAdmin(BaseHandler):
       'client_id': app_params.get('client_id', ''),
       'scope': app_params.get('scope', 'openid'),
       'response_type': app_params.get('response_type', 'code'),
-      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'basic'),
       'end_session_endpoint_method': app_params.get('end_session_endpoint_method', 'post'),
       'display': app_params.get('display', ''),
       'prompt': app_params.get('prompt', ''),
@@ -542,14 +551,14 @@ class OIDCClientAdmin(BaseHandler):
           default = 'code'
           ) \
         .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
-          values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
-          default = 'client_secret_basic'
+          values={'none': 'none', 'basic': 'client_secret_basic', 'form': 'client_secret_post'},
+          default = 'basic'
           ) \
         .closed_list('end_session_endpoint_method', label='End session endpoint HTTP method', 
           values={'get': 'GET', 'post': 'POST'},
           default = 'post'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
       .end_section() \
       .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=True) \
         .closed_list('display', label='Display', 

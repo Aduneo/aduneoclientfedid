@@ -184,6 +184,7 @@ class OAuth2Introspection(FlowHandler):
     Versions:
       04/09/2024 (mpham) version initiale adaptée de userinfo
       27/02/2025 (mpham) les paramètres IdP n'étaient pas mis à jour au bon endroit
+      05/06/2025 (mpham) DNS override
     """
     
     #self.add_html('<pre>'+json.dumps(self.post_form, indent=2)+'</pre>')

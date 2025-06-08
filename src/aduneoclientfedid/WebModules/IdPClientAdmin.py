@@ -76,6 +76,7 @@ class IdPClientAdmin(BaseHandler):
       28/01/2025 (mpham) paramètres CAS
       31/01/2025 (mpham) SAML : si l'entity ID n'est pas donnée, on n'enregistre pas les bindings (ça permet de conserver saml à {})
       03/06/2025 (mpham) DNS override for OAuth 2 token endpoint
+      08/06/2025 (mpham) DNS override for all OIDC and OAuth 2 endpoints
     """
     
     idp_id = self.post_form['idp_id']
@@ -110,7 +111,8 @@ class IdPClientAdmin(BaseHandler):
 
     # Paramètres OIDC
     for item in ['endpoint_configuration', 'discovery_uri', 'issuer', 'authorization_endpoint', 'token_endpoint', 
-    'end_session_endpoint', 'userinfo_endpoint', 'userinfo_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
+    'end_session_endpoint', 'userinfo_endpoint', 'userinfo_method', 'signature_key_configuration', 'jwks_uri', 'signature_key',
+    'token_endpoint_dns_override', 'userinfo_endpoint_dns_override']:
       if self.post_form.get('oidc_'+item, '') == '':
         oidc_params.pop(item, None)
       else:
@@ -119,7 +121,7 @@ class IdPClientAdmin(BaseHandler):
     # Paramètres OAuth 2
     for item in ['endpoint_configuration', 'metadata_uri', 'authorization_endpoint', 'token_endpoint', 
     'revocation_endpoint', 'introspection_endpoint', 'introspection_http_method', 'introspection_auth_method', 'signature_key_configuration', 'jwks_uri', 'signature_key',
-    'token_endpoint_dns_override']:
+    'token_endpoint_dns_override', 'introspection_endpoint_dns_override', 'revocation_endpoint_dns_override']:
       if self.post_form.get('oauth2_'+item, '') == '':
         oauth2_params.pop(item, None)
       else:
@@ -456,6 +458,7 @@ class IdPClientAdmin(BaseHandler):
       31/01/2025 (mpham) en lecture seule, l'affiche pas les INPUT des sections non définies
       31/01/2025 (mpham) option same_as pour la configuration des endpoints OIDC et OAuth 2
       03/06/2025 (mpham) DNS override for OAuth 2 token endpoint
+      08/06/2025 (mpham) DNS override for all OIDC and OAuth 2 endpoints
     """
 
     idp_params = idp['idp_parameters']
@@ -491,6 +494,8 @@ class IdPClientAdmin(BaseHandler):
       'oidc_signature_key_configuration': oidc_params.get('signature_key_configuration', 'discovery_uri'),
       'oidc_jwks_uri': oidc_params.get('jwks_uri', ''),
       'oidc_signature_key': oidc_params.get('signature_key', ''),
+      'oidc_token_endpoint_dns_override': oidc_params.get('token_endpoint_dns_override', ''),
+      'oidc_userinfo_endpoint_dns_override': oidc_params.get('userinfo_endpoint_dns_override', ''),
       'oauth2_endpoint_configuration': oauth2_params.get('endpoint_configuration', 'metadata_uri'),
       'oauth2_metadata_uri': oauth2_params.get('metadata_uri', ''),
       'oauth2_authorization_endpoint': oauth2_params.get('', ''),
@@ -503,6 +508,8 @@ class IdPClientAdmin(BaseHandler):
       'oauth2_jwks_uri': oauth2_params.get('jwks_uri', ''),
       'oauth2_signature_key': oauth2_params.get('signature_key', ''),
       'oauth2_token_endpoint_dns_override': oauth2_params.get('token_endpoint_dns_override', ''),
+      'oauth2_introspection_endpoint_dns_override': oauth2_params.get('introspection_endpoint_dns_override', ''),
+      'oauth2_revocation_endpoint_dns_override': oauth2_params.get('revocation_endpoint_dns_override', ''),
       'idp_entity_id': saml_params.get('idp_entity_id', ''),
       'idp_sso_url': saml_params.get('idp_sso_url', ''),
       'idp_slo_url': saml_params.get('idp_slo_url', ''),
@@ -544,6 +551,10 @@ class IdPClientAdmin(BaseHandler):
             ) \
           .text('oidc_jwks_uri', label='JWKS URI', displayed_when="@[oidc_signature_key_configuration] = 'jwks_uri'") \
           .text('oidc_signature_key', label='Signature key', displayed_when="@[oidc_signature_key_configuration] = 'local_configuration'") \
+        .end_section() \
+        .start_section('oidc_clientfedid', title="OIDC ClientFedID configuration", collapsible=True, collapsible_default=True) \
+          .text('oidc_token_endpoint_dns_override', label='Token endpoint DNS override', clipboard_category='token_endpoint_dns_override') \
+          .text('oidc_userinfo_endpoint_dns_override', label='Userinfo endpoint DNS override', clipboard_category='userinfo_endpoint_dns_override') \
         .end_section() 
     form \
       .end_section() \
@@ -571,8 +582,10 @@ class IdPClientAdmin(BaseHandler):
             ) \
           .text('oauth2_revocation_endpoint', label='Revocation endpoint', clipboard_category='revocation_endpoint', displayed_when="@[oauth2_endpoint_configuration] = 'local_configuration'") \
         .end_section() \
-        .start_section('oauth2_clientfedid', title="OAuth 2 ClientFedID configuration") \
+        .start_section('oauth2_clientfedid', title="OAuth 2 ClientFedID configuration", collapsible=True, collapsible_default=True) \
           .text('oauth2_token_endpoint_dns_override', label='Token endpoint DNS override', clipboard_category='token_endpoint_dns_override') \
+          .text('oauth2_introspection_endpoint_dns_override', label='Introspection endpoint DNS override', clipboard_category='introspection_endpoint_dns_override') \
+          .text('oauth2_revocation_endpoint_dns_override', label='Revocation endpoint DNS override', clipboard_category='revocation_endpoint_dns_override') \
         .end_section() 
     form \
       .end_section() \
