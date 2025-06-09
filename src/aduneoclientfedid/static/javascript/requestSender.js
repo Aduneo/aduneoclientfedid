@@ -150,6 +150,16 @@ function _getHtmlJson(method, thisurl, data, menu_id=null, continueRequest=false
         if (continueRequest) {
           if (xhttp.response.stop === true) {
             if (intervalId) { clearInterval(intervalId); intervalId = null; }
+            if (!firstBlock) {
+              // on scroll pour mettre le haut du block en haut de la page
+              panelTop = document.getElementById('panelTop')
+              if (panelTop) {
+                // Scroll
+                panelTop.scrollIntoView();
+                panelTop.remove();
+              }
+            }
+            document.getElementById('text_ph').insertAdjacentHTML('beforeend', '<span id="panelTop"></span>');
             firstBlock = false;
           } else {
             if (intervalId === null) {
