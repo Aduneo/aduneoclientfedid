@@ -16,7 +16,6 @@ limitations under the License.
 import copy
 import html
 import json
-import requests
 import time
 import traceback
 import uuid

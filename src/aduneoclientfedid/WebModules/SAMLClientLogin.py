@@ -19,7 +19,6 @@ import copy
 import html
 import json
 import os
-import requests
 import time
 import traceback
 import urllib.parse

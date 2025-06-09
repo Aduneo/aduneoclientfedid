@@ -16,7 +16,6 @@ limitations under the License.
 import copy
 import html
 import json
-import requests
 import time
 import traceback
 import uuid
@@ -28,6 +27,7 @@ from ..BasicXML import BasicXML
 from ..Configuration import Configuration
 from ..Context import Context
 from ..Explanation import Explanation
+from ..WebRequest import WebRequest
 from .Clipboard import Clipboard
 from .FlowHandler import FlowHandler
 
@@ -328,18 +328,18 @@ class CASClientLogin(FlowHandler):
         self.log_info(f"  with data {data}")
         verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
         self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-        r = requests.get(cas_server_validate_url, params=data, verify=verify_certificates)
+        r = WebRequest.get(cas_server_validate_url, query=data, verify_certificate=verify_certificates)
       except Exception as error:
         self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
         raise AduneoError(self.log_error(('  ' * 1)+'token retrieval error: '+str(error)))
-      if r.status_code == 200:
+      if r.status == 200:
         self.add_html('<div class="intertable">Success</div>')
       else:
-        self.add_html('<div class="intertable">Error, status code '+str(r.status_code)+'</div>')
-        raise AduneoError(self.log_error('token retrieval error: status code '+str(r.status_code)+", "+r.text))
+        self.add_html('<div class="intertable">Error, status code '+str(r.status)+'</div>')
+        raise AduneoError(self.log_error('token retrieval error: status code '+str(r.status)+", "+str(r.data)))
 
       self.log_info("IdP response:")
-      self.log_info(r.text)
+      self.log_info(r.data)
 
       self.start_result_table()
 

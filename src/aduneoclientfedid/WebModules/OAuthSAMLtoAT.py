@@ -15,7 +15,6 @@ limitations under the License.
 """
 import html
 import json
-import requests
 import time
 import traceback
 import urllib.parse
@@ -24,6 +23,7 @@ from ..BaseServer import AduneoError
 from ..BaseServer import register_web_module, register_url, register_page_url
 from ..Configuration import Configuration
 from ..Explanation import Explanation
+from ..WebRequest import WebRequest
 from ..Help import Help
 from ..CfiForm import RequesterForm
 from .FlowHandler import FlowHandler
@@ -311,15 +311,15 @@ class OAuth2SAMLtoAT(FlowHandler):
       self.log_info('Starting metadata retrieval')
       self.log_info('server_uri (discovery or metadata): '+server_uri)
       self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-      r = requests.get(server_uri, verify=verify_certificates)
-      self.log_info(r.text)
-      if r.status_code == 200:
+      r = WebRequest.get(server_uri, verify_certificate=verify_certificates)
+      self.log_info(r.data)
+      if r.status == 200:
         meta_data = r.json()
         self.add_html("""<div class="intertable">Success</div>""")
         token_endpoint = meta_data.get('token_endpoint')
       else:
-        self.log_error('Server responded with code '+str(r.status_code))
-        self.add_html(f"""<div class="intertable">Failed. Server responded with code {status_code}</div>""")
+        self.log_error('Server responded with code '+str(r.status))
+        self.add_html(f"""<div class="intertable">Failed. Server responded with code {status}</div>""")
     except Exception as error:
       self.log_error(traceback.format_exc())
       self.add_html(f"""<div class="intertable">Failed: {error}</div>""")

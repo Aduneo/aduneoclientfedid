@@ -14,6 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import html
+import logging
+import os
+import traceback
+import urllib.parse
+
 from .BaseServer import BaseServer
 from .BaseServer import AduneoError
 from .BaseServer import WebRouter
@@ -28,17 +34,6 @@ from .WebModules.OAuthClientLogin import OAuthClientLogin
 from .WebModules.CASClientLogin import CASClientLogin
 from .WebModules.CASClientLogout import CASClientLogout
 
-import base64
-import datetime
-import html
-import http.cookies
-import jwcrypto.jwt
-import logging
-import os
-import requests
-import traceback
-import urllib.parse
-import uuid
 
 # On vérifie que les prérequis pour SAML sont présents (sinon on désactive les fonctionnalités SAML)
 #   Les modules lxml et xmlsec ne sont pas toujours faciles à installer

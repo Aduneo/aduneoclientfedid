@@ -20,7 +20,6 @@ import http.cookies
 import importlib
 import json
 import os
-import requests
 import urllib.parse
 import uuid
 import logging
