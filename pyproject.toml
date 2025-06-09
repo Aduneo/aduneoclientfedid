@@ -4,9 +4,6 @@
 requires = [
     "setuptools",
     "wheel",
-    "requests",
-    "pyopenssl",
-    "jwcrypto"
 ]
 build-backend = "setuptools.build_meta"
 
@@ -20,9 +17,9 @@ license = "Apache-2.0"
 classifiers = [
     "Topic :: System :: Systems Administration :: Authentication/Directory",
 ]
-keywords = ["identity", "federation", "openid connect", "oidc", "oauth", "oauth 2", "saml", "cas"]
+keywords = ["identity", "federation", "openid connect", "oidc", "oauth", "oauth 2", "saml", "cas", "sso"]
 dependencies = [
-    "requests",
+    "urllib3",
     "jwcrypto",
     "pyopenssl",
 ]

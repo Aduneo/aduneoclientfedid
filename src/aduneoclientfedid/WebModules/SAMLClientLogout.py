@@ -18,7 +18,6 @@ import base64
 import html
 import logging
 import os
-import requests
 import traceback
 import urllib.parse
 import uuid

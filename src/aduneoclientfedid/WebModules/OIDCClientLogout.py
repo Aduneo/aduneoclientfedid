@@ -1,5 +1,5 @@
 """
-Copyright 2023 Aduneo
+Copyright 2023-2025 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,16 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import html
+import traceback
+import uuid
+
 from ..BaseServer import AduneoError
 from ..BaseServer import BaseHandler
 from ..BaseServer import register_web_module, register_page_url, register_url
 from ..CfiForm import RequesterForm
 from ..Configuration import Configuration
+from ..WebRequest import WebRequest
 from .FlowHandler import FlowHandler
-import html
-import requests
-import traceback
-import uuid
 
 
 @register_web_module('/client/oidc/logout')
@@ -33,6 +34,7 @@ class OIDCClientLogout(FlowHandler):
     Versions:
       01/03/2021 (mpham) version initiale
       30/12/2024 (mpham) adaptation à RequesterForm
+      09/06/2025 (mpham) nouvelle organisation du contexte
   """
  
   @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=True)
@@ -50,6 +52,7 @@ class OIDCClientLogout(FlowHandler):
 
       # Récupération des paramètres nécessaires à la déconnexion
       idp_params = self.context.idp_params
+      oidc_idp_params = idp_params['oidc']
 
       app_params = None
       app_id = self.get_query_string_param('appid', '')
@@ -89,7 +92,7 @@ class OIDCClientLogout(FlowHandler):
 
       form_content = {
         'hr_context': self.context['context_id'],
-        'end_session_endpoint': idp_params.get('end_session_endpoint', ''),
+        'end_session_endpoint': oidc_idp_params.get('end_session_endpoint', ''),
         'end_session_endpoint_method': app_params.get('end_session_endpoint_method', 'post'),
         'id_token': default_id_token if default_id_token else '__input__',
         'id_token_hint': default_id_token if default_id_token else '',
@@ -179,6 +182,7 @@ class OIDCClientLogout(FlowHandler):
     
     Versions:
       30/12/2024 (mpham) version initiale adaptée du login OIDC
+      09/06/2025 (mpham) nouvelle organisation du contexte
     """
     
     self.log_info('OIDC logout flow: sending the request to the IdP')
@@ -191,8 +195,9 @@ class OIDCClientLogout(FlowHandler):
 
       # Mise à jour dans le contexte des paramètres liés à l'IdP
       idp_params = self.context.idp_params
+      oidc_idp_params = idp_params['oidc']
       for item in ['end_session_endpoint']:
-        idp_params[item] = self.post_form.get(item, '').strip()
+        oidc_idp_params[item] = self.post_form.get(item, '').strip()
 
       # Mise à jour dansle contexte des paramètres liés au client courant
       app_params = self.context.last_app_params
@@ -321,8 +326,11 @@ class OIDCClientLogout(FlowHandler):
       try:
         self.log_info('Starting metadata retrieval')
         self.log_info('discovery_uri: '+oidc_idp['discovery_uri'])
-        r = requests.get(oidc_idp['discovery_uri'], verify=False)
-        self.log_info(r.text)
+
+        verify_certificates = Configuration.is_on(oidc_idp.get('verify_certificates', 'on'))
+        self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+        r = WebRequest.get(oidc_idp['discovery_uri'], verify_certificate=verify_certificates)
+        self.log_info(r.data)
         meta_data = r.json()
         self.add_content('<script>document.getElementById("meta_data_ph").style.display = "none"</script>')
         meta_data['signature_key'] = oidc_idp.get('signature_key', '')
@@ -331,7 +339,7 @@ class OIDCClientLogout(FlowHandler):
         self.add_content('failed<br>'+str(error))
         self.send_page()
         return
-      if r.status_code != 200:
+      if r.status != 200:
         self.log_error('Server responded with code '+str(r.status_code))
         self.add_content('failed<br>Server responded with code '+str(r.status_code))
         self.send_page()
