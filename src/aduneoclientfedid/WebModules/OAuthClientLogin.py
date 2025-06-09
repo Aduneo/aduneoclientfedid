@@ -21,7 +21,6 @@ import json
 import jwcrypto.jwt
 import jwcrypto.jwk
 import random
-import requests
 import string
 import time
 import traceback
@@ -138,8 +137,8 @@ class OAuthClientLogin(FlowHandler):
           self.log_info('metadata_uri: '+oauth2_idp_params['metadata_uri'])
           verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
           self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-          r = requests.get(oauth2_idp_params['metadata_uri'], verify=verify_certificates)
-          self.log_info(r.text)
+          r = WebRequest.get(oauth2_idp_params['metadata_uri'], verify_certificate=verify_certificates)
+          self.log_info(r.data)
           meta_data = r.json()
           oauth2_idp_params.update(meta_data)
           self.add_html("""<div class="intertable">Success</div>""")
@@ -147,9 +146,9 @@ class OAuthClientLogin(FlowHandler):
           self.log_error(traceback.format_exc())
           self.add_html(f"""<div class="intertable">Failed: {error}</div>""")
           return
-        if r.status_code != 200:
-          self.log_error('Server responded with code '+str(r.status_code))
-          self.add_html(f"""<div class="intertable">Failed. Server responded with code {status_code}</div>""")
+        if r.status != 200:
+          self.log_error('Server responded with code '+str(r.status))
+          self.add_html(f"""<div class="intertable">Failed. Server responded with code {status}</div>""")
           return
 
       
@@ -764,15 +763,15 @@ class OAuthClientLogin(FlowHandler):
               try:
                 verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
                 self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-                r = requests.get(oauth2_idp_params['jwks_uri'], verify=verify_certificates)
+                r = WebRequest.get(oauth2_idp_params['jwks_uri'], verify_certificate=verify_certificates)
               except Exception as error:
                 self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
                 raise AduneoError(self.log_error(('  ' * 2)+'IdP keys retrieval error: '+str(error)))
-              if r.status_code == 200:
+              if r.status == 200:
                 self.add_html('<div class="intertable">Success</div>')
               else:
-                self.add_html('<div class="intertable">Error, status code '+str(r.status_code)+'</div>')
-                raise AduneoError(self.log_error('IdP keys retrieval error: status code '+str(r.status_code)))
+                self.add_html('<div class="intertable">Error, status code '+str(r.status)+'</div>')
+                raise AduneoError(self.log_error('IdP keys retrieval error: status code '+str(r.status)))
 
               keyset = r.json()
               self.log_info("IdP response:")
