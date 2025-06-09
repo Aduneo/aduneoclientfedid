@@ -18,9 +18,9 @@ import copy
 import datetime
 import html
 import json
-import requests
 import time
 import traceback
+import urllib.parse
 import uuid
 
 from ..BaseServer import AduneoError
@@ -31,6 +31,7 @@ from ..Context import Context
 from ..Explanation import Explanation
 from ..Help import Help
 from ..JWT import JWT
+from ..WebRequest import WebRequest
 from .Clipboard import Clipboard
 from .FlowHandler import FlowHandler
 
@@ -76,6 +77,7 @@ class OIDCClientLogin(FlowHandler):
       04/12/2024 (mpham) new auth : on conserve le contexte, mais on récupère les paramètres de la configuration
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
       27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
+      08/06/2025 (mpham) DNS override for OIDC token and userinfo endpoints
     """
 
     self.log_info('--- Start OpenID Connect flow ---')
@@ -153,8 +155,8 @@ class OIDCClientLogin(FlowHandler):
           self.log_info('discovery_uri: '+oidc_idp_params['discovery_uri'])
           verify_certificates = Configuration.is_on(oidc_idp_params.get('verify_certificates', 'on'))
           self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-          r = requests.get(oidc_idp_params['discovery_uri'], verify=verify_certificates)
-          self.log_info(r.text)
+          r = WebRequest.get(oidc_idp_params['discovery_uri'], verify_certificate=verify_certificates)
+          self.log_info(r.data)
           meta_data = r.json()
           oidc_idp_params.update(meta_data)
           self.add_html("""<div class="intertable">Success</div>""")
@@ -163,9 +165,9 @@ class OIDCClientLogin(FlowHandler):
           self.add_html(f"""<div class="intertable">Failed: {error}</div>""")
           self.send_page()
           return
-        if r.status_code != 200:
-          self.log_error('Server responded with code '+str(r.status_code))
-          self.add_html(f"""<div class="intertable">Failed. Server responded with code {status_code}</div>""")
+        if r.status != 200:
+          self.log_error('Server responded with code '+str(r.status))
+          self.add_html(f"""<div class="intertable">Failed. Server responded with code {status}</div>""")
           self.send_page()
           return
 
@@ -187,9 +189,11 @@ class OIDCClientLogin(FlowHandler):
         'signature_key_configuration': oidc_idp_params.get('signature_key_configuration', 'jwks_uri'),
         'jwks_uri': oidc_idp_params.get('jwks_uri', ''),
         'signature_key': oidc_idp_params.get('signature_key', ''),
+        'token_endpoint_dns_override': oidc_idp_params.get('token_endpoint_dns_override', ''),
+        'userinfo_endpoint_dns_override': oidc_idp_params.get('userinfo_endpoint_dns_override', ''),
         'client_id': app_params.get('client_id', ''),
         'scope': app_params.get('scope', ''),
-        'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+        'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'basic'),
         'display': app_params.get('display', ''),
         'prompt': app_params.get('prompt', ''),
         'max_age': app_params.get('max_age', ''),
@@ -233,8 +237,8 @@ class OIDCClientLogin(FlowHandler):
             default = 'code'
             ) \
           .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
-            values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
-            default = 'client_secret_basic'
+            values={'none': 'none', 'basic': 'client_secret_basic', 'form': 'client_secret_post'},
+            default = 'basic'
             ) \
         .end_section() \
         .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=False) \
@@ -255,6 +259,10 @@ class OIDCClientLogin(FlowHandler):
         .start_section('security_params', title="Security", collapsible=True, collapsible_default=False) \
           .text('state', label='State') \
           .text('nonce', label='Nonce') \
+        .end_section() \
+        .start_section('clientfedid_configuration', title="ClientFedID Configuration", collapsible=True, collapsible_default=True) \
+          .text('token_endpoint_dns_override', label='Token endpoint DNS override', clipboard_category='token_endpoint_dns_override') \
+          .text('userinfo_endpoint_dns_override', label='Userinfo endpoint DNS override', clipboard_category='userinfo_endpoint_dns_override') \
         .end_section() \
 
       form.set_request_parameters({
@@ -330,6 +338,7 @@ class OIDCClientLogin(FlowHandler):
       08/08/2024 (mpham) nouvelle organisation du contexte
       23/08/2024 (mpham) strip des données du formulaire
       27/02/2025 (mpham) les paramètres IdP n'étaient pas mis à jour au bon endroit
+      08/06/2025 (mpham) DNS override for OIDC token and userinfo endpoints
     """
     
     self.log_info('Redirection to IdP requested')
@@ -343,7 +352,8 @@ class OIDCClientLogin(FlowHandler):
       # Mise à jour dans le contexte des paramètres liés à l'IdP
       idp_params = self.context.idp_params
       oidc_idp_params = idp_params['oidc']
-      for item in ['authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'userinfo_method', 'issuer', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
+      for item in ['authorization_endpoint', 'token_endpoint', 'userinfo_endpoint', 'userinfo_method', 'issuer', 'signature_key_configuration', 'jwks_uri', 'signature_key',
+      'token_endpoint_dns_override', 'userinfo_endpoint_dns_override']:
         oidc_idp_params[item] = self.post_form.get(item, '').strip()
 
       # Mise à jour dansle contexte des paramètres liés au client courant
@@ -393,6 +403,7 @@ class OIDCClientLogin(FlowHandler):
       28/11/2024 (mpham) dans le contexte, on ajoute l'identifiant du client ayant récupéré les jetons
       23/12/2024 (mpham) les clés HMAC peuvent être données en JWK ou directement avec le secret
       27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
+      08/06/2025 (mpham) DNS override for OIDC token and userinfo endpoints
     """
 
     self.add_javascript_include('/javascript/resultTable.js')
@@ -460,12 +471,12 @@ class OIDCClientLogin(FlowHandler):
         }
       
       auth = None
-      if token_endpoint_auth_method == 'client_secret_basic':
+      if token_endpoint_auth_method == 'basic':
         auth = (client_id, client_secret)
-      elif token_endpoint_auth_method == 'client_secret_post':
+      elif token_endpoint_auth_method == 'form':
         data['client_secret'] = client_secret
       else:
-        raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be client_secret_basic or client_secret_post')
+        raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be basic or form')
       
       self.add_result_row('Token endpoint', token_endpoint, 'token_endpoint')
       self.end_result_table()
@@ -476,15 +487,24 @@ class OIDCClientLogin(FlowHandler):
         verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
         self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
         self.log_info(('  ' * 1)+'Client ID: '+client_id)
-        r = requests.post(token_endpoint, data=data, auth=auth, verify=verify_certificates)
+        
+        token_endpoint_fqdn = urllib.parse.urlparse(token_endpoint).hostname
+        dns_override = oidc_idp_params.get('token_endpoint_dns_override', '')
+        if dns_override != '':
+          self.log_info(('  ' * 1)+f"DNS override: {token_endpoint_fqdn} is revolved to {dns_override}")
+        else:
+          dns_override = None
+        
+        r = WebRequest.post(token_endpoint, form=data, basic_auth=auth, verify_certificate=verify_certificates, dns_override=dns_override)
+
       except Exception as error:
         self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
         raise AduneoError(self.log_error(('  ' * 1)+'token retrieval error: '+str(error)))
-      if r.status_code == 200:
+      if r.status == 200:
         self.add_html('<div class="intertable">Success</div>')
       else:
-        self.add_html('<div class="intertable">Error, status code '+str(r.status_code)+'</div>')
-        raise AduneoError(self.log_error('token retrieval error: status code '+str(r.status_code)+", "+r.text))
+        self.add_html('<div class="intertable">Error, status code '+str(r.status)+'</div>')
+        raise AduneoError(self.log_error('token retrieval error: status code '+str(r.status)+", "+r.text))
 
       response = r.json()
       self.log_info("IdP response:")
@@ -617,15 +637,15 @@ class OIDCClientLogin(FlowHandler):
           try:
             verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
             self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-            r = requests.get(oidc_idp_params['jwks_uri'], verify=verify_certificates)
+            r = WebRequest.get(oidc_idp_params['jwks_uri'], verify_certificate=verify_certificates)
           except Exception as error:
             self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
             raise AduneoError(self.log_error(('  ' * 2)+'IdP keys retrieval error: '+str(error)))
-          if r.status_code == 200:
+          if r.status == 200:
             self.add_html('<div class="intertable">Success</div>')
           else:
-            self.add_html('<div class="intertable">Error, status code '+str(r.status_code)+'</div>')
-            raise AduneoError(self.log_error('IdP keys retrieval error: status code '+str(r.status_code)))
+            self.add_html('<div class="intertable">Error, status code '+str(r.status)+'</div>')
+            raise AduneoError(self.log_error('IdP keys retrieval error: status code '+str(r.status)))
 
           keyset = r.json()
           self.log_info("IdP response:")

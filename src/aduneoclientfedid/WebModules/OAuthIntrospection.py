@@ -49,6 +49,7 @@ class OAuth2Introspection(FlowHandler):
       28/08/2024 (mpham) version initiale adaptée de userinfo
       29/12/2025 (mpham) les méthodes HTTP et Authn peuvent être héritées de celles définis auprès de l'IdP
       27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
+      05/06/2025 (mpham) DNS override
     """
     
     try:
@@ -61,7 +62,9 @@ class OAuth2Introspection(FlowHandler):
       self.log_info(('  ' * 1)+'for context: '+self.context['context_id'])
 
       idp_params = self.context.idp_params
-      oauth2_idp_params = idp_params['oauth2']
+      oauth2_idp_params = idp_params.get('oauth2')
+      if not oauth2_idp_params:
+        raise AduneoError(f"OAuth 2 IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
       app_params = self.context.last_app_params
       api_params = self.context.last_api_params
 
@@ -109,6 +112,7 @@ class OAuth2Introspection(FlowHandler):
         'introspection_api': api_params.get('introspection_api', '__input__'),
         'introspection_login': api_params.get('introspection_login', ''),
         'introspection_secret': '',
+        'introspection_endpoint_dns_override': oauth2_idp_params.get('introspection_endpoint_dns_override', ''),
       }
       form = RequesterForm('introspection', form_content, action='/client/oauth2/introspection/sendrequest', request_url='@[introspection_endpoint]', mode='api') \
         .hidden('contextid') \
@@ -132,6 +136,7 @@ class OAuth2Introspection(FlowHandler):
           ) \
         .text('introspection_login', label='Login', clipboard_category='client_id', displayed_when="@[introspection_api] = '__input__' and (@[introspection_auth_method] = 'basic' or @[introspection_auth_method] = 'bearer_token')") \
         .password('introspection_secret', label='Secret', clipboard_category='client_secret!', displayed_when="@[introspection_api] = '__input__' and @[introspection_auth_method] = 'basic'") \
+        .text('introspection_endpoint_dns_override', label='Introspection endpoint DNS override', clipboard_category='introspection_endpoint_dns_override') \
         
       form.set_title('Introspection '+idp_params['name'])
       form.set_request_parameters({
@@ -144,6 +149,7 @@ class OAuth2Introspection(FlowHandler):
         'auth_login': '@[introspection_login]',
         'auth_secret': '@[introspection_secret]',
         'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
+        'dns_override': '@[introspection_endpoint_dns_override]',
         })
       form.modify_visible_requester_fields({
         'request_url': True,
@@ -178,6 +184,7 @@ class OAuth2Introspection(FlowHandler):
     Versions:
       04/09/2024 (mpham) version initiale adaptée de userinfo
       27/02/2025 (mpham) les paramètres IdP n'étaient pas mis à jour au bon endroit
+      05/06/2025 (mpham) DNS override
     """
     
     #self.add_html('<pre>'+json.dumps(self.post_form, indent=2)+'</pre>')
@@ -190,7 +197,7 @@ class OAuth2Introspection(FlowHandler):
       # Mise à jour de la requête en cours
       idp_params = self.context.idp_params
       oauth2_idp_params = idp_params['oauth2']
-      for item in ['introspection_endpoint']:
+      for item in ['introspection_endpoint', 'introspection_endpoint_dns_override']:
         oauth2_idp_params[item] = self.post_form.get(item, '')
 
       if 'hr_verify_certificates' in self.post_form:
@@ -221,7 +228,7 @@ class OAuth2Introspection(FlowHandler):
       
       self.start_result_table()
       self.log_info('Introspection response'+json.dumps(json_response, indent=2))
-      self.add_result_row('Introspection response', json.dumps(json_response, indent=2), 'userinfo_response', expanded=True)
+      self.add_result_row('Introspection response', json.dumps(json_response, indent=2), 'introspection_response', expanded=True)
       self.end_result_table()
       
     except AduneoError as error:

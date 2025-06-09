@@ -47,6 +47,7 @@ class OIDCUserinfo(FlowHandler):
     Versions:
       08/08/2024 (mpham) version initiale
       29/05/2025 (mpham) adaptation à la nouvelle structure de idp_params
+      08/06/2025 (mpham) DNS override
     """
     
     try:
@@ -78,6 +79,7 @@ class OIDCUserinfo(FlowHandler):
         'userinfo_endpoint': oidc_idp_params.get('userinfo_endpoint', ''),
         'access_token': default_access_token,
         'userinfo_method': oidc_idp_params.get('userinfo_method', 'get'),
+        'userinfo_endpoint_dns_override': oidc_idp_params.get('userinfo_endpoint_dns_override', ''),
       }
       form = RequesterForm('userinfo', form_content, action='/client/oidc/userinfo/sendrequest', request_url='@[userinfo_endpoint]', mode='api') \
         .hidden('contextid') \
@@ -90,6 +92,7 @@ class OIDCUserinfo(FlowHandler):
           values={'get': 'GET', 'post': 'POST'},
           default = 'get'
           ) \
+        .text('userinfo_endpoint_dns_override', label='Userinfo endpoint DNS override', clipboard_category='userinfo_endpoint_dns_override') \
         
       form.set_title('User Info '+idp_params['name'])
       form.set_request_parameters(None)
@@ -99,6 +102,7 @@ class OIDCUserinfo(FlowHandler):
         'auth_method': 'bearer_token',
         'auth_login': '@[access_token]',
         'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
+        'dns_override': '@[userinfo_endpoint_dns_override]',
         })
       form.modify_visible_requester_fields({
         'request_url': True,
@@ -131,6 +135,7 @@ class OIDCUserinfo(FlowHandler):
     Versions:
       08/08/2024 (mpham) version initiale
       29/05/2025 (mpham) adaptation à la nouvelle structure de idp_params
+      08/06/2025 (mpham) DNS override
     """
     
     #self.add_html('<pre>'+json.dumps(self.post_form, indent=2)+'</pre>')
@@ -142,7 +147,7 @@ class OIDCUserinfo(FlowHandler):
       oidc_idp_params = idp_params.get('oidc')
       if not oidc_idp_params:
         raise AduneoError(f"OIDC IdP configuration missing for {idp_params.get('name', idp_id)}")
-      for item in ['userinfo_endpoint', 'userinfo_method']:
+      for item in ['userinfo_endpoint', 'userinfo_method', 'userinfo_endpoint_dns_override']:
         oidc_idp_params[item] = self.post_form.get(item, '')
 
       if 'hr_verify_certificates' in self.post_form:

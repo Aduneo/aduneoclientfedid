@@ -81,6 +81,7 @@ class OAuthClientAdmin(BaseHandler):
       31/01/2025 (mpham) option same_as_oidc pour la configuration des endpoints
       31/01/2025 (mpham) création d'un client pour un IdP existant
       25/02/2025 (mpham) modification du nom du client
+      03/06/2025 (mpham) DNS override for OAuth 2 token, introspection, and revocation endpoints
     """
 
     idp_id = self.get_query_string_param('idpid', '')
@@ -103,21 +104,24 @@ class OAuthClientAdmin(BaseHandler):
       'app_name': app_params.get('name', ''),
       'endpoint_configuration': oauth2_params.get('endpoint_configuration', 'metadata_uri'),
       'metadata_uri': oauth2_params.get('metadata_uri', ''),
-      'authorization_endpoint': oauth2_params.get('', ''),
-      'token_endpoint': oauth2_params.get('', ''),
+      'authorization_endpoint': oauth2_params.get('authorization_endpoint', ''),
+      'token_endpoint': oauth2_params.get('token_endpoint', ''),
       'introspection_endpoint': oauth2_params.get('introspection_endpoint', ''),
       'introspection_method': oauth2_params.get('introspection_method', 'get'),
       'revocation_endpoint': oauth2_params.get('revocation_endpoint', ''),
       'signature_key_configuration': oauth2_params.get('signature_key_configuration', 'jwks_uri'),
       'jwks_uri': oauth2_params.get('jwks_uri', ''),
       'signature_key': oauth2_params.get('signature_key', ''),
+      'token_endpoint_dns_override': oauth2_params.get('token_endpoint_dns_override', ''),
+      'introspection_endpoint_dns_override': oauth2_params.get('introspection_endpoint_dns_override', ''),
+      'revocation_endpoint_dns_override': oauth2_params.get('revocation_endpoint_dns_override', ''),
       'oauth_flow': app_params.get('oauth_flow', 'Authorization Code'),
       'pkce_method': app_params.get('pkce_method', 'S256'),
       'redirect_uri': app_params.get('redirect_uri', ''),
       'client_id': app_params.get('client_id', ''),
       'scope': app_params.get('scope', ''),
       'response_type': app_params.get('response_type', 'code'),
-      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'basic'),
       'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
       }
     
@@ -162,10 +166,15 @@ class OAuthClientAdmin(BaseHandler):
           default = 'code'
           ) \
         .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
-          values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
-          default = 'client_secret_basic'
+          values={'none': 'none', 'basic': 'client_secret_basic', 'form': 'client_secret_post'},
+          default = 'basic'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
+      .end_section() \
+      .start_section('clientfedid_configuration', title="ClientFedID Configuration", collapsible=True, collapsible_default=True) \
+        .text('token_endpoint_dns_override', label='Token endpoint DNS override', clipboard_category='token_endpoint_dns_override') \
+        .text('introspection_endpoint_dns_override', label='Introspection endpoint DNS override', clipboard_category='introspection_endpoint_dns_override') \
+        .text('revocation_endpoint_dns_override', label='Revocation endpoint DNS override', clipboard_category='revocation_endpoint_dns_override') \
       .end_section() \
       .start_section('connection_options', title="Connection options") \
         .check_box('verify_certificates', label='Verify certificates') \
@@ -194,6 +203,7 @@ class OAuthClientAdmin(BaseHandler):
       14/02/2025 (mpham) en création, un client vide était créé
       25/02/2025 (mpham) modification du nom du client
       30/05/2025 (mpham) les paramètres Oauth 2 de l'IdP n'était pas créés quand on ajoutait une fonctionnalité OAuth2 d'un Idp n'en ayant pas
+      03/06/2025 (mpham) DNS override for OAuth 2 token, introspection, and revocation endpoints
     """
     
     idp_id = self.post_form['idp_id']
@@ -226,7 +236,8 @@ class OAuthClientAdmin(BaseHandler):
     app_params['name'] = self.post_form['app_name'].strip()
     
     for item in ['endpoint_configuration', 'metadata_uri', 'authorization_endpoint', 'token_endpoint', 
-    'revocation_endpoint', 'introspection_endpoint', 'introspection_method', 'signature_key_configuration', 'jwks_uri', 'signature_key']:
+    'revocation_endpoint', 'introspection_endpoint', 'introspection_method', 'signature_key_configuration', 'jwks_uri', 'signature_key',
+    'token_endpoint_dns_override', 'introspection_endpoint_dns_override', 'revocation_endpoint_dns_override']:
       if self.post_form.get(item, '') == '':
         oauth2_params.pop(item, None)
       else:
@@ -475,7 +486,7 @@ class OAuthClientAdmin(BaseHandler):
       'client_id': app_params.get('client_id', ''),
       'scope': app_params.get('scope', ''),
       'response_type': app_params.get('response_type', 'code'),
-      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'client_secret_basic'),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'basic'),
       }
     
     form = CfiForm('oauth2adminmulti', form_content, action='modifymulti', submit_label='Save') \
@@ -503,10 +514,10 @@ class OAuthClientAdmin(BaseHandler):
           default = 'code'
           ) \
         .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
-          values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
-          default = 'client_secret_basic'
+          values={'none': 'none', 'basic': 'client_secret_basic', 'form': 'client_secret_post'},
+          default = 'basic'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
       .end_section() 
       
     form.set_title('OAuth 2 Authorization'+('' if form_content['name'] == '' else ': '+form_content['name']))

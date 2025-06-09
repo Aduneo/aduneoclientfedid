@@ -430,9 +430,9 @@ class ConfCrypto():
           else:
             self.modification = True
         elif key == 'token_endpoint_auth_method':
-          # Conversion de valeur de février 2024 - modifiée le 28 février 2025 - corrigée le 28 mai 2025
+          # Conversion de valeur de février 2024 - modifiée le 28 février 2025
           if value in ['basic', 'Basic', 'POST', 'client_secret_basic', 'client_secret_post']:
-            data[key] = {'Basic': 'client_secret_basic', 'basic': 'client_secret_basic', 'POST': 'client_secret_post', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'}[value]
+            data[key] = {'Basic': 'basic', 'basic': 'basic', 'POST': 'form', 'client_secret_basic': 'basic', 'client_secret_post': 'form'}[value]
             self.modification = True
         else:
           self.decrypt_json(value)
