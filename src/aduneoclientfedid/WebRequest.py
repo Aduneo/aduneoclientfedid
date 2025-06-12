@@ -30,6 +30,7 @@ class WebRequest():
   
   Versions:
     04/06/2025 (mpham) version initiale
+    12/06/2025 (mpham) en DNS override, possibilité de rediriger le port. <nom> pour rediriger l'adresse uniquement, :<port> pour redirifer le port et <nom>:<port> pour les deux
   """
   
   def get(url:str, query:dict={}, headers={}, basic_auth:tuple=None, verify_certificate:bool=True, dns_override:str=None):
