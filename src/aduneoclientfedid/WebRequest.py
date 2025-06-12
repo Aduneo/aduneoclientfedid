@@ -55,12 +55,26 @@ class WebRequest():
       # appel en remplacement de DNS, on suit la documentation : https://urllib3.readthedocs.io/en/stable/advanced-usage.html#custom-sni-hostname
       headers['Host'] = parsed_url.host
 
+      host = parsed_url.host
+      port = str(parsed_url.port)
+      colon_pos = dns_override.find(':')
+      if colon_pos == 0:
+        # redirection de port uniquement
+        port = dns_override[colon_pos+1:]
+      elif colon_pos > 0:
+        # redirection de port et d'adresse
+        host = dns_override[:colon_pos]
+        port = dns_override[colon_pos+1:]
+      else:
+        # redirection d'adresse uniquement
+        host = dns_override
+
       if parsed_url.scheme == 'http':
-        pool = urllib3.HTTPConnectionPool(dns_override, parsed_url.port)
+        pool = urllib3.HTTPConnectionPool(host, port)
         if parsed_url.port != 80:
           headers['Host'] += ':'+str(parsed_url.port)
       elif parsed_url.scheme == 'https':
-        pool = urllib3.HTTPSConnectionPool(dns_override, parsed_url.port, server_hostname=parsed_url.host, cert_reqs=None if verify_certificate else 'CERT_NONE')
+        pool = urllib3.HTTPSConnectionPool(host, port, server_hostname=parsed_url.host, cert_reqs=None if verify_certificate else 'CERT_NONE')
         if parsed_url.port != 443:
           headers['Host'] += ':'+str(parsed_url.port)
         
