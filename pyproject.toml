@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aduneoclientfedid"
-version = "2.0.7"
+version = "2.0.8"
 description = "Identity Federation Test Client"
 readme = "README.md"
 authors = [{ name = "Aduneo", email = "contact@aduneo.com" }]
