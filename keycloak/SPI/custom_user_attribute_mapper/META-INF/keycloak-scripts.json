@@ -1,9 +1,0 @@
-{
-    "mappers": [
-        {
-            "name": "My Mapper",
-            "fileName": "my-script-mapper.js",
-            "description": "My Mapper from a JS file"
-        }
-    ]
-}

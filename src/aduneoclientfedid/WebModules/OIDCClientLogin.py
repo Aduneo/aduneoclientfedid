@@ -78,6 +78,7 @@ class OIDCClientLogin(FlowHandler):
       25/12/2024 (mpham) verify_certificates est remonté au niveau de idp_params
       27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
       08/06/2025 (mpham) DNS override for OIDC token and userinfo endpoints
+      19/06/2025 (mpham) régression : verify_certificates qui était récupéré de oidc_idp_params au lieu de idp_params
     """
 
     self.log_info('--- Start OpenID Connect flow ---')
@@ -153,7 +154,7 @@ class OIDCClientLogin(FlowHandler):
         try:
           self.log_info('Starting metadata retrieval')
           self.log_info('discovery_uri: '+oidc_idp_params['discovery_uri'])
-          verify_certificates = Configuration.is_on(oidc_idp_params.get('verify_certificates', 'on'))
+          verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
           self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
           r = WebRequest.get(oidc_idp_params['discovery_uri'], verify_certificate=verify_certificates)
           self.log_info(r.data)
