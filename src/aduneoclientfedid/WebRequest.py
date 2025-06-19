@@ -16,6 +16,7 @@ limitations under the License.
 
 import base64
 import logging
+import ssl
 import urllib3
 
 from .BaseServer import AduneoError
@@ -50,7 +51,7 @@ class WebRequest():
     assert_same_host = True
     if not dns_override:
       # appel normal, on prend le pool normal
-      pool = urllib3.PoolManager()
+      pool = urllib3.PoolManager(cert_reqs=None if verify_certificate else 'CERT_NONE')
       request_url = url
     else:
       # appel en remplacement de DNS, on suit la documentation : https://urllib3.readthedocs.io/en/stable/advanced-usage.html#custom-sni-hostname

@@ -2,8 +2,9 @@ import urllib3
 
 from ..WebRequest import WebRequest
 
-response = WebRequest.get("http://vm0063.maq.aduneo.com:8080", dns_override='192.168.10.65')
-print(response.data)
+#response = WebRequest.get("http://vm0063.maq.aduneo.com:8080", dns_override='192.168.10.65')
+response = WebRequest.get("https://www.aduneo.com", verify_certificate=False)
+#print(response.data)
 
 def test():
 
