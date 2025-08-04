@@ -505,7 +505,7 @@ class OIDCClientLogin(FlowHandler):
         self.add_html('<div class="intertable">Success</div>')
       else:
         self.add_html('<div class="intertable">Error, status code '+str(r.status)+'</div>')
-        raise AduneoError(self.log_error('token retrieval error: status code '+str(r.status)+", "+r.text))
+        raise AduneoError(self.log_error('token retrieval error: status code '+str(r.status)+", "+r.data))
 
       response = r.json()
       self.log_info("IdP response:")
