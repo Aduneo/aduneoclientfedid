@@ -32,6 +32,7 @@ class WebRequest():
   Versions:
     04/06/2025 (mpham) version initiale
     12/06/2025 (mpham) en DNS override, possibilité de rediriger le port. <nom> pour rediriger l'adresse uniquement, :<port> pour redirifer le port et <nom>:<port> pour les deux
+    04/08/2025 (mpham) les formulaires étaient postés en multiplart au lieu de form-urlencoded
   """
   
   def get(url:str, query:dict={}, headers={}, basic_auth:tuple=None, verify_certificate:bool=True, dns_override:str=None):
@@ -88,7 +89,10 @@ class WebRequest():
     if basic_auth:
       headers['Authorization'] = "Basic " + base64.b64encode(f"{basic_auth[0]}:{basic_auth[1]}".encode()).decode()
     
-    return pool.request(method, request_url, fields=fields, body=raw_data, headers=headers, assert_same_host=assert_same_host)
+    if method == 'POST' and fields is not None:
+      return pool.request_encode_body(method, request_url, fields=fields, headers=headers, encode_multipart=False, assert_same_host=assert_same_host)
+    else:
+      return pool.request(method, request_url, fields=fields, body=raw_data, headers=headers, assert_same_host=assert_same_host)
   
     
 
