@@ -211,11 +211,11 @@ docker run -p 8443:443 -it aduneo/aduneoclientfedid
 ```
 As is usual with containers, a restart loses the configuration.
 
-You might want to persist it on the host. Just map the **/opt/conf** directory.
+You might want to persist it on the host. Just map the **/app/conf** directory.
 
 On Windows, create a *conf-for-container* (or any other name) directory and run:
 ```console
-docker run -p 443:443 -v .\conf-for-container:/opt/conf -it aduneo/aduneoclientfedid
+docker run -p 443:443 -v .\conf-for-container:/app/conf -it aduneo/aduneoclientfedid
 ```
 The *docker-compose.yml* file in the repository does just that. From the location of the file:
 ```console
