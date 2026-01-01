@@ -82,6 +82,7 @@ class OAuthClientAdmin(BaseHandler):
       31/01/2025 (mpham) création d'un client pour un IdP existant
       25/02/2025 (mpham) modification du nom du client
       03/06/2025 (mpham) DNS override for OAuth 2 token, introspection, and revocation endpoints
+      01/01/2026 (mpham) OAuth 2.1 indique que client_secret_post est maintenant obligatoire et client_secret_basic optionnel, client_secret_post devient le défaut
     """
 
     idp_id = self.get_query_string_param('idpid', '')
@@ -121,7 +122,7 @@ class OAuthClientAdmin(BaseHandler):
       'client_id': app_params.get('client_id', ''),
       'scope': app_params.get('scope', ''),
       'response_type': app_params.get('response_type', 'code'),
-      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'basic'),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'form'),
       'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
       }
     
@@ -167,7 +168,7 @@ class OAuthClientAdmin(BaseHandler):
           ) \
         .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
           values={'none': 'none', 'basic': 'client_secret_basic', 'form': 'client_secret_post'},
-          default = 'basic'
+          default = 'form'
           ) \
         .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
       .end_section() \
@@ -474,6 +475,7 @@ class OAuthClientAdmin(BaseHandler):
     
     Versions:
       26/12/2024 (mpham) version initiale
+      01/01/2026 (mpham) OAuth 2.1 indique que client_secret_post est maintenant obligatoire et client_secret_basic optionnel, client_secret_post devient le défaut
     """
 
     form_content = {
@@ -486,7 +488,7 @@ class OAuthClientAdmin(BaseHandler):
       'client_id': app_params.get('client_id', ''),
       'scope': app_params.get('scope', ''),
       'response_type': app_params.get('response_type', 'code'),
-      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'basic'),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'form'),
       }
     
     form = CfiForm('oauth2adminmulti', form_content, action='modifymulti', submit_label='Save') \
@@ -515,7 +517,7 @@ class OAuthClientAdmin(BaseHandler):
           ) \
         .closed_list('token_endpoint_auth_method', label='Token endpoint auth scheme', 
           values={'none': 'none', 'basic': 'client_secret_basic', 'form': 'client_secret_post'},
-          default = 'basic'
+          default = 'form'
           ) \
         .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
       .end_section() 

@@ -430,6 +430,7 @@ class OAuthClientLogin(FlowHandler):
       27/02/2025 (mpham) les paramètres IdP n'étaient pas récupérés du bon endroit
       30/05/2025 (mpham) les méthodes d'authentification auprès de token étaient envore basic et form au client de client_secret_basic et lient_secret_post
       03/06/2025 (mpham) DNS override for OAuth 2 token endpoint
+      01/01/2026 (mpham) compatibilité OAuth 2.1 : on peut aussi authentifier le client en PKCE (PKCE obligatoire en 2.1)
     """
   
     self.add_javascript_include('/javascript/resultTable.js')
@@ -498,18 +499,17 @@ class OAuthClientLogin(FlowHandler):
 
       token_endpoint_auth_method = app_params['token_endpoint_auth_method'].casefold()
       auth = None
-      client_secret = None
-      if app_params['oauth_flow'] == 'authorization_code':
-      
-        client_secret = app_params['client_secret']
+      client_secret = app_params['client_secret']
 
-        if token_endpoint_auth_method == 'basic':
-          auth = (app_params['client_id'], client_secret)
-        elif token_endpoint_auth_method == 'form':
-          api_call_data['client_secret'] = client_secret
-        else:
+      if token_endpoint_auth_method == 'basic':
+        auth = (app_params['client_id'], client_secret)
+      elif token_endpoint_auth_method == 'form':
+        api_call_data['client_secret'] = client_secret
+      else:
+        if app_params['oauth_flow'] == 'authorization_code':
           raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be basic or form')
 
+      self.log_info(f"{'  ' * 1}Authentication scheme: {token_endpoint_auth_method} ({auth})")
       self.log_info(('  ' * 1)+'Token request data: '+str(api_call_data))
       self.add_result_row('Token request data', json.dumps(api_call_data, indent=2), 'token_request_data')
       self.end_result_table()
