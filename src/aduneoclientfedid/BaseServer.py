@@ -766,6 +766,28 @@ class BaseHandler:
     return message
 
 
+  def add_middle_button(self, label:str, url:str):
+    self.add_html('<span><a href="'+url+'" class="middlebutton">'+html.escape(label)+'</a></span>')
+
+
+  def add_middle_menu(self, label:str, items:dict):
+    """ Ajoute un bouton de type menu déroulant
+    
+    Args:
+      label: libellé du bouton
+      items: éléments du menu déroulant dns dict {'libellé': 'url'}
+
+    Versions:
+      01/01/2026 (mpham) version initiale
+    """
+    data_menu = ''
+    for menu_label, menu_url in items.items():
+      if data_menu != '':
+        data_menu += chr(1)
+      data_menu += html.escape(menu_label) + chr(2) + html.escape(menu_url)
+    self.add_html('<span onclick="display_middle_menu(this)" class="middlebutton" data-menu="'+data_menu+'">'+html.escape(label)+'</span>')
+
+
   def start_result_table(self):
     """ Commence un tableau de résultat
     

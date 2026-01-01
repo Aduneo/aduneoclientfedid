@@ -38,11 +38,14 @@ class Home(BaseHandler):
 
     idps = self.conf['idps']
 
-    self.add_html("""
-      <div>
-        <span><a href="/client/oidc/admin/modifyclient" class="middlebutton">Add OIDC Client</a></span>
-        <span><a href="/client/oauth2/admin/modifyclient" class="middlebutton">Add OAuth 2 Client</a></span>
-    """)
+    self.add_html("<div>")
+    self.add_middle_button("Add OIDC Client", "/client/oidc/admin/modifyclient")
+    self.add_middle_menu("Add OAuth 2 Client", {
+      "Confidential OAuth 2.1 client": "/client/oauth2/admin/modifyclient?clienttype=confidential_21",
+      "Public OAuth 2.1 client": "/client/oauth2/admin/modifyclient?clienttype=public_21",
+      "Confidential OAuth 2.0 client": "/client/oauth2/admin/modifyclient?clienttype=confidential_20",
+      "Public OAuth 2.0 client": "/client/oauth2/admin/modifyclient?clienttype=public_20"
+      })
     if self.hreq.saml_prerequisite:
       self.add_html("""
         <span><a href="/client/saml/admin/modifyclient" class="middlebutton">Add SAML SP</a></span>
