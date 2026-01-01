@@ -231,7 +231,10 @@ class IdPClientAdmin(BaseHandler):
     self.add_html(f""" 
       <h2>OAuth 2 clients</h2>
       <div>
-        <span><a href="/client/oauth2/admin/modifyclient?idpid={idp_id}" class="smallbutton">Add client</a></span>
+        <span><a href="/client/oauth2/admin/modifyclient?idpid={idp_id}&clienttype=confidential_21" class="smallbutton">Add OAuth 2.1 confidential client</a></span>
+        <span><a href="/client/oauth2/admin/modifyclient?idpid={idp_id}&clienttype=public_21" class="smallbutton">Add OAuth 2.1 public client</a></span>
+        <span><a href="/client/oauth2/admin/modifyclient?idpid={idp_id}&clienttype=confidential_20" class="smallbutton">Add OAuth 2.0 confidential client</a></span>
+        <span><a href="/client/oauth2/admin/modifyclient?idpid={idp_id}&clienttype=public_20" class="smallbutton">Add OAuth 2.0 public client</a></span>
       </div>
     """)
     

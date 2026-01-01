@@ -275,6 +275,7 @@ class OAuthClientAdmin(BaseHandler):
     
     Versions:
       26/12/2024 (mpham) version initiale
+      01/01/2026 (mpham) on peut maintenant passer la query string clienttype en création de client (confidentiel / public et 2.0 / 2.1)
     """
 
     idp_id = self.get_query_string_param('idpid', '')
@@ -314,7 +315,7 @@ class OAuthClientAdmin(BaseHandler):
 
       app_params['idp_id'] = idp_id
       app_params['app_id'] = app_id
-      app_form = self.get_app_form(app_params)
+      app_form = self.get_app_form(app_params, client_type=self.get_query_string_param('clienttype'))
 
       self.add_html(app_form.get_html())
       self.add_javascript(app_form.get_javascript())
@@ -460,7 +461,7 @@ class OAuthClientAdmin(BaseHandler):
       self.send_redirection(e.action)
 
 
-  def get_app_form(handler, app_params:dict):
+  def get_app_form(handler, app_params:dict, client_type:str=None):
     """ Retourne un RequesterForm avec un client OAuth 2 (sans les paramètres de l'IdP)
     
     Args:
@@ -476,19 +477,23 @@ class OAuthClientAdmin(BaseHandler):
     Versions:
       26/12/2024 (mpham) version initiale
       01/01/2026 (mpham) OAuth 2.1 indique que client_secret_post est maintenant obligatoire et client_secret_basic optionnel, client_secret_post devient le défaut
+      01/01/2026 (mpham) on peut maintenant passer le paramètre client_type en création de client (confidentiel / public et 2.0 / 2.1)
     """
+
+    oauth_flow_default = 'authorization_code' if client_type in ['confidential_20'] else 'authorization_code_pkce'
+    token_endpoint_auth_method_default = 'form' if client_type in ['confidential_21', 'confidential_20'] else 'none'
 
     form_content = {
       'idp_id': app_params['idp_id'],
       'app_id': app_params['app_id'],
       'name': app_params.get('name', ''),
-      'oauth_flow': app_params.get('oauth_flow', 'Authorization Code'),
+      'oauth_flow': app_params.get('oauth_flow', oauth_flow_default),
       'pkce_method': app_params.get('pkce_method', 'S256'),
       'redirect_uri': app_params.get('redirect_uri', ''),
       'client_id': app_params.get('client_id', ''),
       'scope': app_params.get('scope', ''),
       'response_type': app_params.get('response_type', 'code'),
-      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'form'),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', token_endpoint_auth_method_default),
       }
     
     form = CfiForm('oauth2adminmulti', form_content, action='modifymulti', submit_label='Save') \
