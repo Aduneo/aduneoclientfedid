@@ -83,6 +83,7 @@ class OAuthClientAdmin(BaseHandler):
       25/02/2025 (mpham) modification du nom du client
       03/06/2025 (mpham) DNS override for OAuth 2 token, introspection, and revocation endpoints
       01/01/2026 (mpham) OAuth 2.1 indique que client_secret_post est maintenant obligatoire et client_secret_basic optionnel, client_secret_post devient le défaut
+      01/01/2026 (mpham) on peut maintenant passer le paramètre clienttype en création de client (confidentiel / public et 2.0 / 2.1)
     """
 
     idp_id = self.get_query_string_param('idpid', '')
@@ -97,6 +98,10 @@ class OAuthClientAdmin(BaseHandler):
     oauth2_params = idp_params.get('oauth2', {})
     oauth2_clients = idp.get('oauth2_clients', {})
     app_params = oauth2_clients.get(app_id, {})
+
+    client_type = self.get_query_string_param('clienttype', 'confidential_21')
+    oauth_flow_default = 'authorization_code' if client_type in ['confidential_20'] else 'authorization_code_pkce'
+    token_endpoint_auth_method_default = 'form' if client_type in ['confidential_21', 'confidential_20'] else 'none'
 
     form_content = {
       'idp_id': idp_id,
@@ -116,13 +121,13 @@ class OAuthClientAdmin(BaseHandler):
       'token_endpoint_dns_override': oauth2_params.get('token_endpoint_dns_override', ''),
       'introspection_endpoint_dns_override': oauth2_params.get('introspection_endpoint_dns_override', ''),
       'revocation_endpoint_dns_override': oauth2_params.get('revocation_endpoint_dns_override', ''),
-      'oauth_flow': app_params.get('oauth_flow', 'Authorization Code'),
+      'oauth_flow': app_params.get('oauth_flow', oauth_flow_default),
       'pkce_method': app_params.get('pkce_method', 'S256'),
       'redirect_uri': app_params.get('redirect_uri', ''),
       'client_id': app_params.get('client_id', ''),
       'scope': app_params.get('scope', ''),
       'response_type': app_params.get('response_type', 'code'),
-      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'form'),
+      'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', token_endpoint_auth_method_default),
       'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
       }
     
@@ -315,7 +320,7 @@ class OAuthClientAdmin(BaseHandler):
 
       app_params['idp_id'] = idp_id
       app_params['app_id'] = app_id
-      app_form = self.get_app_form(app_params, client_type=self.get_query_string_param('clienttype'))
+      app_form = self.get_app_form(app_params, client_type=self.get_query_string_param('clienttype', 'confidential_21'))
 
       self.add_html(app_form.get_html())
       self.add_javascript(app_form.get_javascript())

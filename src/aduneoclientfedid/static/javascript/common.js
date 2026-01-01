@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2023 Aduneo
+ * Copyright 2023-2026 Aduneo
  * SPDX-License-Identifier: Apache-2.0
  */
 function openConsole(force=false) {
@@ -95,4 +95,77 @@ function collapseSection(sectionId) {
   plus_button.style.display = 'block'
   minus_button = section.getElementsByClassName("minus_button")[0]
   minus_button.style.display = 'none'
+}
+
+
+// ================ boutons et menus ================
+
+function display_middle_menu(a_item) {
+  
+  var menu = [];
+  for (let menu_item of a_item.dataset.menu.split('\1')) {
+    let menu_items = menu_item.split('\2');
+    menu[menu_items[0]] = menu_items[1];
+  }
+
+  var menuEls = [];
+  
+  // création du masque interdisant de cliquer    
+  const overlayEl = document.createElement('div');
+  overlayEl.style.position = 'fixed';
+  overlayEl.style.inset = 0;
+  let textEl = document.createTextNode('');
+  overlayEl.appendChild(textEl);
+  overlayEl.onclick = () => { overlayEl.remove(); maskEl.remove(); for (menuEl of menuEls) { menuEl.remove(); } }
+  document.body.appendChild(overlayEl);
+
+  let yPos = a_item.getBoundingClientRect().bottom;
+  
+  const maskEl = document.createElement('div');
+  maskEl.style.position = 'fixed';
+  maskEl.style.top = yPos;
+  maskEl.style.left = a_item.getBoundingClientRect().left;
+  maskEl.style.backgroundColor = 'white';
+  textEl = document.createTextNode('');
+  maskEl.appendChild(textEl);
+  document.body.appendChild(maskEl);
+  
+  let maxWidth = -1;
+  for (label in menu) {
+  
+    console.log(label, menu[label])
+  
+    let menuEl = document.createElement('span');
+    menuEl.className = "middlebutton";
+    menuEl.style.position = 'fixed';
+    menuEl.style.top = yPos;
+    menuEl.style.left = a_item.getBoundingClientRect().left;
+    menuEl.style.textAlign = 'left';
+    menuEl.style.userSelect = 'none';
+    menuEl.dataset.page = menu[label];
+    let labelEl = document.createTextNode(label);
+    menuEl.appendChild(labelEl);
+    menuEl.onclick = (ev) => { overlayEl.remove(); maskEl.remove(); for (menuEl of menuEls) { menuEl.remove(); } window.location.href = ev.target.dataset.page; }
+    document.body.appendChild(menuEl);
+    
+    menuEls.push(menuEl);
+    
+    yPos = menuEl.getBoundingClientRect().bottom;
+    width = menuEl.getBoundingClientRect().right - menuEl.getBoundingClientRect().left
+    console.log(menuEl.getBoundingClientRect().width)
+    console.log(menuEl.style.padding)
+    if (width > maxWidth) maxWidth = width;
+  }
+  
+  maskEl.style.width = maxWidth+34;  // 34 correspond à margin + padding de middlebutton, je ne sais pas encore comment l'avoir directement
+  maskEl.style.height = yPos - a_item.getBoundingClientRect().bottom;
+  for (menuEl of menuEls) {
+    menuEl.style.width = maxWidth;
+  }
+  
+  
+}
+
+function test() {
+  console.log("BUU");
 }
