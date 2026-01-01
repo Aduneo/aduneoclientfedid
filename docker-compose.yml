@@ -3,6 +3,6 @@ services:
     image: marcpham/clientfedid
     container_name: clientfedid
     volumes:
-      - ./conf-for-container:/opt/conf
+      - ./conf-for-container:/app/conf
     ports:
       - "443:443"
