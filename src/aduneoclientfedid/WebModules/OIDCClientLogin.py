@@ -478,6 +478,7 @@ class OIDCClientLogin(FlowHandler):
         data['client_secret'] = client_secret
       else:
         raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be basic or form')
+      self.log_info(f"{'  ' * 1}Authentication scheme: {token_endpoint_auth_method}")
       
       self.add_result_row('Token endpoint', token_endpoint, 'token_endpoint')
       self.end_result_table()
