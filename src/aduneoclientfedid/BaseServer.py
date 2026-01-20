@@ -598,10 +598,11 @@ class BaseServer(BaseHTTPRequestHandler):
     vérifie que le chemin demandé par le client ne fait pas de directory traversal
     retourne True si le chemin est conforme, False en cas d'attaque
     
-    mpham 12/02/2021
+    12/02/2021 (mpham) version initiale
+    20/01/2026 (mpham) utilisation de realpath pour les deux chemins
     """
     
-    return os.path.commonprefix((os.path.realpath(requested_path).lower(), base_dir.lower())) == base_dir.lower()
+    return os.path.commonpath((os.path.realpath(requested_path), os.path.realpath(base_dir))) == os.path.realpath(base_dir)
     
     
 class BaseHandler:
