@@ -1,5 +1,5 @@
 """
-Copyright 2023 Aduneo
+Copyright 2023-2026 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,19 +13,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-
-from .BaseServer import AduneoError
-from .BaseServer import BaseServer
-from .CryptoTools import CryptoTools
-from .WebConsoleHandler import WebConsoleHandler
-from datetime import datetime
 import copy
+import datetime
 import json
 import logging
 import random
 import os
 import string
 import sys
+
+import aduneoclientfedid.CryptoTools
+
+from .BaseServer import AduneoError
+from .BaseServer import BaseServer
+from .CryptoTools import CryptoTools
+from .WebConsoleHandler import WebConsoleHandler
 
 
 class conf_dict(dict):
@@ -321,7 +323,7 @@ class Configuration():
     handler_list = []
 
     if "file" in log_method:
-      date = datetime.today().strftime('%Y-%m-%d')
+      date = datetime.datetime.today().strftime('%Y-%m-%d')
       log_dir = os.path.join(os.getcwd(), 'logs')
       log_file = os.path.join(log_dir, 'ClientFedID-{}.log'.format(date))
       if not os.path.isdir(log_dir):
@@ -442,6 +444,20 @@ class ConfCrypto():
 
 
   def encrypt_json(self, data):
+    """ Regarde s'il faut chiffrer certaines valeurs des paramètres
+    
+    Itère sur les ous-paramètres pour parcourir l'ensemble des paramètres
+    
+    On regarde le dernier caractère du nom du paramètre
+      - point d'exclamation (!) : chiffrement symétrique
+      - pourcentage (%) : mot de passe à hasher
+      
+    Args:
+      data: dict avec la configuration ou list de paramètres
+      
+    Versions:
+      13/02/2026 (mpham) hashing des mots de passe
+    """
 
     if isinstance(data, dict):
       for key in list(data.keys()):
@@ -453,6 +469,13 @@ class ConfCrypto():
           # on regarde si la valeur est déjà chiffrée
           if not value.startswith('{Fernet}'):
             data[key] = '{Fernet}'+self._get_crypto().encrypt_string(value)
+        if key.endswith('%'):
+          if not isinstance(value, str):
+            raise AduneoError(f"password in parameter {key} should be a string")
+            
+          # on regarde si la valeur est déjà chiffrée
+          if not value.startswith('{argon2}'):
+            data[key] = '{argon2}'+aduneoclientfedid.CryptoTools.PasswordTools().hash_password(value)
         else:
           self.encrypt_json(value)
     elif isinstance(data, list):

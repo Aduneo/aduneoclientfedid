@@ -992,6 +992,38 @@ class BaseHandler:
         ok = True
         
     return candidate_id
+    
+    
+  def get_authentication_parameters(self) -> dict:
+    """ Retourne les paramètres de configuration de l'authentification
+    
+    Returns:
+      l'extrait du fichier de configuration sur l'authentitication active, None s'il n'y en a pas
+    
+    Raises:
+      AduneoError si la configuration est inconsistente
+      
+    Versions:
+      14/02/2026 (mpham) version initiale
+    """
+    
+    authentication_parameters = None
+    
+    server_parameters = self.conf['/server']
+    authentication_wrapper = server_parameters.get('authentication')
+    if authentication_wrapper:
+      active_authentication = authentication_wrapper.get('active_authentication')
+      if not active_authentication:
+        raise AduneoError("no active_authentication found in authentication parameters")
+      if active_authentication.lower() != 'none':
+        authentication_schemes = authentication_wrapper.get('authentication_schemes')
+      if not authentication_schemes:
+        raise AduneoError("no authentication_schemes found in authentication parameters")
+      authentication_parameters = authentication_schemes.get(active_authentication)
+      if not authentication_parameters:
+        raise AduneoError(f"no parameters found in authentication parameters for {active_authentication}")
+      
+    return authentication_parameters
 
 
 

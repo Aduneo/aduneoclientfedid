@@ -17,11 +17,12 @@ license = "Apache-2.0"
 classifiers = [
     "Topic :: System :: Systems Administration :: Authentication/Directory",
 ]
-keywords = ["identity", "federation", "openid connect", "oidc", "oauth", "oauth 2", "saml", "cas", "sso"]
+keywords = ["authentication", "identity", "federation", "openid connect", "oidc", "oauth", "oauth 2", "saml", "cas", "sso", "service provider"]
 dependencies = [
     "urllib3",
     "jwcrypto",
     "pyopenssl",
+    "argon2-cffi"
 ]
 requires-python = ">=3.6"
 

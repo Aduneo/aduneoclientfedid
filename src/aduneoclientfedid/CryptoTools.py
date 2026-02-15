@@ -1,5 +1,5 @@
 """
-Copyright 2023 Aduneo
+Copyright 2023-2026 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,16 +13,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from .BaseServer import AduneoError
-from .BaseServer import BaseServer
-from cryptography.fernet import Fernet
-from OpenSSL import crypto, SSL
+import argon2
 import logging
 import os
 import random
 import socket
 import string
 import tempfile
+
+from cryptography.fernet import Fernet
+from OpenSSL import crypto, SSL
+
+from .BaseServer import AduneoError
+from .BaseServer import BaseServer
 
 class CryptoTools:
   
@@ -39,7 +42,7 @@ class CryptoTools:
       AduneoError si le fichier n'est pas dans le dossier conf
       
     Versions:
-      28/12/2022 (mpham) : version initiale, copiée de CryptoConf.get_cipher()
+      28/12/2022 (mpham) version initiale, copiée de CryptoConf.get_cipher()
     """
     self.key_file_path = key_file_path
     self.cipher = None
@@ -266,14 +269,14 @@ class CryptoTools:
     
     Ecrase le fichier s'il existe déjà
     
-    Args
+    Args:
       key_file_path: chemin complet du fichier recevant la clé
     
     Raises:
       exception d'ouverture de fichier en écriture
     
     Versions:
-      23/12/2022 (mpham) : version initiale
+      23/12/2022 (mpham) version initiale
     """
 
     key = Fernet.generate_key()
@@ -284,4 +287,82 @@ class CryptoTools:
     file_out.write(key_string[:5]+iv+key_string[5:])
     file_out.close()
 
+  
+  
+class PasswordTools:
+  """ Fonctions spécifiques aux mots de passe
+  
+  On gère un singleton, que l'on appelle par
+  
+  password_tools = PasswordTools()
+  
+  """
+  
+  _instance = None
 
+  def __new__(cls):
+    """ Singleton
+    
+    voir https://python-patterns.guide/gang-of-four/singleton/
+    
+    Versions:
+      14/02/2026 (mpham) version initiale
+    """
+    
+    if cls._instance is None:
+      cls._instance = super(PasswordTools, cls).__new__(cls)
+      # Put any initialization here.
+      cls.password_hasher = argon2.PasswordHasher()
+    return cls._instance  
+    
+  
+  def hash_password(self, password:str) -> str:
+    """ Calcule le hash d'un mot de passe
+    
+    Args:
+      password: mot de passe à hasher
+      
+    Returns:
+      hash
+      
+    Versions:
+      13/02/2026 (mpham) version initiale
+    """
+    return self.password_hasher.hash(password)
+
+
+  def verify_password(self, hash_value:str, password:str) -> bool:
+    """ Vérifie qu'un mot de passe correspond bien à un hash
+    
+    Args:
+      hash_value: hash du mot de passe de référence
+      password: mot de passe à vérifier
+
+    Returns:
+      True ou False
+      
+    Raises:
+      AduneoError si le hash n'est pas conforme
+      
+    Versions:
+      14/02/2026 (mpham) version initiale
+    """
+
+    verification = False
+    
+    if not hash_value.startswith('{'):
+      raise AduneoError("invalid password hash")
+    end_bracket_pos = hash_value.find('}')
+    if end_bracket_pos == -1:
+      raise AduneoError("invalid password hash")
+    hash_scheme = hash_value[1:end_bracket_pos]
+    if hash_scheme != 'argon2':
+      raise AduneoError(f"invalid password hash scheme {hash_scheme}")
+    
+    try:
+      self.password_hasher.verify(hash_value[end_bracket_pos+1:], password)
+      verification = True
+    except:
+      pass
+      
+    return verification
