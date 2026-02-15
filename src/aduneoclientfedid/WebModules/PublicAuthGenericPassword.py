@@ -26,7 +26,7 @@ from ..BaseServer import register_web_module, register_url, register_page_url
 from ..Configuration import Configuration
 
 
-@register_web_module('/public/auth/genericpassword')
+@register_web_module('/public/auth/genericpassword', access={'authentication': False})
 class PublicAuthGenericPassword(BaseHandler):
   """ Authentification par mot de passe avec un unique utilisateur
   (protection de base de niveau de sécurité faible)
@@ -55,6 +55,7 @@ class PublicAuthGenericPassword(BaseHandler):
 </form>
     
     """)
+    
 
   @register_url(url='login', method='POST')
   def login_page(self):
@@ -87,6 +88,8 @@ class PublicAuthGenericPassword(BaseHandler):
       logging.info(f"Authentication failed: bad password for login {self.post_form['login']}")
       self.send_redirection('/public/auth/genericpassword')
       return
+
+    self.set_session_value('authentication', {'user': conf_login})
 
     self.send_redirection('/')
 

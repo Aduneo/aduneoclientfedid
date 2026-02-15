@@ -1084,7 +1084,8 @@ class WebRouter:
       except AduneoError as error:
         self.send_page(str(error), clear_buffer=True)
 
-    mpham 30/09/2022
+    30/09/2022 (mpham) version initiale
+    15/02/2026 (mpham) droits d'accès dans authorized_urls
   """
 
   """
@@ -1094,7 +1095,11 @@ class WebRouter:
         "/module/url/path": {
           "module": "module full name eg ClientFedID.OAuthClientLogin",
           "class": "class name eg OAuthClientLogin",
-          "method": "class method eg send_access_token_introspection_request_spa"
+          "method": "class method eg send_access_token_introspection_request_spa",
+          "access": {
+            "authentication": bool,
+            "profiles": [<all ou liste de profils applicatifs>],
+          }
         }
       }
     }
@@ -1152,17 +1157,59 @@ class WebRouter:
     """
     func_def = WebRouter.authorized_urls[self.method].get(self.url)
     if func_def:
-      # comme is_authorized_url devrait être appelé avant, ce devrait toujours être vrai
-      web_module = importlib.import_module(func_def['module']) # par exemple ClientFedID.OAuthClientLogin
-      web_class = getattr(web_module, func_def['class']) # par exemple OAuthClientLogin
-      web_instance = web_class(hreq)
-      http_method = getattr(web_instance, func_def['method']) # par exemple prepare_request
-      http_method()
+      if self.is_access_granted(hreq, func_def):
+        # comme is_authorized_url devrait être appelé avant, ce devrait toujours être vrai
+        web_module = importlib.import_module(func_def['module']) # par exemple ClientFedID.OAuthClientLogin
+        web_class = getattr(web_module, func_def['class']) # par exemple OAuthClientLogin
+        web_instance = web_class(hreq)
+        http_method = getattr(web_instance, func_def['method']) # par exemple prepare_request
+        http_method()
+      else:
+        hreq.send_redirection('/public/auth')
     else:
       logging.error("Unknown URL "+self.url)
 
 
-def register_url(method:str, url:str=None):
+  def is_access_granted(self, hreq, func_def:dict):
+    """ Vérifie si l'utilisateur a bien accès à l'URL
+    
+    Args:
+      hreq: instance de BaseServer traitant la requête
+      func_def: informations sur l'URL, en particulier le champ access
+      
+    Returns:
+      True si s'utilisateur a bien accès
+      
+    Raises:
+      Exception si les droits d'accès ne sont pas définis correctement et qu'une évaluation n'est donc pas possible
+    
+    Versions:
+      15/02/2026 (mpham) version initiale
+    """
+
+    access_granted = False
+    access_def = func_def.get('access')
+    if access_def is None:
+      raise Exception(f"access rights to {func_def['module']}.{func_def['class']}.{func_def['method']} missing")
+    
+    authentication = access_def.get('authentication')
+    if authentication is None:
+      print("FUNC", func_def)
+      raise Exception(f"access rights to {func_def['module']}.{func_def['class']}.{func_def['method']} without authentication assertion")
+    
+    if not authentication:
+      access_granted = True
+    else:
+      if authentication.lower() == 'all':
+        session_authentication_info = hreq.get_session_value('authentication')
+        if session_authentication_info:
+          if session_authentication_info.get('user'):
+            access_granted = True
+        
+    return access_granted
+
+
+def register_url(method:str, url:str=None, access:dict=None):
   """ Decorator pour les méthodes de classe
   
   Attention, ce décorateur doit être le dernier (se trouver le plus proche de la déclaration de la méthode), sinon il n'est pas pris en compte
@@ -1171,9 +1218,11 @@ def register_url(method:str, url:str=None):
   Args:
     method: méthode HTTP
     url: URL relative par rapport à la racine déclarée au niveau de la classe par le décorateur register_web_module
+    access: droits d'accès de la forme {'authentication': bool, profiles=[]}
 
   Versions:
     30/09/2022 (mpham) version initiale
+    15/02/2026 (mpham) contrôle de l'accès
   """
   def decorator(func):
   
@@ -1187,26 +1236,27 @@ def register_url(method:str, url:str=None):
       relative_url = method_name
     if module_name not in WebRouter.temp_urls[method.casefold()]:
       WebRouter.temp_urls[method.casefold()][module_name] = {}
-    WebRouter.temp_urls[method.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name}
+    WebRouter.temp_urls[method.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name, 'access': access}
 
     return func
     
   return decorator
 
   
-def register_page_url(method:str, url:str=None, template:str=None, continuous:bool=False):
+def register_page_url(method:str, url:str=None, template:str=None, continuous:bool=False, access:dict=None):
   """ Decorator de déclaration d'une page web représentée par une méthode de classe
   
   La méthode doit se trouver dans une classe décorée par @register_web_module
   
   Attention, ce décorateur doit être le dernier (se trouver le plus proche de la déclaration de la méthode), sinon il n'est pas pris en compte
-    (l'enregistrement se fait pas car func n'est pas la page mais le décorateur suivant)
+    (l'enregistrement ne se fait pas car func n'est pas la page mais le décorateur suivant)
   
   Args:
     method: méthode HTTP, avec possibilité d'en donner plusieurs, dans une list (['GET', 'POST'] par exemple)
     url: URL relative par rapport à la racine déclarée au niveau de la classe par le décorateur register_web_module
     template: nom (optionnel) d'un fichier de modèle (du dossier templates) où le mot-clé {{content}} indique où insérer le contenu
     continuous: indique si la page est de type continu (envoi progressif du contenu pour affichage partiel lors des opérations prenant du temps)
+    access: droits d'accès de la forme {'authentication': bool, profiles=[]}
 
   Versions:
     30/09/2022 (mpham) version initiale
@@ -1214,6 +1264,7 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
     29/03/2023 (mpham) ajout des paramètres template et continuous
     05/01/2025 (mpham) possibilité de définir plusieurs méthodes
     09/01/2025 (mpham) comportement identique pages continues et non continues avec CfiForm
+    15/02/2026 (mpham) contrôle de l'accès
   """
   def decorator(func):
   
@@ -1233,7 +1284,7 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
     for met in methods:  
       if module_name not in WebRouter.temp_urls[met.casefold()]:
         WebRouter.temp_urls[met.casefold()][module_name] = {}
-      WebRouter.temp_urls[met.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name}
+      WebRouter.temp_urls[met.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name, 'access': access}
     
     # Traitement de la page
     def wrapper(*args, **kwargs):
@@ -1319,7 +1370,7 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
   return decorator
 
 
-def register_api_url(method:str, url:str=None):
+def register_api_url(method:str, url:str=None, access:dict=None):
   """ Decorator de déclaration d'une API représentée par une méthode de classe
   
   La méthode doit se trouver dans une classe décorée par @register_web_module
@@ -1330,9 +1381,11 @@ def register_api_url(method:str, url:str=None):
   Args:
     method: méthode HTTP
     url: URL relative par rapport à la racine déclarée au niveau de la classe par le décorateur register_web_module
+    access: droits d'accès de la forme {'authentication': bool, profiles=[]}
 
   Versions:
     30/09/2022 (mpham) version initiale
+    15/02/2026 (mpham) contrôle de l'accès
   """
   def decorator(func):
   
@@ -1347,22 +1400,24 @@ def register_api_url(method:str, url:str=None):
       relative_url = method_name
     if module_name not in WebRouter.temp_urls[method.casefold()]:
       WebRouter.temp_urls[method.casefold()][module_name] = {}
-    WebRouter.temp_urls[method.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name}
+    WebRouter.temp_urls[method.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name, 'access': access}
 
     return func
     
   return decorator
 
 
-def register_web_module(path):
+def register_web_module(path, access={'authentication': 'all', 'profiles': 'all'}):
   """ Decorator pour les classes descendant de BaseHandler contenant des méthodes de service d'URL
   
   Args:
     path: URL relative servie par la classe, par exemple /client/oauth/login
+    access: droits d'accès de la forme {'authentication': bool, profiles=[]}
 
   Versions:
     30/09/2022 (mpham) version initiale
     28/12/2023 (mpham) page d'accueil des modules
+    15/02/2026 (mpham) contrôle de l'accès
   """
   def decorator(class_def):
     module_name = class_def.__module__
@@ -1373,6 +1428,9 @@ def register_web_module(path):
         else:
           full_url = path+'/'+relative_url
         func_def = WebRouter.temp_urls[method.casefold()][module_name][relative_url]
+        # si les droits n'ont pas été positionnés au niveau de la méthode, on met les droits du module
+        if not func_def.get('access'):
+          func_def['access'] = access
         WebRouter.authorized_urls[method][full_url] = func_def
     
     return class_def
