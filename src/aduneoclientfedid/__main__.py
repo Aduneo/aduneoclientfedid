@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Copyright 2023 Aduneo
+Copyright 2023-2026 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,12 +39,15 @@ if not os.path.isfile(os.path.join(os.getcwd(), 'conf', 'clientfedid.cnf')):
 
 from .CryptoTools import CryptoTools
 from .Server import Server
+from .session.SessionManager import SessionManager
 
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Handle requests in a separate thread."""
-    
+
+
+session_thread = None   # on conserve l'objet de thread pour l'arrêter au Ctrl-C 
 
 def main():
 
@@ -95,6 +98,7 @@ def main():
   if httpd.secure:
     scheme = 'https'
 
+  session_timer(conf)
   print(time.asctime(), 'Server UP - %s:%s' % (scheme+'://'+host, port))
   try:
       httpd.serve_forever()
@@ -102,11 +106,30 @@ def main():
       pass
   httpd.server_close()
   print(time.asctime(), 'Server DOWN - %s:%s' % (scheme+'://'+host, port))
+  if (session_thread):
+    session_thread.cancel()
   
   if httpd.ssl_params.get('key_temp_files'):
     os.unlink(conf_dir+'/'+conf['server']['ssl_key_file'])
     os.unlink(conf_dir+'/'+conf['server']['ssl_cert_file'])
     
+
+def session_timer(conf):
+  """ Déclenchement périodique du nettoyage des sessions
+  
+  Args:
+    conf: configuration, qui est requise pour la récupération du singleton SessionManager
+    
+  Versions:
+    17/02/2026 (mpham) version initiale
+  """
+  global session_thread
+  if session_thread:
+    session_manager = SessionManager(conf)
+    session_manager.expire_sessions()
+  session_thread = threading.Timer(60, session_timer, args=[conf])
+  session_thread.start()
+
 
 def test():
   print('--- test mode ----')

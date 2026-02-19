@@ -433,8 +433,8 @@ class ConfCrypto():
             self.modification = True
         elif key == 'token_endpoint_auth_method':
           # Conversion de valeur de février 2024 - modifiée le 28 février 2025
-          if value in ['basic', 'Basic', 'POST', 'client_secret_basic', 'client_secret_post']:
-            data[key] = {'Basic': 'basic', 'basic': 'basic', 'POST': 'form', 'client_secret_basic': 'basic', 'client_secret_post': 'form'}[value]
+          if value in ['Basic', 'POST', 'client_secret_basic', 'client_secret_post']:
+            data[key] = {'Basic': 'basic', 'POST': 'form', 'client_secret_basic': 'basic', 'client_secret_post': 'form'}[value]
             self.modification = True
         else:
           self.decrypt_json(value)
@@ -469,7 +469,7 @@ class ConfCrypto():
           # on regarde si la valeur est déjà chiffrée
           if not value.startswith('{Fernet}'):
             data[key] = '{Fernet}'+self._get_crypto().encrypt_string(value)
-        if key.endswith('%'):
+        elif key.endswith('%'):
           if not isinstance(value, str):
             raise AduneoError(f"password in parameter {key} should be a string")
             

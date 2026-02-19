@@ -26,6 +26,8 @@ import logging
 
 from http.server import BaseHTTPRequestHandler
 
+from .session.SessionManager import SessionManager
+
 
 class BaseServer(BaseHTTPRequestHandler):
 
@@ -489,7 +491,6 @@ class BaseServer(BaseHTTPRequestHandler):
 
   
   def check_session(self, create_session=True):
-  
     """
     Génère un identifiant de session s'il n'en existe pas déjà dans les cookies
     
@@ -501,62 +502,74 @@ class BaseServer(BaseHTTPRequestHandler):
     - puis on ajoute une information dans la session qui n'existe pas
     - on génère donc un identifiant, mais comme les en-têtes ont déjà été envoyés, c'est trop tard
     
-    mpham 01/03/2021
+    01/03/2021 (mpham) version initiale
+    17/02/2026 (mpham) utilisation de SessionManager
     """
+    
+    session_manager = SessionManager(self.conf)
     
     session_exists = False
     if self.headers.get('Cookie') is not None:
       cookies = http.cookies.SimpleCookie(self.headers.get('Cookie'))
       if 'fedclient_sessionid' in cookies:
-        self.session_id = cookies['fedclient_sessionid'].value
-        session_exists = True
+        session_id = cookies['fedclient_sessionid'].value
+        if session_manager.is_session_valid(session_id):
+          self.session_id = session_id
+          session_exists = True
         
     if not session_exists and create_session:
-      self.session_id = str(uuid.uuid4())
+      self.session_id = session_manager.create_session()
 
   
   def set_session_value(self, key, value):
+    """ Met une variable en session
+
+    Args:
+      key: nom de la variable
+      value: valeur
     
+    Versions:
+      27/01/2021 (mpham) version initiale
+      18/02/2026 (mpham) utilisation de SessionManager
     """
-    met une variable en session
+
+    session_manager = SessionManager(self.conf)
     
-    mpham 27/01/2021
-    """
+    if not session_manager.is_session_valid(self.session_id):
+      self.session_id = session_manager.create_session()
     
-    if self.sessions.get(self.session_id) is None:
-      self.sessions[self.session_id] = {}
-      
-    self.sessions[self.session_id][key] = value
+    session_manager.set_session_value(self.session_id, key, value)
     
     
   def get_session_value(self, key):
+    """ Récupère une variable de la session
     
-    """
-    récupère une variable de la session
-    retourne None si elle n'existe pas
-    
-    mpham 27/01/2021
-    """
-    
-    value = None
-    
-    if self.sessions.get(self.session_id) is not None:
-      value = self.sessions[self.session_id].get(key)
+    Args:
+      key: nom de la variable
       
-    return value
+    Returns:
+      valeur de la variable, None si elle n'existe pas
+    
+    Versions:
+      27/01/2021 (mpham) version initiale
+      18/02/2026 (mpham) utilisation de SessionManager
+    """
+    session_manager = SessionManager(self.conf)
+    return session_manager.get_session_value(self.session_id, key)
 
     
   def del_session_value(self, key):
-    
-    """
-    Supprime une variable de la session
-    retourne None si elle n'existe pas
-    
-    mpham 01/03/2021
-    """
+    """ Supprime une variable de la session
 
-    if self.session_id is not None:
-      self.sessions[self.session_id].pop(key, None)
+    Args:
+      key: nom de la variable
+    
+    Versions:
+      27/01/2021 (mpham) version initiale
+      18/02/2026 (mpham) utilisation de SessionManager
+    """
+    session_manager = SessionManager(self.conf)
+    session_manager.del_session_value(self.session_id, key)
       
 
   def logon(self, idp_id, id_token = 'authenticated'):

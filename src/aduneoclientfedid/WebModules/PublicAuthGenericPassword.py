@@ -26,7 +26,7 @@ from ..BaseServer import register_web_module, register_url, register_page_url
 from ..Configuration import Configuration
 
 
-@register_web_module('/public/auth/genericpassword', access={'authentication': False})
+@register_web_module('/public/auth/password1', access={'authentication': False})
 class PublicAuthGenericPassword(BaseHandler):
   """ Authentification par mot de passe avec un unique utilisateur
   (protection de base de niveau de sécurité faible)
@@ -47,7 +47,7 @@ class PublicAuthGenericPassword(BaseHandler):
     self.set_session_value('token', csrf_token)
     self.add_html(f"""
     
-<form action="genericpassword/login" method="post">
+<form action="password1/login" method="post">
   <input type="hidden" name="token" value="{csrf_token}">
   <div>Login <input type="text" name="login" value="aduneo"></div>
   <div>Password <input type="password" name="password" value="aduneo"></div>
@@ -66,7 +66,7 @@ class PublicAuthGenericPassword(BaseHandler):
     """
     
     if self.post_form.get('token', 'error') != self.get_session_value('token'):
-      self.send_redirection('/public/auth/genericpassword')
+      self.send_redirection('/public/auth/password1')
       return
     
     authentication_parameters = self.get_authentication_parameters()
@@ -76,7 +76,7 @@ class PublicAuthGenericPassword(BaseHandler):
       raise AduneoError("no login configured")
     if conf_login.lower() != self.post_form['login'].lower():
       logging.info(f"Authentication failed: unknown login {self.post_form['login']}")
-      self.send_redirection('/public/auth/genericpassword')
+      self.send_redirection('/public/auth/password1')
       return
 
     conf_password_hash = authentication_parameters.get('password%')
@@ -86,7 +86,7 @@ class PublicAuthGenericPassword(BaseHandler):
     password_tools = aduneoclientfedid.CryptoTools.PasswordTools()
     if not password_tools.verify_password(hash_value=conf_password_hash, password=self.post_form['password']):
       logging.info(f"Authentication failed: bad password for login {self.post_form['login']}")
-      self.send_redirection('/public/auth/genericpassword')
+      self.send_redirection('/public/auth/password1')
       return
 
     self.set_session_value('authentication', {'user': conf_login})
