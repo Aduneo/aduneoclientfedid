@@ -33,7 +33,7 @@ from socketserver import ThreadingMixIn
 from .Configuration import Configuration
 from .CmdArgs import CmdArgs
 # Regarde s'il faut initialiser un nouveau fichier de configuration
-args = CmdArgs({'host': 'string', 'port': 'int', 'test': 'switch'}).parsed_args
+args = CmdArgs({'host': 'string', 'port': 'int', 'tls': 'switch', 'test[false]': 'switch'}).parsed_args
 if not os.path.isfile(os.path.join(os.getcwd(), 'conf', 'clientfedid.cnf')):
   Configuration.read_configuration('clientfedid.cnf', listen_host=args.get('host'), listen_port=args.get('port'))
 
@@ -66,10 +66,9 @@ def main():
   httpd.ssl_params = {}
   
   # SSL
-  httpd.secure = False
-  if Configuration.is_on(conf['server']['ssl']):
+  httpd.secure = args.get('tls') if 'tls' in args else Configuration.is_on(conf['server']['ssl'])
+  if httpd.secure:
   
-    httpd.secure = True
     conf_dir = os.path.join(os.getcwd(), 'conf')
     conf_dir = Configuration.conf_dir
     

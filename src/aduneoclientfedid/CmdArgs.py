@@ -35,7 +35,8 @@ class CmdArgs:
   - int
   - option(val1, valn)
   - options(val1, valn) séparées par des virgules, restituées en tableau (tableau vide si l'argument n'est pas donné)
-  - switch (valeur booléenne avec valeur false par défaut. Si l'argument est donné, la valeur est true)
+  - switch (valeur booléenne, pour laquelle on aura intérêt à donner une valeur par défaut)
+      possibilité de donner une valeur au switch par <nom>:<valeur> (pour forcer une valeur à false en particulier)
   - date au format aaaammjjhhmmss
 
   Le séparateur des valeurs multiples est la virgule par défaut. Il est sinon donné dans le paramètre value_separator.
@@ -60,6 +61,13 @@ class CmdArgs:
     
   
   def _parse(self):
+    """ analyse les arguments de la ligne de commandes
+    
+    place le résultat dans self.parsed_args
+    
+    Versions:
+      20/02/2026 (mpham) possibilité de donner une valeur à un switch par <nom>:<valeur>
+    """
   
     self.parsed_args = {}
     args_format = {}
@@ -98,8 +106,6 @@ class CmdArgs:
             self.parsed_args[arg] = True
           else:
             raise Exception('default value for argument "'+arg+'" unknown. "'+arg+'" is a switch, therefore expected values are "false" and "true"')
-        else:
-          self.parsed_args[arg] = False
       elif argument_type == 'strings' or argument_type == 'options':
         self.parsed_args[arg] = []
         if default_value:
@@ -120,11 +126,22 @@ class CmdArgs:
       if arg[0] != '-':
         raise Exception("syntax error, an argument should start with a dash, %s found" % arg[0])
       arg = arg[1:]
+      
+      # les switch peuvent avoir la syntaxe <arg>:<valeur>
+      colon_value = None
+      colon_pos = arg.find(':')
+      if colon_pos>0:
+        colon_value = arg[colon_pos+1:]
+        arg = arg[:colon_pos]
+      
       if arg not in self.accepted_params.keys():
         raise Exception("unknown argument %s" % arg)
 
       argument_type = args_format[arg]['type']
       accepted_values = args_format[arg]['accepted_values']
+
+      if argument_type != 'switch' and colon_value:
+        raise Exception(f"value after colon is not allowed for argument {arg}")
       
       value = None
       if argument_type in ('strings', 'options'):
@@ -196,7 +213,15 @@ class CmdArgs:
         value = (value+'000000')[:14]
         self.parsed_args[arg] = time.strptime(value, '%Y%m%d%H%M%S')
       elif argument_type == 'switch':
-        self.parsed_args[arg] = True
+        if colon_value:
+          if colon_value.lower() in ['on', 'o', 'yes', 'y', 'true', 't', 'oui', '1']:
+            self.parsed_args[arg] = True
+          elif colon_value.lower() in ['off', 'n', 'no', 'false', 'f', 'non', '0']:
+            self.parsed_args[arg] = False
+          else:
+            raise Exception(f"value {colon_value} not valid for argument {arg}")
+        else:
+          self.parsed_args[arg] = True
       
       iarg += 1
     
