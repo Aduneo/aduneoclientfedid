@@ -618,6 +618,42 @@ class BaseServer(BaseHTTPRequestHandler):
     return os.path.commonpath((os.path.realpath(requested_path), os.path.realpath(base_dir))) == os.path.realpath(base_dir)
     
     
+  def get_authentication_parameters(self) -> dict:
+    """ Retourne les paramètres de configuration de l'authentification
+    
+    Returns:
+      l'extrait du fichier de configuration sur l'authentitication active, None s'il n'y en a pas
+    
+    Raises:
+      AduneoError si la configuration est incohérente
+      
+    Versions:
+      14/02/2026 (mpham) version initiale
+      26/02/2026 (mpham) mise en cache dans self.authentication_parameters
+    """
+    
+    if not hasattr(self, 'authentication_parameters'):
+    
+      self.authentication_parameters = None
+      
+      server_parameters = self.conf['/server']
+      authentication_wrapper = server_parameters.get('authentication')
+      if authentication_wrapper:
+        active_authentication = authentication_wrapper.get('active_authentication')
+        if not active_authentication:
+          raise AduneoError("no active_authentication found in authentication parameters")
+        if active_authentication.lower() != 'none':
+          authentication_schemes = authentication_wrapper.get('authentication_schemes')
+          if not authentication_schemes:
+            raise AduneoError("no authentication_schemes found in authentication parameters")
+          self.authentication_parameters = authentication_schemes.get(active_authentication)
+          if not self.authentication_parameters:
+            raise AduneoError(f"no parameters found in authentication parameters for {active_authentication}")
+      
+    return self.authentication_parameters
+
+
+
 class BaseHandler:
   
   def __init__(self, hreq):
@@ -628,6 +664,7 @@ class BaseHandler:
     Versions:
       01/03/2021 (mpham) version initiale
       26/01/2025 (mpham) remontée des en-têtes
+      20/02/2026 (mpham) conservation de l'adresse IP (pour l'instant sans gestion du RP frontal)
     """
     
     from .Server import Server  # pour éviter les imports circulaires
@@ -637,6 +674,7 @@ class BaseHandler:
     self.hreq = hreq
     self.server = hreq.server
     self.headers = hreq.headers
+    self.ip_address = hreq.client_address[0]
     
     self.result_in_table = False   # Indique si une table est ouverte (voir start_result_table)
 
@@ -1014,29 +1052,13 @@ class BaseHandler:
       l'extrait du fichier de configuration sur l'authentitication active, None s'il n'y en a pas
     
     Raises:
-      AduneoError si la configuration est inconsistente
+      AduneoError si la configuration est incohérente
       
     Versions:
       14/02/2026 (mpham) version initiale
+      26/02/2026 (mpham) mise en cache dans self.authentication_parameters
     """
-    
-    authentication_parameters = None
-    
-    server_parameters = self.conf['/server']
-    authentication_wrapper = server_parameters.get('authentication')
-    if authentication_wrapper:
-      active_authentication = authentication_wrapper.get('active_authentication')
-      if not active_authentication:
-        raise AduneoError("no active_authentication found in authentication parameters")
-      if active_authentication.lower() != 'none':
-        authentication_schemes = authentication_wrapper.get('authentication_schemes')
-      if not authentication_schemes:
-        raise AduneoError("no authentication_schemes found in authentication parameters")
-      authentication_parameters = authentication_schemes.get(active_authentication)
-      if not authentication_parameters:
-        raise AduneoError(f"no parameters found in authentication parameters for {active_authentication}")
-      
-    return authentication_parameters
+    return self.hreq.get_authentication_parameters()
 
 
 
@@ -1186,6 +1208,18 @@ class WebRouter:
   def is_access_granted(self, hreq, func_def:dict):
     """ Vérifie si l'utilisateur a bien accès à l'URL
     
+    Les URL doivent avoir un paramètre access (à leur niveau ou à celui du module)
+    
+    Par défaut, les pages prennent l'access du module et les modules ont la valeur {'authentication': 'all', 'profiles': 'all'}
+    
+    l'access est de la forme
+    {
+      "authentication": bool,                         # indique si l'accès est public ou soumis à authentification
+      "profiles": <#all|<profile>|[<profile>, ]>      # donne la liste des profils autorisés, all pour tous les utilisateurs authentifiés
+    }
+      
+    On ne gère pas encore d'actions (lecture, écriture)
+    
     Args:
       hreq: instance de BaseServer traitant la requête
       func_def: informations sur l'URL, en particulier le champ access
@@ -1197,27 +1231,31 @@ class WebRouter:
       Exception si les droits d'accès ne sont pas définis correctement et qu'une évaluation n'est donc pas possible
     
     Versions:
-      15/02/2026 (mpham) version initiale
+      15/02/2026-26/02/2026 (mpham) version initiale
     """
 
-    access_granted = False
-    access_def = func_def.get('access')
-    if access_def is None:
-      raise Exception(f"access rights to {func_def['module']}.{func_def['class']}.{func_def['method']} missing")
-    
-    authentication = access_def.get('authentication')
-    if authentication is None:
-      print("FUNC", func_def)
-      raise Exception(f"access rights to {func_def['module']}.{func_def['class']}.{func_def['method']} without authentication assertion")
-    
-    if not authentication:
+    if hreq.get_authentication_parameters() is None:
       access_granted = True
     else:
-      if authentication.lower() == 'all':
-        session_authentication_info = hreq.get_session_value('authentication')
-        if session_authentication_info:
-          if session_authentication_info.get('user'):
-            access_granted = True
+
+      access_granted = False
+      access_def = func_def.get('access')
+      if access_def is None:
+        raise Exception(f"access rights to {func_def['module']}.{func_def['class']}.{func_def['method']} missing")
+      
+      authentication = access_def.get('authentication')
+      if authentication is None:
+        raise Exception(f"access rights to {func_def['module']}.{func_def['class']}.{func_def['method']} without authentication assertion")
+      
+      if not authentication:
+        access_granted = True
+      else:
+        profiles = access_def.get('profiles', '#all')
+        if profiles.lower() == '#all':
+          session_authentication_info = hreq.get_session_value('authentication')
+          if session_authentication_info:
+            if session_authentication_info.get('user'):
+              access_granted = True
         
     return access_granted
 
@@ -1420,7 +1458,7 @@ def register_api_url(method:str, url:str=None, access:dict=None):
   return decorator
 
 
-def register_web_module(path, access={'authentication': 'all', 'profiles': 'all'}):
+def register_web_module(path, access={'authentication': True, 'profiles': '#all'}):
   """ Decorator pour les classes descendant de BaseHandler contenant des méthodes de service d'URL
   
   Args:

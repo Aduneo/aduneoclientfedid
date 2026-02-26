@@ -43,11 +43,11 @@ class PublicAuth(BaseHandler):
     """
     
     authentication_parameters = self.get_authentication_parameters()
-    
-    authentication_method = authentication_parameters.get('method', '')
-    if authentication_method.lower() == 'generic password':
-      self.send_redirection('/public/auth/password1')
-    else:
-      raise Exception(f"Authentication method {authentication_method} unknonwn")
+    if authentication_parameters:
+      authentication_method = authentication_parameters.get('method', '')
+      if authentication_method.lower() == 'generic password':
+        self.send_redirection('/public/auth/password1')
+      else:
+        raise Exception(f"Authentication method {authentication_method} unknonwn")
 
 
