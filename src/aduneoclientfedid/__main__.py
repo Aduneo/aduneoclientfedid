@@ -37,7 +37,7 @@ args = CmdArgs({'host': 'string', 'port': 'int', 'tls': 'switch', 'conf_dir': 's
 if 'conf_dir' in args:
   Configuration.set_conf_dir(args['conf_dir'])
 if not os.path.isfile(os.path.join(Configuration.conf_dir, 'clientfedid.cnf')):
-  Configuration.read_configuration('clientfedid.cnf', listen_host=args.get('host'), listen_port=args.get('port'))
+  Configuration.read_configuration('clientfedid.cnf', listen_host=args.get('host'), listen_port=args.get('port'), tls=args['tls'])
 
 from .CryptoTools import CryptoTools
 from .Server import Server

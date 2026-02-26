@@ -209,7 +209,7 @@ class Configuration():
     Configuration.conf_dir = conf_dir
     
 
-  def read_configuration(conf_filename, listen_host:str=None, listen_port:int=None):
+  def read_configuration(conf_filename, listen_host:str=None, listen_port:int=None, tls:bool=True):
     """
     Lit un fichier de configuration JSON du répertoire conf (lu dans le dossier en cours, celui d'où a été lancée la commande python -m ClientFedID)
     Met le nom du fichier dans /meta/filename
@@ -218,13 +218,16 @@ class Configuration():
     
     Args:
       conf_filename: nom court du fichier de configuration
-      port: port d'écoute du serveur, utilisé lors de l'initialisation du fichier de configuration au premier démarrage (n'est plus utilisé ensuite)
+      listen_host: host d'écoute du serveur, utilisé lors de l'initialisation du fichier de configuration au premier démarrage (n'est plus utilisé ensuite)
+      listen_port: port d'écoute du serveur, utilisé lors de l'initialisation du fichier de configuration au premier démarrage (n'est plus utilisé ensuite)
+      tls: activation de TLS pour l'écoute du serveur, utilisé lors de l'initialisation du fichier de configuration au premier démarrage (n'est plus utilisé ensuite)
     
     Versions:
       26/02/2021 (mpham) version initiale
       29/12/2022 (mpham) dissociation des dossiers conf (retiré du module) et data (qui reste dans le module)
       25/01/2023 (mpham) initialisation du host et du port d'écoute lors de l'initialisation du fichier de configuration à partir de clientfedid-template.cnf
       08/08/2024 (mpham) version 2 de la configuration
+      26/02/2026 (mpham) paramètre tls pour la création d'un nouveau fichier de configuration
     """
 
     if not os.path.isdir(Configuration.conf_dir):
@@ -245,7 +248,6 @@ class Configuration():
 
     crypto = ConfCrypto()
     crypto.read(conf_filepath)
-    print(conf_filepath)
 
     if not crypto.app_conf['meta'].get('version'):
       # on est en version 1, il faut convertir le fichier en version 2
@@ -256,6 +258,7 @@ class Configuration():
         crypto.app_conf['server']['host'] = listen_host
       if listen_port:
         crypto.app_conf['server']['port'] = str(listen_port)
+      crypto.app_conf['server']['ssl'] = 'on' if tls else 'off'
       crypto.write()
     
     return crypto.app_conf
