@@ -188,6 +188,27 @@ class Configuration():
 
   conf_dir = os.path.join(os.getcwd(), 'conf')
 
+  def set_conf_dir(conf_dir:str):
+    """ Force le dossier de configuration
+    
+    Par défaut, c'est le dossier conf du dossier courant qui est pris (il en est créé un s'il n'existe pas)
+    
+    Args:
+      conf_dir: chemin complet du dossier de configuration
+      
+    Raises:
+      Exception si le dossier n'existe pas
+      
+    Versions:
+      26/02/2026 (mpham) version initiale
+    """
+    
+    if not os.path.isdir(conf_dir):
+      raise Exception(f"dossier {conf_dir} n'existe pas")
+      
+    Configuration.conf_dir = conf_dir
+    
+
   def read_configuration(conf_filename, listen_host:str=None, listen_port:int=None):
     """
     Lit un fichier de configuration JSON du répertoire conf (lu dans le dossier en cours, celui d'où a été lancée la commande python -m ClientFedID)
@@ -224,6 +245,7 @@ class Configuration():
 
     crypto = ConfCrypto()
     crypto.read(conf_filepath)
+    print(conf_filepath)
 
     if not crypto.app_conf['meta'].get('version'):
       # on est en version 1, il faut convertir le fichier en version 2
