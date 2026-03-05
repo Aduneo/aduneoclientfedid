@@ -26,6 +26,8 @@ import logging
 
 from http.server import BaseHTTPRequestHandler
 
+from .session.SessionManager import SessionManager
+
 
 class BaseServer(BaseHTTPRequestHandler):
 
@@ -489,7 +491,6 @@ class BaseServer(BaseHTTPRequestHandler):
 
   
   def check_session(self, create_session=True):
-  
     """
     Génère un identifiant de session s'il n'en existe pas déjà dans les cookies
     
@@ -501,62 +502,74 @@ class BaseServer(BaseHTTPRequestHandler):
     - puis on ajoute une information dans la session qui n'existe pas
     - on génère donc un identifiant, mais comme les en-têtes ont déjà été envoyés, c'est trop tard
     
-    mpham 01/03/2021
+    01/03/2021 (mpham) version initiale
+    17/02/2026 (mpham) utilisation de SessionManager
     """
+    
+    session_manager = SessionManager(self.conf)
     
     session_exists = False
     if self.headers.get('Cookie') is not None:
       cookies = http.cookies.SimpleCookie(self.headers.get('Cookie'))
       if 'fedclient_sessionid' in cookies:
-        self.session_id = cookies['fedclient_sessionid'].value
-        session_exists = True
+        session_id = cookies['fedclient_sessionid'].value
+        if session_manager.is_session_valid(session_id):
+          self.session_id = session_id
+          session_exists = True
         
     if not session_exists and create_session:
-      self.session_id = str(uuid.uuid4())
+      self.session_id = session_manager.create_session()
 
   
   def set_session_value(self, key, value):
+    """ Met une variable en session
+
+    Args:
+      key: nom de la variable
+      value: valeur
     
+    Versions:
+      27/01/2021 (mpham) version initiale
+      18/02/2026 (mpham) utilisation de SessionManager
     """
-    met une variable en session
+
+    session_manager = SessionManager(self.conf)
     
-    mpham 27/01/2021
-    """
+    if not session_manager.is_session_valid(self.session_id):
+      self.session_id = session_manager.create_session()
     
-    if self.sessions.get(self.session_id) is None:
-      self.sessions[self.session_id] = {}
-      
-    self.sessions[self.session_id][key] = value
+    session_manager.set_session_value(self.session_id, key, value)
     
     
   def get_session_value(self, key):
+    """ Récupère une variable de la session
     
-    """
-    récupère une variable de la session
-    retourne None si elle n'existe pas
-    
-    mpham 27/01/2021
-    """
-    
-    value = None
-    
-    if self.sessions.get(self.session_id) is not None:
-      value = self.sessions[self.session_id].get(key)
+    Args:
+      key: nom de la variable
       
-    return value
+    Returns:
+      valeur de la variable, None si elle n'existe pas
+    
+    Versions:
+      27/01/2021 (mpham) version initiale
+      18/02/2026 (mpham) utilisation de SessionManager
+    """
+    session_manager = SessionManager(self.conf)
+    return session_manager.get_session_value(self.session_id, key)
 
     
   def del_session_value(self, key):
-    
-    """
-    Supprime une variable de la session
-    retourne None si elle n'existe pas
-    
-    mpham 01/03/2021
-    """
+    """ Supprime une variable de la session
 
-    if self.session_id is not None:
-      self.sessions[self.session_id].pop(key, None)
+    Args:
+      key: nom de la variable
+    
+    Versions:
+      27/01/2021 (mpham) version initiale
+      18/02/2026 (mpham) utilisation de SessionManager
+    """
+    session_manager = SessionManager(self.conf)
+    session_manager.del_session_value(self.session_id, key)
       
 
   def logon(self, idp_id, id_token = 'authenticated'):
@@ -598,12 +611,49 @@ class BaseServer(BaseHTTPRequestHandler):
     vérifie que le chemin demandé par le client ne fait pas de directory traversal
     retourne True si le chemin est conforme, False en cas d'attaque
     
-    mpham 12/02/2021
+    12/02/2021 (mpham) version initiale
+    20/01/2026 (mpham) utilisation de realpath pour les deux chemins
     """
     
-    return os.path.commonprefix((os.path.realpath(requested_path).lower(), base_dir.lower())) == base_dir.lower()
+    return os.path.commonpath((os.path.realpath(requested_path), os.path.realpath(base_dir))) == os.path.realpath(base_dir)
     
     
+  def get_authentication_parameters(self) -> dict:
+    """ Retourne les paramètres de configuration de l'authentification
+    
+    Returns:
+      l'extrait du fichier de configuration sur l'authentitication active, None s'il n'y en a pas
+    
+    Raises:
+      AduneoError si la configuration est incohérente
+      
+    Versions:
+      14/02/2026 (mpham) version initiale
+      26/02/2026 (mpham) mise en cache dans self.authentication_parameters
+    """
+    
+    if not hasattr(self, 'authentication_parameters'):
+    
+      self.authentication_parameters = None
+      
+      server_parameters = self.conf['/server']
+      authentication_wrapper = server_parameters.get('authentication')
+      if authentication_wrapper:
+        active_authentication = authentication_wrapper.get('active_authentication')
+        if not active_authentication:
+          raise AduneoError("no active_authentication found in authentication parameters")
+        if active_authentication.lower() != 'none':
+          authentication_schemes = authentication_wrapper.get('authentication_schemes')
+          if not authentication_schemes:
+            raise AduneoError("no authentication_schemes found in authentication parameters")
+          self.authentication_parameters = authentication_schemes.get(active_authentication)
+          if not self.authentication_parameters:
+            raise AduneoError(f"no parameters found in authentication parameters for {active_authentication}")
+      
+    return self.authentication_parameters
+
+
+
 class BaseHandler:
   
   def __init__(self, hreq):
@@ -614,6 +664,7 @@ class BaseHandler:
     Versions:
       01/03/2021 (mpham) version initiale
       26/01/2025 (mpham) remontée des en-têtes
+      20/02/2026 (mpham) conservation de l'adresse IP (pour l'instant sans gestion du RP frontal)
     """
     
     from .Server import Server  # pour éviter les imports circulaires
@@ -623,6 +674,7 @@ class BaseHandler:
     self.hreq = hreq
     self.server = hreq.server
     self.headers = hreq.headers
+    self.ip_address = hreq.client_address[0]
     
     self.result_in_table = False   # Indique si une table est ouverte (voir start_result_table)
 
@@ -991,6 +1043,22 @@ class BaseHandler:
         ok = True
         
     return candidate_id
+    
+    
+  def get_authentication_parameters(self) -> dict:
+    """ Retourne les paramètres de configuration de l'authentification
+    
+    Returns:
+      l'extrait du fichier de configuration sur l'authentitication active, None s'il n'y en a pas
+    
+    Raises:
+      AduneoError si la configuration est incohérente
+      
+    Versions:
+      14/02/2026 (mpham) version initiale
+      26/02/2026 (mpham) mise en cache dans self.authentication_parameters
+    """
+    return self.hreq.get_authentication_parameters()
 
 
 
@@ -1051,7 +1119,8 @@ class WebRouter:
       except AduneoError as error:
         self.send_page(str(error), clear_buffer=True)
 
-    mpham 30/09/2022
+    30/09/2022 (mpham) version initiale
+    15/02/2026 (mpham) droits d'accès dans authorized_urls
   """
 
   """
@@ -1061,7 +1130,11 @@ class WebRouter:
         "/module/url/path": {
           "module": "module full name eg ClientFedID.OAuthClientLogin",
           "class": "class name eg OAuthClientLogin",
-          "method": "class method eg send_access_token_introspection_request_spa"
+          "method": "class method eg send_access_token_introspection_request_spa",
+          "access": {
+            "authentication": bool,
+            "profiles": [<all ou liste de profils applicatifs>],
+          }
         }
       }
     }
@@ -1119,17 +1192,75 @@ class WebRouter:
     """
     func_def = WebRouter.authorized_urls[self.method].get(self.url)
     if func_def:
-      # comme is_authorized_url devrait être appelé avant, ce devrait toujours être vrai
-      web_module = importlib.import_module(func_def['module']) # par exemple ClientFedID.OAuthClientLogin
-      web_class = getattr(web_module, func_def['class']) # par exemple OAuthClientLogin
-      web_instance = web_class(hreq)
-      http_method = getattr(web_instance, func_def['method']) # par exemple prepare_request
-      http_method()
+      if self.is_access_granted(hreq, func_def):
+        # comme is_authorized_url devrait être appelé avant, ce devrait toujours être vrai
+        web_module = importlib.import_module(func_def['module']) # par exemple ClientFedID.OAuthClientLogin
+        web_class = getattr(web_module, func_def['class']) # par exemple OAuthClientLogin
+        web_instance = web_class(hreq)
+        http_method = getattr(web_instance, func_def['method']) # par exemple prepare_request
+        http_method()
+      else:
+        hreq.send_redirection('/public/auth')
     else:
       logging.error("Unknown URL "+self.url)
 
 
-def register_url(method:str, url:str=None):
+  def is_access_granted(self, hreq, func_def:dict):
+    """ Vérifie si l'utilisateur a bien accès à l'URL
+    
+    Les URL doivent avoir un paramètre access (à leur niveau ou à celui du module)
+    
+    Par défaut, les pages prennent l'access du module et les modules ont la valeur {'authentication': 'all', 'profiles': 'all'}
+    
+    l'access est de la forme
+    {
+      "authentication": bool,                         # indique si l'accès est public ou soumis à authentification
+      "profiles": <#all|<profile>|[<profile>, ]>      # donne la liste des profils autorisés, all pour tous les utilisateurs authentifiés
+    }
+      
+    On ne gère pas encore d'actions (lecture, écriture)
+    
+    Args:
+      hreq: instance de BaseServer traitant la requête
+      func_def: informations sur l'URL, en particulier le champ access
+      
+    Returns:
+      True si s'utilisateur a bien accès
+      
+    Raises:
+      Exception si les droits d'accès ne sont pas définis correctement et qu'une évaluation n'est donc pas possible
+    
+    Versions:
+      15/02/2026-26/02/2026 (mpham) version initiale
+    """
+
+    if hreq.get_authentication_parameters() is None:
+      access_granted = True
+    else:
+
+      access_granted = False
+      access_def = func_def.get('access')
+      if access_def is None:
+        raise Exception(f"access rights to {func_def['module']}.{func_def['class']}.{func_def['method']} missing")
+      
+      authentication = access_def.get('authentication')
+      if authentication is None:
+        raise Exception(f"access rights to {func_def['module']}.{func_def['class']}.{func_def['method']} without authentication assertion")
+      
+      if not authentication:
+        access_granted = True
+      else:
+        profiles = access_def.get('profiles', '#all')
+        if profiles.lower() == '#all':
+          session_authentication_info = hreq.get_session_value('authentication')
+          if session_authentication_info:
+            if session_authentication_info.get('user'):
+              access_granted = True
+        
+    return access_granted
+
+
+def register_url(method:str, url:str=None, access:dict=None):
   """ Decorator pour les méthodes de classe
   
   Attention, ce décorateur doit être le dernier (se trouver le plus proche de la déclaration de la méthode), sinon il n'est pas pris en compte
@@ -1138,9 +1269,11 @@ def register_url(method:str, url:str=None):
   Args:
     method: méthode HTTP
     url: URL relative par rapport à la racine déclarée au niveau de la classe par le décorateur register_web_module
+    access: droits d'accès de la forme {'authentication': bool, profiles=[]}
 
   Versions:
     30/09/2022 (mpham) version initiale
+    15/02/2026 (mpham) contrôle de l'accès
   """
   def decorator(func):
   
@@ -1154,26 +1287,27 @@ def register_url(method:str, url:str=None):
       relative_url = method_name
     if module_name not in WebRouter.temp_urls[method.casefold()]:
       WebRouter.temp_urls[method.casefold()][module_name] = {}
-    WebRouter.temp_urls[method.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name}
+    WebRouter.temp_urls[method.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name, 'access': access}
 
     return func
     
   return decorator
 
   
-def register_page_url(method:str, url:str=None, template:str=None, continuous:bool=False):
+def register_page_url(method:str, url:str=None, template:str=None, continuous:bool=False, access:dict=None):
   """ Decorator de déclaration d'une page web représentée par une méthode de classe
   
   La méthode doit se trouver dans une classe décorée par @register_web_module
   
   Attention, ce décorateur doit être le dernier (se trouver le plus proche de la déclaration de la méthode), sinon il n'est pas pris en compte
-    (l'enregistrement se fait pas car func n'est pas la page mais le décorateur suivant)
+    (l'enregistrement ne se fait pas car func n'est pas la page mais le décorateur suivant)
   
   Args:
     method: méthode HTTP, avec possibilité d'en donner plusieurs, dans une list (['GET', 'POST'] par exemple)
     url: URL relative par rapport à la racine déclarée au niveau de la classe par le décorateur register_web_module
     template: nom (optionnel) d'un fichier de modèle (du dossier templates) où le mot-clé {{content}} indique où insérer le contenu
     continuous: indique si la page est de type continu (envoi progressif du contenu pour affichage partiel lors des opérations prenant du temps)
+    access: droits d'accès de la forme {'authentication': bool, profiles=[]}
 
   Versions:
     30/09/2022 (mpham) version initiale
@@ -1181,6 +1315,7 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
     29/03/2023 (mpham) ajout des paramètres template et continuous
     05/01/2025 (mpham) possibilité de définir plusieurs méthodes
     09/01/2025 (mpham) comportement identique pages continues et non continues avec CfiForm
+    15/02/2026 (mpham) contrôle de l'accès
   """
   def decorator(func):
   
@@ -1200,7 +1335,7 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
     for met in methods:  
       if module_name not in WebRouter.temp_urls[met.casefold()]:
         WebRouter.temp_urls[met.casefold()][module_name] = {}
-      WebRouter.temp_urls[met.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name}
+      WebRouter.temp_urls[met.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name, 'access': access}
     
     # Traitement de la page
     def wrapper(*args, **kwargs):
@@ -1286,7 +1421,7 @@ def register_page_url(method:str, url:str=None, template:str=None, continuous:bo
   return decorator
 
 
-def register_api_url(method:str, url:str=None):
+def register_api_url(method:str, url:str=None, access:dict=None):
   """ Decorator de déclaration d'une API représentée par une méthode de classe
   
   La méthode doit se trouver dans une classe décorée par @register_web_module
@@ -1297,9 +1432,11 @@ def register_api_url(method:str, url:str=None):
   Args:
     method: méthode HTTP
     url: URL relative par rapport à la racine déclarée au niveau de la classe par le décorateur register_web_module
+    access: droits d'accès de la forme {'authentication': bool, profiles=[]}
 
   Versions:
     30/09/2022 (mpham) version initiale
+    15/02/2026 (mpham) contrôle de l'accès
   """
   def decorator(func):
   
@@ -1314,22 +1451,24 @@ def register_api_url(method:str, url:str=None):
       relative_url = method_name
     if module_name not in WebRouter.temp_urls[method.casefold()]:
       WebRouter.temp_urls[method.casefold()][module_name] = {}
-    WebRouter.temp_urls[method.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name}
+    WebRouter.temp_urls[method.casefold()][module_name][relative_url] = {'module': module_name, 'class': class_name, 'method': method_name, 'access': access}
 
     return func
     
   return decorator
 
 
-def register_web_module(path):
+def register_web_module(path, access={'authentication': True, 'profiles': '#all'}):
   """ Decorator pour les classes descendant de BaseHandler contenant des méthodes de service d'URL
   
   Args:
     path: URL relative servie par la classe, par exemple /client/oauth/login
+    access: droits d'accès de la forme {'authentication': bool, profiles=[]}
 
   Versions:
     30/09/2022 (mpham) version initiale
     28/12/2023 (mpham) page d'accueil des modules
+    15/02/2026 (mpham) contrôle de l'accès
   """
   def decorator(class_def):
     module_name = class_def.__module__
@@ -1340,6 +1479,9 @@ def register_web_module(path):
         else:
           full_url = path+'/'+relative_url
         func_def = WebRouter.temp_urls[method.casefold()][module_name][relative_url]
+        # si les droits n'ont pas été positionnés au niveau de la méthode, on met les droits du module
+        if not func_def.get('access'):
+          func_def['access'] = access
         WebRouter.authorized_urls[method][full_url] = func_def
     
     return class_def

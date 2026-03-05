@@ -69,7 +69,6 @@ class Server(BaseServer):
     
     self.saml_prerequisite = saml_prerequisite
     
-    self.row_number = 0  # pour l'affichage des tableaux de résultat
     super().__init__(request, client_address, server)
 
 
@@ -108,7 +107,7 @@ class Server(BaseServer):
         try:
           web_router.serve_url(self)
         except AduneoError as error:
-          self.send_page(str(error), clear_buffer=True)
+          self.send_page_raw(str(error), clear_buffer=True)
       else:
         # Regarder s'il ne s'agit pas d'un chemin défini comme redirect_uri OIDC dans la configuration
         callback_found = self._search_callback_in_configuration()
@@ -118,7 +117,7 @@ class Server(BaseServer):
           callback_found = self._search_callback_in_session()
         
         if not callback_found:
-          self.send_page('404 !', code=404)
+          self.send_page_raw('404 !', code=404)
 
     
   def do_POST(self):
@@ -138,7 +137,7 @@ class Server(BaseServer):
       try:
         web_router.serve_url(self)
       except AduneoError as error:
-        self.send_page(str(error), clear_buffer=True)
+        self.send_page_raw(str(error), clear_buffer=True)
     else:
       # Regarder s'il ne s'agit pas d'un chemin défini comme redirect_uri OIDC dans la configuration
       callback_found = self._search_callback_in_configuration()
@@ -154,7 +153,7 @@ class Server(BaseServer):
           pass
       
       if not callback_found:
-        self.send_page('404 !', code=404)
+        self.send_page_raw('404 !', code=404)
 
     
   def do_PUT(self):
@@ -168,7 +167,7 @@ class Server(BaseServer):
     if (method_name in dir(self)):
       eval('self.'+method_name+'()')
     else:
-      self.send_page('404 !', code=404)
+      self.send_page_raw('404 !', code=404)
 
 
   def _search_callback_in_configuration(self):
@@ -493,7 +492,7 @@ class Server(BaseServer):
     try:
       help_handler.send_help()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
 
 
   def post_help(self):
@@ -509,7 +508,7 @@ class Server(BaseServer):
     try:
       help_handler.save_help()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
 
 
   def get_oidc_client_preparerequestazerty(self):
@@ -525,7 +524,7 @@ class Server(BaseServer):
     try:
       oidc_client_login.prepare_request()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
 
 
   def post_oidc_client_sendrequestazerty(self):
@@ -543,7 +542,7 @@ class Server(BaseServer):
     try:
       oidc_client_login.send_request()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
 
 
   def _client_oidc_login_callback(self):
@@ -559,7 +558,7 @@ class Server(BaseServer):
     try:
       oidc_client_login.callback()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
 
 
   def _client_oauth_login_callback(self):
@@ -575,7 +574,7 @@ class Server(BaseServer):
     try:
       oauth_client_login.callback()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
 
 
   def _client_oidc_logout_callback(self):
@@ -585,7 +584,7 @@ class Server(BaseServer):
     try:
       oidc_logout.callback()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
 
 
   def get_oidc_client_modifyclient_guide(self):
@@ -595,7 +594,7 @@ class Server(BaseServer):
     try:
       oidc_client_admin.display()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
 
 
   def post_oidc_client_modifyclient_guide(self):
@@ -605,7 +604,7 @@ class Server(BaseServer):
     try:
       oidc_client_admin.modify()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
     
 
   def _client_saml_acs(self):
@@ -621,7 +620,7 @@ class Server(BaseServer):
     try:
       saml_client_login.authcallback()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
 
 
   def _client_saml_slo(self):
@@ -631,7 +630,7 @@ class Server(BaseServer):
     try:
       saml_logout.callback()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
 
 
   def _client_cas_login_callback(self):
@@ -641,7 +640,7 @@ class Server(BaseServer):
     try:
       cas_login.callback()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
 
 
   def _client_cas_logout_callback(self):
@@ -651,7 +650,7 @@ class Server(BaseServer):
     try:
       cas_logout.callback()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
 
 
   def check_saml_certificate_exists(self) -> str:
@@ -697,7 +696,7 @@ class Server(BaseServer):
     try:
       crt_file_path = self.check_saml_certificate_exists()
     except:
-      send_page('Certificate not configured', code=400, clear_buffer=True)
+      send_page_raw('Certificate not configured', code=400, clear_buffer=True)
       return
     
     download_filename = os.path.basename(crt_file_path)
@@ -726,7 +725,7 @@ class Server(BaseServer):
       json_result = {"private_key": private_key, "certificate": certificate}
       self.send_json(json_result)
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
     
     
   def get_tpl(self):  
@@ -740,7 +739,7 @@ class Server(BaseServer):
     try:
       webconsole.display()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
 
   def get_webconsole_buffer(self):
 
@@ -749,7 +748,7 @@ class Server(BaseServer):
     try:
       webconsole.send_buffer()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
 
 
   def put_webconsole_buffer(self):
@@ -759,5 +758,5 @@ class Server(BaseServer):
     try:
       webconsole.clear_buffer()
     except AduneoError as error:
-      self.send_page(str(error), clear_buffer=True)
+      self.send_page_raw(str(error), clear_buffer=True)
 

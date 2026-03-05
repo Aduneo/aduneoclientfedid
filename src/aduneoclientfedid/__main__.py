@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Copyright 2023 Aduneo
+Copyright 2023-2026 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,18 +33,23 @@ from socketserver import ThreadingMixIn
 from .Configuration import Configuration
 from .CmdArgs import CmdArgs
 # Regarde s'il faut initialiser un nouveau fichier de configuration
-args = CmdArgs({'host': 'string', 'port': 'int', 'test': 'switch'}).parsed_args
-if not os.path.isfile(os.path.join(os.getcwd(), 'conf', 'clientfedid.cnf')):
-  Configuration.read_configuration('clientfedid.cnf', listen_host=args.get('host'), listen_port=args.get('port'))
+args = CmdArgs({'host': 'string', 'port': 'int', 'tls': 'switch', 'conf-dir': 'string', 'test[false]': 'switch'}).parsed_args
+if 'conf_dir' in args:
+  Configuration.set_conf_dir(args['conf-dir'])
+if not os.path.isfile(os.path.join(Configuration.conf_dir, 'clientfedid.cnf')):
+  Configuration.read_configuration('clientfedid.cnf', listen_host=args.get('host'), listen_port=args.get('port'), tls=args['tls'])
 
 from .CryptoTools import CryptoTools
 from .Server import Server
+from .session.SessionManager import SessionManager
 
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Handle requests in a separate thread."""
-    
+
+
+session_thread = None   # on conserve l'objet de thread pour l'arrêter au Ctrl-C 
 
 def main():
 
@@ -63,10 +68,9 @@ def main():
   httpd.ssl_params = {}
   
   # SSL
-  httpd.secure = False
-  if Configuration.is_on(conf['server']['ssl']):
+  httpd.secure = args.get('tls') if 'tls' in args else Configuration.is_on(conf['server']['ssl'])
+  if httpd.secure:
   
-    httpd.secure = True
     conf_dir = os.path.join(os.getcwd(), 'conf')
     conf_dir = Configuration.conf_dir
     
@@ -95,6 +99,7 @@ def main():
   if httpd.secure:
     scheme = 'https'
 
+  session_timer(conf)
   print(time.asctime(), 'Server UP - %s:%s' % (scheme+'://'+host, port))
   try:
       httpd.serve_forever()
@@ -102,11 +107,30 @@ def main():
       pass
   httpd.server_close()
   print(time.asctime(), 'Server DOWN - %s:%s' % (scheme+'://'+host, port))
+  if (session_thread):
+    session_thread.cancel()
   
   if httpd.ssl_params.get('key_temp_files'):
     os.unlink(conf_dir+'/'+conf['server']['ssl_key_file'])
     os.unlink(conf_dir+'/'+conf['server']['ssl_cert_file'])
     
+
+def session_timer(conf):
+  """ Déclenchement périodique du nettoyage des sessions
+  
+  Args:
+    conf: configuration, qui est requise pour la récupération du singleton SessionManager
+    
+  Versions:
+    17/02/2026 (mpham) version initiale
+  """
+  global session_thread
+  if session_thread:
+    session_manager = SessionManager(conf)
+    session_manager.expire_sessions()
+  session_thread = threading.Timer(60, session_timer, args=[conf])
+  session_thread.start()
+
 
 def test():
   print('--- test mode ----')

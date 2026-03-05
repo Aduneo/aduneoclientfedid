@@ -1,5 +1,5 @@
 """
-Copyright 2023 Aduneo
+Copyright 2023-2026 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,19 +13,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-
-from .BaseServer import AduneoError
-from .BaseServer import BaseServer
-from .CryptoTools import CryptoTools
-from .WebConsoleHandler import WebConsoleHandler
-from datetime import datetime
 import copy
+import datetime
 import json
 import logging
 import random
 import os
 import string
 import sys
+
+import aduneoclientfedid.CryptoTools
+
+from .BaseServer import AduneoError
+from .BaseServer import BaseServer
+from .CryptoTools import CryptoTools
+from .WebConsoleHandler import WebConsoleHandler
 
 
 class conf_dict(dict):
@@ -186,7 +188,28 @@ class Configuration():
 
   conf_dir = os.path.join(os.getcwd(), 'conf')
 
-  def read_configuration(conf_filename, listen_host:str=None, listen_port:int=None):
+  def set_conf_dir(conf_dir:str):
+    """ Force le dossier de configuration
+    
+    Par défaut, c'est le dossier conf du dossier courant qui est pris (il en est créé un s'il n'existe pas)
+    
+    Args:
+      conf_dir: chemin complet du dossier de configuration
+      
+    Raises:
+      Exception si le dossier n'existe pas
+      
+    Versions:
+      26/02/2026 (mpham) version initiale
+    """
+    
+    if not os.path.isdir(conf_dir):
+      raise Exception(f"dossier {conf_dir} n'existe pas")
+      
+    Configuration.conf_dir = conf_dir
+    
+
+  def read_configuration(conf_filename, listen_host:str=None, listen_port:int=None, tls:bool=True):
     """
     Lit un fichier de configuration JSON du répertoire conf (lu dans le dossier en cours, celui d'où a été lancée la commande python -m ClientFedID)
     Met le nom du fichier dans /meta/filename
@@ -195,13 +218,16 @@ class Configuration():
     
     Args:
       conf_filename: nom court du fichier de configuration
-      port: port d'écoute du serveur, utilisé lors de l'initialisation du fichier de configuration au premier démarrage (n'est plus utilisé ensuite)
+      listen_host: host d'écoute du serveur, utilisé lors de l'initialisation du fichier de configuration au premier démarrage (n'est plus utilisé ensuite)
+      listen_port: port d'écoute du serveur, utilisé lors de l'initialisation du fichier de configuration au premier démarrage (n'est plus utilisé ensuite)
+      tls: activation de TLS pour l'écoute du serveur, utilisé lors de l'initialisation du fichier de configuration au premier démarrage (n'est plus utilisé ensuite)
     
     Versions:
       26/02/2021 (mpham) version initiale
       29/12/2022 (mpham) dissociation des dossiers conf (retiré du module) et data (qui reste dans le module)
       25/01/2023 (mpham) initialisation du host et du port d'écoute lors de l'initialisation du fichier de configuration à partir de clientfedid-template.cnf
       08/08/2024 (mpham) version 2 de la configuration
+      26/02/2026 (mpham) paramètre tls pour la création d'un nouveau fichier de configuration
     """
 
     if not os.path.isdir(Configuration.conf_dir):
@@ -232,6 +258,7 @@ class Configuration():
         crypto.app_conf['server']['host'] = listen_host
       if listen_port:
         crypto.app_conf['server']['port'] = str(listen_port)
+      crypto.app_conf['server']['ssl'] = 'on' if tls else 'off'
       crypto.write()
     
     return crypto.app_conf
@@ -321,7 +348,7 @@ class Configuration():
     handler_list = []
 
     if "file" in log_method:
-      date = datetime.today().strftime('%Y-%m-%d')
+      date = datetime.datetime.today().strftime('%Y-%m-%d')
       log_dir = os.path.join(os.getcwd(), 'logs')
       log_file = os.path.join(log_dir, 'ClientFedID-{}.log'.format(date))
       if not os.path.isdir(log_dir):
@@ -431,8 +458,8 @@ class ConfCrypto():
             self.modification = True
         elif key == 'token_endpoint_auth_method':
           # Conversion de valeur de février 2024 - modifiée le 28 février 2025
-          if value in ['basic', 'Basic', 'POST', 'client_secret_basic', 'client_secret_post']:
-            data[key] = {'Basic': 'basic', 'basic': 'basic', 'POST': 'form', 'client_secret_basic': 'basic', 'client_secret_post': 'form'}[value]
+          if value in ['Basic', 'POST', 'client_secret_basic', 'client_secret_post']:
+            data[key] = {'Basic': 'basic', 'POST': 'form', 'client_secret_basic': 'basic', 'client_secret_post': 'form'}[value]
             self.modification = True
         else:
           self.decrypt_json(value)
@@ -442,6 +469,20 @@ class ConfCrypto():
 
 
   def encrypt_json(self, data):
+    """ Regarde s'il faut chiffrer certaines valeurs des paramètres
+    
+    Itère sur les ous-paramètres pour parcourir l'ensemble des paramètres
+    
+    On regarde le dernier caractère du nom du paramètre
+      - point d'exclamation (!) : chiffrement symétrique
+      - pourcentage (%) : mot de passe à hasher
+      
+    Args:
+      data: dict avec la configuration ou list de paramètres
+      
+    Versions:
+      13/02/2026 (mpham) hashing des mots de passe
+    """
 
     if isinstance(data, dict):
       for key in list(data.keys()):
@@ -453,6 +494,13 @@ class ConfCrypto():
           # on regarde si la valeur est déjà chiffrée
           if not value.startswith('{Fernet}'):
             data[key] = '{Fernet}'+self._get_crypto().encrypt_string(value)
+        elif key.endswith('%'):
+          if not isinstance(value, str):
+            raise AduneoError(f"password in parameter {key} should be a string")
+            
+          # on regarde si la valeur est déjà chiffrée
+          if not value.startswith('{argon2}'):
+            data[key] = '{argon2}'+aduneoclientfedid.CryptoTools.PasswordTools().hash_password(value)
         else:
           self.encrypt_json(value)
     elif isinstance(data, list):

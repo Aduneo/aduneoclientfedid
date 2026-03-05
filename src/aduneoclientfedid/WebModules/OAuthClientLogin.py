@@ -508,8 +508,8 @@ class OAuthClientLogin(FlowHandler):
       else:
         if app_params['oauth_flow'] == 'authorization_code':
           raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be basic or form')
-
-      self.log_info(f"{'  ' * 1}Authentication scheme: {token_endpoint_auth_method} ({auth})")
+      self.log_info(f"{'  ' * 1}Authentication scheme: {token_endpoint_auth_method}")
+      
       self.log_info(('  ' * 1)+'Token request data: '+str(api_call_data))
       self.add_result_row('Token request data', json.dumps(api_call_data, indent=2), 'token_request_data')
       self.end_result_table()

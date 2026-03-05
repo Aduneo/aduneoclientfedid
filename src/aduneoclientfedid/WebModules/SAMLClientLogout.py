@@ -42,6 +42,7 @@ class SAMLClientLogout(FlowHandler):
   
     Versions:
       04/01/2024 (mpham) version initiale adaptée de OIDCClientLogout
+      05/02/2026 (mpham) nouvelle organisation du contexte
   """
  
   @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=True)
@@ -59,6 +60,7 @@ class SAMLClientLogout(FlowHandler):
 
       # Récupération des paramètres nécessaires à la déconnexion
       idp_params = self.context.idp_params
+      saml_idp_params = idp_params['saml']
 
       app_params = None
       app_id = self.get_query_string_param('appid', '')
@@ -87,7 +89,7 @@ class SAMLClientLogout(FlowHandler):
 
       form_content = {
         'hr_context': self.context['context_id'],
-        'idp_slo_url': idp_params.get('idp_slo_url', ''),
+        'idp_slo_url': saml_idp_params.get('idp_slo_url', ''),
         'sp_entity_id': app_params.get('sp_entity_id', ''),
         'name_id': default_assertion_wrapper.get('name_id', '') if default_assertion_wrapper else '',
         'name_id_format': default_assertion_wrapper.get('name_id_format', '') if default_assertion_wrapper else '',
@@ -152,6 +154,7 @@ class SAMLClientLogout(FlowHandler):
 
     Versions:
       02/01/2025 (mpham) version initiale copiée d'OAuth 2 et de l'ancienne version de SAML
+      05/02/2026 (mpham) nouvelle organisation du contexte
     """
     
     try:
@@ -172,8 +175,9 @@ class SAMLClientLogout(FlowHandler):
 
       # Mise à jour dans le contexte des paramètres liés à l'IdP
       idp_params = self.context.idp_params
+      saml_idp_params = idp_params['saml']
       for item in ['idp_slo_url']:
-        idp_params[item] = self.post_form.get(item, '').strip()
+        saml_idp_params[item] = self.post_form.get(item, '').strip()
 
       # Mise à jour dans le contexte des paramètres liés au client courant
       app_params = self.context.last_app_params
@@ -230,11 +234,13 @@ class SAMLClientLogout(FlowHandler):
 
     Versions:
       05/01/2025 (mpham) version initiale copiée d'OAuth 2 et de l'ancienne version de SAML
+      05/02/2026 (mpham) nouvelle organisation du contexte
     """
 
     self.log_info('  sending logout request in HTTP POST')
 
     idp_params = self.context.idp_params
+    saml_idp_params = idp_params['saml']
     app_params = self.context.last_app_params
     
     request = self.post_form.get('logout_request', '')
@@ -299,7 +305,7 @@ class SAMLClientLogout(FlowHandler):
       <input type="hidden" name="SAMLRequest" value="{saml_request}" />
       <input type="hidden" name="RelayState" value="{relay_state}" />
       </form></body></html>
-    """.format(idp_slo_url=idp_params['idp_slo_url'], saml_request=html.escape(base64_req), relay_state=html.escape(relay_state))
+    """.format(idp_slo_url=saml_idp_params['idp_slo_url'], saml_request=html.escape(base64_req), relay_state=html.escape(relay_state))
 
     self.log_info("SAML POST form:")
     self.log_info(saml_form)
@@ -312,11 +318,13 @@ class SAMLClientLogout(FlowHandler):
 
     Versions:
       05/01/2025 (mpham) version initiale copiée d'OAuth 2 et de l'ancienne version de SAML
+      05/02/2026 (mpham) nouvelle organisation du contexte
     """
 
     self.log_info('  sending logout request in HTTP POST')
 
     idp_params = self.context.idp_params
+    saml_idp_params = idp_params['saml']
     app_params = self.context.last_app_params
     
     request = self.post_form.get('logout_request', '')
@@ -381,7 +389,7 @@ class SAMLClientLogout(FlowHandler):
 
       message += '&signature=' + urllib.parse.quote_plus(base64_signature)
 
-    url = idp_params['idp_slo_url'] + '?' + message
+    url = saml_idp_params['idp_slo_url'] + '?' + message
     logging.info('URL: '+url)
     
     logging.info('Sending redirection')
