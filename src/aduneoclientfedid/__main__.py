@@ -19,8 +19,22 @@ limitations under the License.
   Dépendances :
     OpenSSL (génération d'une clé privée et d'un certificat)
     
+  Args:
+    host: adresse IP d'écoute du serveur, a priorité sur la valeur dans le fichier de configuration
+    port: port d'écoute du serveur, a priorité sur la valeur dans le fichier de configuration
+    root-dir: chemin du dossier où sont créés les dossiers conf et logs, le dossier courant par défaut
+    tls: chiffrement de la connexion, a priorité sur la valeur dans le fichier de configuration. Pour désactiver TLS : -tls:no
+    
+  Si le fichier de configuration n'existe pas, il en est créé un par copie de clientfedid-template.cnf
+    - si host, port et/ou tls sont donnés en paramètre, ils remplacent la valeur par défaut de clientfedid-template.cnf
+    - si port n'est pas donné mais que TLS est désactivé, le port par défaut est 80
+    
   Si le certificat (et la clé) SSL n'est pas donné dans le paramètre de configuration server/ssl_cert_file (et server/ssl_key_file)
-    un certificat temporaire est généré
+    un certificat est généré
+    
+  Exemple :
+    clientfedid -port 8080 -tls:no
+  
 """
 import os
 import logging
@@ -33,11 +47,11 @@ from socketserver import ThreadingMixIn
 from .Configuration import Configuration
 from .CmdArgs import CmdArgs
 # Regarde s'il faut initialiser un nouveau fichier de configuration
-args = CmdArgs({'host': 'string', 'port': 'int', 'tls': 'switch', 'conf-dir': 'string', 'test[false]': 'switch'}).parsed_args
-if 'conf_dir' in args:
-  Configuration.set_conf_dir(args['conf-dir'])
+args = CmdArgs({'host': 'string', 'port': 'int', 'tls': 'switch', 'root-dir': 'string', 'test[false]': 'switch'}).parsed_args
+if 'root-dir' in args:
+  Configuration.set_root_dir(args['root-dir'])
 if not os.path.isfile(os.path.join(Configuration.conf_dir, 'clientfedid.cnf')):
-  Configuration.read_configuration('clientfedid.cnf', listen_host=args.get('host'), listen_port=args.get('port'), tls=args['tls'])
+  Configuration.read_configuration('clientfedid.cnf', listen_host=args.get('host'), listen_port=args.get('port'), tls=args.get('tls', True))
 
 from .CryptoTools import CryptoTools
 from .Server import Server
