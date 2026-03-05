@@ -33,9 +33,9 @@ from socketserver import ThreadingMixIn
 from .Configuration import Configuration
 from .CmdArgs import CmdArgs
 # Regarde s'il faut initialiser un nouveau fichier de configuration
-args = CmdArgs({'host': 'string', 'port': 'int', 'tls': 'switch', 'conf_dir': 'string', 'test[false]': 'switch'}).parsed_args
+args = CmdArgs({'host': 'string', 'port': 'int', 'tls': 'switch', 'conf-dir': 'string', 'test[false]': 'switch'}).parsed_args
 if 'conf_dir' in args:
-  Configuration.set_conf_dir(args['conf_dir'])
+  Configuration.set_conf_dir(args['conf-dir'])
 if not os.path.isfile(os.path.join(Configuration.conf_dir, 'clientfedid.cnf')):
   Configuration.read_configuration('clientfedid.cnf', listen_host=args.get('host'), listen_port=args.get('port'), tls=args['tls'])
 
