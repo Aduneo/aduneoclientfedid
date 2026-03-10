@@ -187,26 +187,30 @@ class conf_dict(dict):
 class Configuration():
 
   conf_dir = os.path.join(os.getcwd(), 'conf')
+  logs_dir = os.path.join(os.getcwd(), 'logs')
 
-  def set_conf_dir(conf_dir:str):
-    """ Force le dossier de configuration
+
+  def set_root_dir(root_dir:str):
+    """ Force le dossier racine avec les sous-dossiers conf et log
     
-    Par défaut, c'est le dossier conf du dossier courant qui est pris (il en est créé un s'il n'existe pas)
+    Par défaut, c'est le dossier courant qui est pris
     
     Args:
-      conf_dir: chemin complet du dossier de configuration
+      root_dir: chemin complet du dossier racine
       
     Raises:
       Exception si le dossier n'existe pas
       
     Versions:
       26/02/2026 (mpham) version initiale
+      05/03/2026 (mpham) on passe de set_conf_dir à set_root_dir pour créer le dossier log
     """
     
-    if not os.path.isdir(conf_dir):
-      raise Exception(f"dossier {conf_dir} n'existe pas")
+    if not os.path.isdir(root_dir):
+      raise Exception(f"dossier {root_dir} n'existe pas")
       
-    Configuration.conf_dir = conf_dir
+    Configuration.conf_dir = os.path.join(root_dir, 'conf')
+    Configuration.logs_dir = os.path.join(root_dir, 'logs')
     
 
   def read_configuration(conf_filename, listen_host:str=None, listen_port:int=None, tls:bool=True):
@@ -228,6 +232,7 @@ class Configuration():
       25/01/2023 (mpham) initialisation du host et du port d'écoute lors de l'initialisation du fichier de configuration à partir de clientfedid-template.cnf
       08/08/2024 (mpham) version 2 de la configuration
       26/02/2026 (mpham) paramètre tls pour la création d'un nouveau fichier de configuration
+      05/03/2026 (mpham) port 80 par défaut si TLS n'est pas activé
     """
 
     if not os.path.isdir(Configuration.conf_dir):
@@ -258,6 +263,9 @@ class Configuration():
         crypto.app_conf['server']['host'] = listen_host
       if listen_port:
         crypto.app_conf['server']['port'] = str(listen_port)
+      else:
+        if not tls:
+          crypto.app_conf['server']['port'] = '80'
       crypto.app_conf['server']['ssl'] = 'on' if tls else 'off'
       crypto.write()
     
@@ -343,13 +351,23 @@ class Configuration():
   
 
   def configure_logging(log_method: list):
+    """ configure la journalisation
+    
+    Args:
+      log_method: list des endroits où journaliser
+      
+    Versions:
+      00/00/2021 (tbedouet) version initiale
+      05/03/2026 (mpham) on peut modifier le dossier où mettre les fichiers de journalisation
+    """
+    
     global WEB_CONSOLE_BUFFER
     WEB_CONSOLE_BUFFER = []
     handler_list = []
 
     if "file" in log_method:
       date = datetime.datetime.today().strftime('%Y-%m-%d')
-      log_dir = os.path.join(os.getcwd(), 'logs')
+      log_dir = Configuration.logs_dir
       log_file = os.path.join(log_dir, 'ClientFedID-{}.log'.format(date))
       if not os.path.isdir(log_dir):
         os.mkdir(log_dir)
@@ -442,6 +460,28 @@ class ConfCrypto():
     
     
   def decrypt_json(self, data):
+    """ Regarde s'il faut interpréter certaines valeurs des paramètres
+    et s'il faut modifier le fichier de configuration en conséquence
+    
+    en sortie, data contient les valeurs attendues par le reste du code :
+      - mot de passe en clair pour ceux qui sont chiffrés en réversible
+      - hash commençant par l'algorithme entre accolades pour ceux hashés (non réversible)
+    
+    Itère sur les sous-paramètres pour parcourir l'ensemble des paramètres
+    
+    On regarde le dernier caractère du nom du paramètre
+      - point d'exclamation (!) : chiffrement symétrique
+      - pourcentage (%) : mot de passe à hasher
+    
+  self.modification est mis à True si le fichier de configuration résultant doit être modifié sur le disque
+    
+    Args:
+      data: dict avec la configuration ou list de paramètres
+      
+    Versions:
+      00/00/2021 (mpham) version initiale
+      10/03/2026 (mpham) hashing des mots de passe
+    """
     
     if isinstance(data, dict):
     
@@ -455,6 +495,10 @@ class ConfCrypto():
           if value.startswith('{Fernet}'):
             data[key] = self._get_crypto().decrypt_string(value[8:])           
           else:
+            self.modification = True
+        elif key.endswith('%'):
+          if not value.startswith('{argon2}'):
+            data[key] = '{argon2}'+aduneoclientfedid.CryptoTools.PasswordTools().hash_password(value)
             self.modification = True
         elif key == 'token_endpoint_auth_method':
           # Conversion de valeur de février 2024 - modifiée le 28 février 2025
@@ -482,6 +526,7 @@ class ConfCrypto():
       
     Versions:
       13/02/2026 (mpham) hashing des mots de passe
+      10/03/2026 (mpham) le hashing des mots de passe doit être réalisé dans decrypt_json
     """
 
     if isinstance(data, dict):
@@ -494,13 +539,6 @@ class ConfCrypto():
           # on regarde si la valeur est déjà chiffrée
           if not value.startswith('{Fernet}'):
             data[key] = '{Fernet}'+self._get_crypto().encrypt_string(value)
-        elif key.endswith('%'):
-          if not isinstance(value, str):
-            raise AduneoError(f"password in parameter {key} should be a string")
-            
-          # on regarde si la valeur est déjà chiffrée
-          if not value.startswith('{argon2}'):
-            data[key] = '{argon2}'+aduneoclientfedid.CryptoTools.PasswordTools().hash_password(value)
         else:
           self.encrypt_json(value)
     elif isinstance(data, list):
