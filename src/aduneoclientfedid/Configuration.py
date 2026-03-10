@@ -460,6 +460,28 @@ class ConfCrypto():
     
     
   def decrypt_json(self, data):
+    """ Regarde s'il faut interpréter certaines valeurs des paramètres
+    et s'il faut modifier le fichier de configuration en conséquence
+    
+    en sortie, data contient les valeurs attendues par le reste du code :
+      - mot de passe en clair pour ceux qui sont chiffrés en réversible
+      - hash commençant par l'algorithme entre accolades pour ceux hashés (non réversible)
+    
+    Itère sur les sous-paramètres pour parcourir l'ensemble des paramètres
+    
+    On regarde le dernier caractère du nom du paramètre
+      - point d'exclamation (!) : chiffrement symétrique
+      - pourcentage (%) : mot de passe à hasher
+    
+  self.modification est mis à True si le fichier de configuration résultant doit être modifié sur le disque
+    
+    Args:
+      data: dict avec la configuration ou list de paramètres
+      
+    Versions:
+      00/00/2021 (mpham) version initiale
+      10/03/2026 (mpham) hashing des mots de passe
+    """
     
     if isinstance(data, dict):
     
@@ -473,6 +495,10 @@ class ConfCrypto():
           if value.startswith('{Fernet}'):
             data[key] = self._get_crypto().decrypt_string(value[8:])           
           else:
+            self.modification = True
+        elif key.endswith('%'):
+          if not value.startswith('{argon2}'):
+            data[key] = '{argon2}'+aduneoclientfedid.CryptoTools.PasswordTools().hash_password(value)
             self.modification = True
         elif key == 'token_endpoint_auth_method':
           # Conversion de valeur de février 2024 - modifiée le 28 février 2025
@@ -500,6 +526,7 @@ class ConfCrypto():
       
     Versions:
       13/02/2026 (mpham) hashing des mots de passe
+      10/03/2026 (mpham) le hashing des mots de passe doit être réalisé dans decrypt_json
     """
 
     if isinstance(data, dict):
@@ -512,13 +539,6 @@ class ConfCrypto():
           # on regarde si la valeur est déjà chiffrée
           if not value.startswith('{Fernet}'):
             data[key] = '{Fernet}'+self._get_crypto().encrypt_string(value)
-        elif key.endswith('%'):
-          if not isinstance(value, str):
-            raise AduneoError(f"password in parameter {key} should be a string")
-            
-          # on regarde si la valeur est déjà chiffrée
-          if not value.startswith('{argon2}'):
-            data[key] = '{argon2}'+aduneoclientfedid.CryptoTools.PasswordTools().hash_password(value)
         else:
           self.encrypt_json(value)
     elif isinstance(data, list):

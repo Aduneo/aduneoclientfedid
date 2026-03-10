@@ -48,8 +48,8 @@ class PublicAuthGenericPassword(BaseHandler):
     
 <form action="password1/login" method="post">
   <input type="hidden" name="token" value="{csrf_token}">
-  <div>Login <input type="text" name="login" value="aduneo"></div>
-  <div>Password <input type="password" name="password" value="aduneo"></div>
+  <div>Login <input type="text" name="login" value=""></div>
+  <div>Password <input type="password" name="password" value=""></div>
   <div><input type="submit" name="Log in"></div>
 </form>
     
