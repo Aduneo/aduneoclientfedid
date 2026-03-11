@@ -1,5 +1,5 @@
 """
-Copyright 2023 Aduneo
+Copyright 2023-2026 Aduneo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -62,9 +62,13 @@ for filename in os.listdir(web_modules_dir):
 
 
 class Server(BaseServer):
-
-  conf = Configuration.read_configuration('clientfedid.cnf')
-
+  """ Serveur HTTP
+  
+  Versions:
+    11/03/2026 (mpham) le membre statique conf est déplacé vers la classe de base BaseServer où il est utilisé
+  """
+  
+  
   def __init__(self, request, client_address, server): 
     
     self.saml_prerequisite = saml_prerequisite

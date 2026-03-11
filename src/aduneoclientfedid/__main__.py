@@ -46,17 +46,12 @@ from socketserver import ThreadingMixIn
 
 from .Configuration import Configuration
 from .CmdArgs import CmdArgs
-# Regarde s'il faut initialiser un nouveau fichier de configuration
 args = CmdArgs({'host': 'string', 'port': 'int', 'tls': 'switch', 'root-dir': 'string', 'test[false]': 'switch'}).parsed_args
-if 'root-dir' in args:
-  Configuration.set_root_dir(args['root-dir'])
-if not os.path.isfile(os.path.join(Configuration.conf_dir, 'clientfedid.cnf')):
-  Configuration.read_configuration('clientfedid.cnf', listen_host=args.get('host'), listen_port=args.get('port'), tls=args.get('tls', True))
 
+from .BaseServer import BaseServer
 from .CryptoTools import CryptoTools
 from .Server import Server
 from .session.SessionManager import SessionManager
-
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
@@ -67,13 +62,55 @@ session_thread = None   # on conserve l'objet de thread pour l'arrêter au Ctrl-
 
 def main():
 
-  conf = Configuration.read_configuration('clientfedid.cnf')
+  # Préparation de la configuration
+  if 'root-dir' in args:
+    Configuration.set_root_dir(args['root-dir'])
   
-  log_method = conf['preferences']['logging']['handler']
+  # Récupération de la modification de la configuration de base par variable d'environnement puis par argument de commande en ligne
+  overwrite_host = os.environ.get('CFI_LISTENING_HOST') if 'CFI_LISTENING_HOST' in os.environ else args.get('host') if 'host' in args else None
+  overwrite_port = os.environ.get('CFI_LISTENING_PORT') if 'CFI_LISTENING_PORT' in os.environ else args.get('port') if 'port' in args else None
+  if overwrite_port is not None:
+    overwrite_port = int(overwrite_port)
+  overwrite_tls = Configuration.is_on(os.environ.get('CFI_LISTENING_TLS')) if 'CFI_LISTENING_TLS' in os.environ else args.get('tls') if 'tls' in args else None
+
+
+  # Lecture ou création (au premier lancement) du fichier de configuration , les arguments ne sont pris en compte que si un nouveau fichier est créé, pour l'initialiser
+  conf = Configuration.read_configuration('clientfedid.cnf', listen_host=overwrite_host, listen_port=overwrite_port, tls=overwrite_tls)
+  BaseServer.conf = conf
+  
+  log_method = conf['/preferences/logging/handler']
   result = Configuration.configure_logging(log_method)
   
-  host = args.get('host') if 'host' in args else conf['server']['host']
-  port = args.get('port') if 'port' in args else int(conf['server']['port'])
+  # Détermination de la configuration de base définitive, et journalisation (il a fallu attendre que le logger soit initialisé, d'où les redites)
+  if 'CFI_LISTENING_HOST' in os.environ:
+    host = overwrite_host
+    logging.info(f"Server listening host set to {host} from environment variable CFI_LISTENING_HOST")
+  elif 'host' in args:
+    host = overwrite_host
+    logging.info(f"Server listening host set to {host} from command line argument -host")
+  else:
+    host = conf['/server/host']
+    logging.info(f"Server listening host set to {host} from configuration")
+  # port
+  if 'CFI_LISTENING_PORT' in os.environ:
+    port = overwrite_port
+    logging.info(f"Server listening port set to {port} from environment variable CFI_LISTENING_PORT")
+  elif 'port' in args:
+    port = overwrite_port
+    logging.info(f"Server listening port set to {port} from command line argument -port")
+  else:
+    port = int(conf['/server/port'])
+    logging.info(f"Server listening port set to {port} from configuration")
+  # tls
+  if 'CFI_LISTENING_TLS' in os.environ:
+    tls = overwrite_tls
+    logging.info(f"Server TLS set to {tls} from environment variable CFI_LISTENING_TLS")
+  elif 'tls' in args:
+    tls = overwrite_tls
+    logging.info(f"Server TLS set to {tls} from command line argument -tls")
+  else:
+    tls = Configuration.is_parameter_on(conf, '/server/tls', True)
+    logging.info(f"Server TLS set to {tls} from configuration")
 
   # On est passé en ThreadedHTTPServer et non en HTTPServer à cause de problèmes de connexion en mode incognito (https://bip.weizmann.ac.il/course/python/PyMOTW/PyMOTW/docs/BaseHTTPServer/index.html)
   httpd = ThreadedHTTPServer((host, port), Server)
@@ -82,30 +119,29 @@ def main():
   httpd.ssl_params = {}
   
   # SSL
-  httpd.secure = args.get('tls') if 'tls' in args else Configuration.is_on(conf['server']['ssl'])
+  httpd.secure = tls
   if httpd.secure:
   
-    conf_dir = os.path.join(os.getcwd(), 'conf')
     conf_dir = Configuration.conf_dir
     
-    if conf['server'].get('ssl_cert_file', '') == "":
+    if conf.get('/server/tls_cert_file') is None:
       CryptoTools.generate_temp_certificate(conf)
       httpd.ssl_params['key_temp_files'] = True
     else:
-      cert_file_path = conf_dir+'/'+conf['server']['ssl_cert_file']
+      cert_file_path = conf_dir+'/'+conf['/server/tls_cert_file']
       if not os.path.isfile(cert_file_path):
-        if Configuration.is_parameter_on(conf, '/server/ssl_generate_keys', False):
-          print('Certificate file '+conf['server']['ssl_cert_file']+" does not exist, generating new SSL keys")
-          CryptoTools.generate_self_signed_certificate(conf['server']['host'], conf_dir+'/'+conf['server']['ssl_key_file'], conf_dir+'/'+conf['server']['ssl_cert_file'])
+        if Configuration.is_parameter_on(conf, '/server/tls_generate_keys', False):
+          logging.info('Certificate file '+conf['/server/tls_cert_file']+" does not exist, generating new TLS keys")
+          CryptoTools.generate_self_signed_certificate(conf['/server/host'], conf_dir+'/'+conf['/server/tls_key_file'], conf_dir+'/'+conf['/server/tls_cert_file'])
         else:
-          print('Certificate file '+conf['server']['ssl_cert_file']+" does not exist, server can't start")
+          logging.info('Certificate file '+conf['/server/tls_cert_file']+" does not exist, server can't start")
           exit(1)
 
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    context.load_cert_chain(certfile=conf_dir+'/'+conf['server']['ssl_cert_file'], keyfile=conf_dir+'/'+conf['server']['ssl_key_file'])
+    context.load_cert_chain(certfile=conf_dir+'/'+conf['/server/tls_cert_file'], keyfile=conf_dir+'/'+conf['/server/tls_key_file'])
     
-    httpd.ssl_params['server_private_key'] = conf['server']['ssl_key_file']
-    httpd.ssl_params['server_certificate'] = conf['server']['ssl_cert_file']
+    httpd.ssl_params['server_private_key'] = conf['/server/tls_key_file']
+    httpd.ssl_params['server_certificate'] = conf['/server/tls_cert_file']
     
     httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
     
@@ -114,13 +150,15 @@ def main():
     scheme = 'https'
 
   session_timer(conf)
-  print(time.asctime(), 'Server UP - %s:%s' % (scheme+'://'+host, port))
+  logging.info("----------------------------------")
+  logging.info(f"Server UP - {scheme+'://'+host}:{port}")
   try:
       httpd.serve_forever()
   except KeyboardInterrupt:
       pass
   httpd.server_close()
-  print(time.asctime(), 'Server DOWN - %s:%s' % (scheme+'://'+host, port))
+  logging.info("----------------------------------")
+  logging.info(f"Server DOWN - {scheme+'://'+host}:{port}")
   if (session_thread):
     session_thread.cancel()
   
