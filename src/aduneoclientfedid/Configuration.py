@@ -233,6 +233,7 @@ class Configuration():
       08/08/2024 (mpham) version 2 de la configuration
       26/02/2026 (mpham) paramètre tls pour la création d'un nouveau fichier de configuration
       05/03/2026 (mpham) port 80 par défaut si TLS n'est pas activé
+      11/03/2026 (mpham) le paramètre de configuration ssl est renommé en tls
     """
 
     if not os.path.isdir(Configuration.conf_dir):
@@ -254,6 +255,9 @@ class Configuration():
     crypto = ConfCrypto()
     crypto.read(conf_filepath)
 
+    if tls is None:
+      tls = True
+
     if not crypto.app_conf['meta'].get('version'):
       # on est en version 1, il faut convertir le fichier en version 2
       crypto.convert_1to2()
@@ -262,11 +266,12 @@ class Configuration():
       if listen_host:
         crypto.app_conf['server']['host'] = listen_host
       if listen_port:
+        print("LISTEN", listen_port)
         crypto.app_conf['server']['port'] = str(listen_port)
       else:
         if not tls:
           crypto.app_conf['server']['port'] = '80'
-      crypto.app_conf['server']['ssl'] = 'on' if tls else 'off'
+      crypto.app_conf['server']['tls'] = 'on' if tls else 'off'
       crypto.write()
     
     return crypto.app_conf
@@ -292,24 +297,27 @@ class Configuration():
     
     """
     Indique si une valeur (a prioiri issue d'un fichier de configuration) est vraie :
-    on, yes, true, oui
+    on, yes, true, oui, o, y, enabled
     
-    mpham 26/02/2021
+    Versions:
+      26/02/2021 (mpham) version initiale
+      11/03/2026 (mpham) ajout de o, y, enabled
     """
     
-    return value.lower() in ('on', 'yes', 'true', 'oui')
+    return value.lower() in ('on', 'yes', 'true', 'oui', 'o', 'y', 'enabled')
     
 
   def is_off(value):
-    
     """
     Indique si une valeur (a prioiri issue d'un fichier de configuration) est false :
-    off, no, false, non
+    off, no, false, non, n, disabled
     
-    mpham 26/02/2021
+    Versions:
+      26/02/2021 (mpham) version initiale
+      11/03/2026 (mpham) ajout de n, disabled
     """
     
-    return value.lower() in ('off', 'no', 'false', 'non')
+    return value.lower() in ('off', 'no', 'false', 'non', 'n', 'disabled')
 
 
 
@@ -459,7 +467,7 @@ class ConfCrypto():
       self.write()
     
     
-  def decrypt_json(self, data):
+  def decrypt_json(self, data, path:str=None):
     """ Regarde s'il faut interpréter certaines valeurs des paramètres
     et s'il faut modifier le fichier de configuration en conséquence
     
@@ -481,12 +489,18 @@ class ConfCrypto():
     Versions:
       00/00/2021 (mpham) version initiale
       10/03/2026 (mpham) hashing des mots de passe
+      11/03/2026 (mpham) renommage des paramètres ssl en tls dans les fichiers existants
     """
+    
+    if path is None:
+      path = ''
     
     if isinstance(data, dict):
     
+      root_path = path
       for key in list(data.keys()):
         value = data[key]
+        path = root_path+'/'+key
         if key.endswith('!'):
           if not isinstance(value, str):
             raise AduneoError('key '+key+' has not a string value')
@@ -506,10 +520,16 @@ class ConfCrypto():
             data[key] = {'Basic': 'basic', 'POST': 'form', 'client_secret_basic': 'basic', 'client_secret_post': 'form'}[value]
             self.modification = True
         else:
-          self.decrypt_json(value)
+          ssl_to_tls = {'/server/ssl': 'tls', '/server/ssl_key_file': 'tls_key_file', '/server/ssl_cert_file': 'tls_cert_file', '/server/ssl_generate_keys': 'tls_generate_keys'}
+          if path in ssl_to_tls:
+            self.modification = True
+            data[ssl_to_tls[path]] = value
+            del data[key]
+          else:
+            self.decrypt_json(value, path)
     elif isinstance(data, list):
       for item in data:
-        self.decrypt_json(item)
+        self.decrypt_json(item, path)
 
 
   def encrypt_json(self, data):

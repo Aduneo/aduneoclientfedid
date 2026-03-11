@@ -47,7 +47,8 @@ class CryptoTools:
     self.key_file_path = key_file_path
     self.cipher = None
     
-    conf_dir = os.path.join(os.getcwd(), 'conf')
+    from .Configuration import Configuration
+    conf_dir = Configuration.conf_dir
     if not BaseServer.check_path_traversal(conf_dir, key_file_path):
       raise AduneoError('file '+key_file_path+' not in conf directory')
     

@@ -30,8 +30,14 @@ from .session.SessionManager import SessionManager
 
 
 class BaseServer(BaseHTTPRequestHandler):
+  """ Classe de base du serveur HTTP
+  
+  Versions:
+    11/03/2026 (mpham) la configuration donnée par __main__.py
+  """
 
-  sessions = {}  # TODO faire expirer les sessions pour libérer de la mémoire
+  conf = None # positionné par __main__.py
+
 
   def __init__(self, request, client_address, server): 
     """
@@ -146,7 +152,7 @@ class BaseServer(BaseHTTPRequestHandler):
     self._send_page_headers(send_cookie)
     
     open_webconsole = False
-    if (self.conf):
+    if (BaseServer.conf):
       from .Configuration import Configuration
       open_webconsole = Configuration.is_parameter_on(self.conf, '/preferences/open_webconsole', default=False)
     
@@ -373,8 +379,8 @@ class BaseServer(BaseHTTPRequestHandler):
     
       self.send_response(200)
       self.send_header('Content-type', content_type_map[static_type])
-      #self.send_header('Cache-Control', 'public, max-age=3600')
-      self.send_header('Cache-Control', 'no-cache')
+      self.send_header('Cache-Control', 'public, max-age=3600')
+      #self.send_header('Cache-Control', 'no-cache')
       self.end_headers()
       
       in_file = open(requested_path, 'rb')
@@ -502,11 +508,13 @@ class BaseServer(BaseHTTPRequestHandler):
     - puis on ajoute une information dans la session qui n'existe pas
     - on génère donc un identifiant, mais comme les en-têtes ont déjà été envoyés, c'est trop tard
     
-    01/03/2021 (mpham) version initiale
-    17/02/2026 (mpham) utilisation de SessionManager
+    Versions:
+      01/03/2021 (mpham) version initiale
+      17/02/2026 (mpham) utilisation de SessionManager
+      11/03/2026 (mpham) conf est remonté au niveau de BaseServer
     """
     
-    session_manager = SessionManager(self.conf)
+    session_manager = SessionManager(BaseServer.conf)
     
     session_exists = False
     if self.headers.get('Cookie') is not None:
@@ -531,9 +539,10 @@ class BaseServer(BaseHTTPRequestHandler):
     Versions:
       27/01/2021 (mpham) version initiale
       18/02/2026 (mpham) utilisation de SessionManager
+      11/03/2026 (mpham) conf est remonté au niveau de BaseServer
     """
 
-    session_manager = SessionManager(self.conf)
+    session_manager = SessionManager(BaseServer.conf)
     
     if not session_manager.is_session_valid(self.session_id):
       self.session_id = session_manager.create_session()
@@ -553,8 +562,9 @@ class BaseServer(BaseHTTPRequestHandler):
     Versions:
       27/01/2021 (mpham) version initiale
       18/02/2026 (mpham) utilisation de SessionManager
+      11/03/2026 (mpham) conf est remonté au niveau de BaseServer
     """
-    session_manager = SessionManager(self.conf)
+    session_manager = SessionManager(BaseServer.conf)
     return session_manager.get_session_value(self.session_id, key)
 
     
@@ -567,8 +577,9 @@ class BaseServer(BaseHTTPRequestHandler):
     Versions:
       27/01/2021 (mpham) version initiale
       18/02/2026 (mpham) utilisation de SessionManager
+      11/03/2026 (mpham) conf est remonté au niveau de BaseServer
     """
-    session_manager = SessionManager(self.conf)
+    session_manager = SessionManager(BaseServer.conf)
     session_manager.del_session_value(self.session_id, key)
       
 
@@ -630,13 +641,14 @@ class BaseServer(BaseHTTPRequestHandler):
     Versions:
       14/02/2026 (mpham) version initiale
       26/02/2026 (mpham) mise en cache dans self.authentication_parameters
+      11/03/2026 (mpham) conf est remonté au niveau de BaseServer
     """
     
     if not hasattr(self, 'authentication_parameters'):
     
       self.authentication_parameters = None
       
-      server_parameters = self.conf['/server']
+      server_parameters = BaseServer.conf['/server']
       authentication_wrapper = server_parameters.get('authentication')
       if authentication_wrapper:
         active_authentication = authentication_wrapper.get('active_authentication')
@@ -665,10 +677,10 @@ class BaseHandler:
       01/03/2021 (mpham) version initiale
       26/01/2025 (mpham) remontée des en-têtes
       20/02/2026 (mpham) conservation de l'adresse IP (pour l'instant sans gestion du RP frontal)
+      11/03/2026 (mpham) conf est remonté au niveau de BaseServer
     """
     
-    from .Server import Server  # pour éviter les imports circulaires
-    self.conf = Server.conf
+    self.conf = BaseServer.conf
     self.post_form = hreq.post_form
     self.post_json = hreq.post_json
     self.hreq = hreq

@@ -26,14 +26,22 @@ import uuid
 
 class ClipboardContent(object):
   
-  file_path = Configuration.conf_dir+'/clipboardContent.json'
   
   def __init__(self, conf:dict):
+    """ Constructeur
     
+    Lit le contenu du presse-papier
+    
+    Versions:
+      11/03/2026 (mpham) file_path est descendu dans l'instance (c'était un membre statique de la classe, qui était initialisé trop tôt)
+    """
+
+    self.file_path = Configuration.conf_dir+'/clipboardContent.json'
+
     self.conf = conf
     self.content = {}
-    if os.path.isfile(ClipboardContent.file_path):
-      with open(ClipboardContent.file_path, encoding='utf8') as json_file:
+    if os.path.isfile(self.file_path):
+      with open(self.file_path, encoding='utf8') as json_file:
         if Configuration.is_parameter_on(self.conf, '/preferences/clipboard/encrypt_clipboard', True):
           key_file_path = self._get_key_file_path()
           crypto = CryptoTools(key_file_path)
@@ -44,6 +52,11 @@ class ClipboardContent(object):
 
       
   def save(self):
+    """ Enregistre le contenu du presse-papier
+    
+    Versions:
+      11/03/2026 (mpham) file_path est descendu dans l'instance (c'était un membre statique de la classe, qui était initialisé trop tôt)
+    """
     
     if Configuration.is_parameter_on(self.conf, '/preferences/clipboard/encrypt_clipboard', True):
       key_file_path = self._get_key_file_path()
@@ -52,7 +65,7 @@ class ClipboardContent(object):
     else:
       file_content = json.dumps(self.content)
     
-    with open(ClipboardContent.file_path, 'w', encoding='utf8') as json_file:
+    with open(self.file_path, 'w', encoding='utf8') as json_file:
       json_file.write(file_content)
 
   
