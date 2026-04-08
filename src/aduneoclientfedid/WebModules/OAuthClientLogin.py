@@ -715,6 +715,10 @@ class OAuthClientLogin(FlowHandler):
   def display_tokens(self, access_token:str, refresh_token:str, idp_params:dict, client_secret:str):
 
       oauth2_idp_params = idp_params['oauth2']
+      # Condition pour afficher les id_token dans "Refresh Token"
+      # Il faut prendre les paramètres OIDC pour récupérer 'signature_key_configuration' et 'jwks_uri'
+      if oauth2_idp_params['endpoint_configuration'] == 'same_as_oidc':
+        oauth2_idp_params = idp_params['oidc']
 
       self.add_result_row('Access Token', access_token, 'access_token')
       if refresh_token:
