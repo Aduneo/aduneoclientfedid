@@ -155,7 +155,7 @@ class OAuth2SAMLtoAT(FlowHandler):
         'auth_method': True,
         'verify_certificates': True,
         })
-      form.set_data_generator_code("""
+      form.set_data_generator_code(r"""
         // il faut coder l'assertion en Base64url
         xml_assertion = cfiForm.getFieldValue('assertion');
         paramValues['assertion'] = btoa(Array.from(Uint8Array.from(xml_assertion.split("").map(x => x.charCodeAt())), b => String.fromCharCode(b)).join(''))
