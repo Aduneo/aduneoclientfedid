@@ -34,6 +34,7 @@ from ..BaseServer import register_web_module, register_url, register_page_url
 from ..CfiForm import CfiForm
 from ..Configuration import Configuration
 from ..Context import Context
+from ..Explanation import Explanation
 from ..Help import Help
 from .Clipboard import Clipboard
 from .FlowHandler import FlowHandler

@@ -969,7 +969,7 @@ class BaseHandler:
         self.add_html('<span><img title="Expand" id="'+col_id+'_expand" class="smallButton"  style="display: '+display_plus+';" src="/images/plus.png" onClick="showLong(\''+col_id+'\')"/></span>')
         self.add_html('<img title="Collapse" id="'+col_id+'_collapse" class="smallButton" style="display: '+display_minus+';" src="/images/moins.png" onClick="showShort(\''+col_id+'\')"/>')
       else:
-        self.add_content('<td><span id="'+col_id+'s" style="display: '+display_truncated+';">'+truncated+'</span>')
+        self.add_content('<td><span id="'+col_id+'s" style="display: '+display_truncated+';">'+truncated_value+'</span>')
         self.add_content('<span id="'+col_id+'l" style="display: '+display_all+';"><span id="'+col_id+'c">'+html_value+'</span>')
         self.add_content('</td><td style="width: 34px;">')
         self.add_content('<span><img title="Expand" id="'+col_id+'_expand" class="smallButton"  style="display: '+display_plus+';" src="/images/plus.png" onClick="showLong(\''+col_id+'\')"/></span>')

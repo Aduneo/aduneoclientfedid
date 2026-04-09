@@ -32,6 +32,7 @@ from ..BaseServer import register_web_module, register_url, register_page_url
 from ..CfiForm import RequesterForm
 from ..Configuration import Configuration
 from ..Context import Context
+from ..Explanation import Explanation
 from ..Help import Help
 from ..JWT import JWT
 from ..WebRequest import WebRequest
@@ -148,7 +149,7 @@ class OAuthClientLogin(FlowHandler):
           return
         if r.status != 200:
           self.log_error('Server responded with code '+str(r.status))
-          self.add_html(f"""<div class="intertable">Failed. Server responded with code {status}</div>""")
+          self.add_html(f"""<div class="intertable">Failed. Server responded with code {r.status}</div>""")
           return
 
       

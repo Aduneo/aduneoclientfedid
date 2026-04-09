@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 import base64
+import copy
 import html
 import logging
 import os
