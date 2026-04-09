@@ -553,10 +553,10 @@ class OAuthClientLogin(FlowHandler):
       refresh_token = response.get('refresh_token')
       self.display_tokens(access_token, refresh_token, idp_params, client_secret)
       
-      # Nonce verification
+      # Nonce verification (OAuth should not have a nonce)
       idp_nonce = response.get('nonce')
       if idp_nonce:
-        session_nonce = request['nonce']
+        session_nonce = app_params.get('nonce', '')
         if session_nonce == idp_nonce:
           self.log_info("Nonce verification OK: "+session_nonce)
           self.add_result_row('Nonce verification', 'OK: '+session_nonce, 'nonce_verification')

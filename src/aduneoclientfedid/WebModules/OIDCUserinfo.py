@@ -146,7 +146,7 @@ class OIDCUserinfo(FlowHandler):
       idp_params = self.context.idp_params
       oidc_idp_params = idp_params.get('oidc')
       if not oidc_idp_params:
-        raise AduneoError(f"OIDC IdP configuration missing for {idp_params.get('name', idp_id)}")
+        raise AduneoError(f"OIDC IdP configuration missing for {idp_params.get('name', default='[Could not fetch name]')}")
       for item in ['userinfo_endpoint', 'userinfo_method', 'userinfo_endpoint_dns_override']:
         oidc_idp_params[item] = self.post_form.get(item, '')
 

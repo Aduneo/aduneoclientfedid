@@ -315,7 +315,7 @@ class Server(BaseServer):
                 self._client_oidc_logout_callback()
           
         if not callback_found:
-          sp_acs_slo = app_params.get('sp_acs_url')
+          sp_acs_url = app_params.get('sp_acs_url')
           if sp_acs_url:
             session_url = urllib.parse.urlparse(sp_acs_url)
             if session_url.path == url_items.path:
@@ -324,7 +324,7 @@ class Server(BaseServer):
                 self._client_saml_acs()
       
         if not callback_found:
-          sp_acs_url = app_params.get('sp_slo_url')
+          sp_slo_url = app_params.get('sp_slo_url')
           if sp_slo_url:
             session_url = urllib.parse.urlparse(sp_slo_url)
             if session_url.path == url_items.path:
