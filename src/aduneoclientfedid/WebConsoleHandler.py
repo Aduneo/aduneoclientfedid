@@ -64,7 +64,7 @@ class WebConsoleHandler(StreamHandler):
     #self.WEB_CONSOLE_BUFFER.append(self.format(record))
     
     
-  def get_content(self, session_id) -> []:
+  def get_content(self, session_id) -> list:
   
     log = []
   
