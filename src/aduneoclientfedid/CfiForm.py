@@ -1674,8 +1674,12 @@ class RequesterForm(CfiForm):
     except Exception as error:
       raise AduneoError(page_handler.log_error(('  ' * 1)+'http service error: '+str(error)))
     if response.status != 200:
-      raise AduneoError(page_handler.log_error('http service error: status code '+str(response.status)+", "+str(response.data)))
-    
+      try:
+        error_body = json.loads(response.data)
+        error_msg = str(error_body.get('error')) + " : " + str(error_body.get('error_description')) or str(error_body)
+      except (json.JSONDecodeError, AttributeError):
+        error_msg = str(response.data.decode('utf-8', errors='replace'))
+      raise AduneoError(page_handler.log_error('http service error: status code '+str(response.status)+", "+ error_msg))
     return response
 
     
