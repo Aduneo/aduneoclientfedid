@@ -715,9 +715,10 @@ class OAuthClientLogin(FlowHandler):
 
   def display_tokens(self, access_token:str, refresh_token:str, idp_params:dict, client_secret:str):
     
+    # Needed : 'signature_key', 'signature_key_configuration', 'jwks_uri'
     # Condition pour afficher les id_token dans "Refresh Token"
     # Il faut prendre les paramètres OIDC pour récupérer 'signature_key_configuration' et 'jwks_uri'
-    oauth2_idp_params = None
+    oauth2_idp_params = {}
     # Cas par défaut : on prend les paramètres OAuth2 si ils existent
     if 'signature_key' in idp_params.get('oauth2', {}):
         oauth2_idp_params = idp_params['oauth2']
@@ -727,6 +728,10 @@ class OAuthClientLogin(FlowHandler):
         self.log_info("Using OIDC IDP parameters as substitute for displaying properly")
     else : 
       raise AduneoError(self.log_error('Theoretically impossible to reach : no signature scheme in either OIDC or OAuth idp_params'))
+
+    # oauth2_idp_params = idp_params.get('oauth2')
+    # if not oauth2_idp_params:
+    #   raise AduneoError(f"OAuth 2 IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
 
     self.add_result_row('Access Token', access_token, 'access_token')
     if refresh_token:

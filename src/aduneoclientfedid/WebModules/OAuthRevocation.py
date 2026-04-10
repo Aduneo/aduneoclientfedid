@@ -59,9 +59,24 @@ class OAuth2Revocation(FlowHandler):
       self.log_info(('  ' * 1)+'for context: '+self.context['context_id'])
 
       idp_params = self.context.idp_params
-      oauth2_idp_params = idp_params.get('oauth2')
-      if not oauth2_idp_params:
-        raise AduneoError(f"OAuth 2 IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
+
+      # Needed : 'revocation_endpoint', 'revocation_auth_method', 'revocation_endpoint_dns_override'
+      # Condition pour charger proprement les champs lors d'une cinématique Login OIDC --> Refresh AT --> Revoke AT
+      # Il faut prendre les paramètres OIDC pour récupérer 'revocation_endpoint'
+      oauth2_idp_params = {}
+      # Cas par défaut : on prend les paramètres OAuth2 si ils existent
+      if 'revocation_endpoint' in idp_params.get('oauth2', {}):
+          oauth2_idp_params = idp_params['oauth2']
+      # Si la clé n'est pas présente, on prend les paramètres OIDC
+      elif 'revocation_endpoint' in idp_params.get('oidc', {}):
+          oauth2_idp_params = idp_params['oidc']
+          self.log_info("Using OIDC IDP parameters as substitute for updating revocation endpoint properly")
+      else : 
+        raise AduneoError(self.log_error('Theoretically impossible to reach : no revocation endpoint scheme in either OIDC or OAuth idp_params'))
+      # oauth2_idp_params = idp_params.get('oauth2')
+      # if not oauth2_idp_params:
+      #   raise AduneoError(f"OAuth 2 IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
+      
       app_params = self.context.last_app_params
 
       # Jetons d'accès et de rafraîchissement

@@ -68,6 +68,25 @@ class OAuth2Refresh(FlowHandler):
       conf_apps.update(conf_idp.get('oidc_clients', {}))
 
       idp_params = self.context.idp_params
+
+      # Needed : 'token_endpoint'
+      # Condition pour charger proprement les champs lors d'une cinématique Login OIDC --> Refresh Token
+      # Il faut prendre les paramètres OIDC pour récupérer 'token_endpoint'
+      oauth2_idp_params = {}
+      # Cas par défaut : on prend les paramètres OAuth2 si ils existent
+      if 'token_endpoint' in idp_params.get('oauth2', {}):
+          oauth2_idp_params = idp_params['oauth2']
+      # Si la clé n'est pas présente, on prend les paramètres OIDC (cas refresh AuthN)
+      elif 'token_endpoint' in idp_params.get('oidc', {}):
+          oauth2_idp_params = idp_params['oidc']
+          self.log_info("Using OIDC IDP parameters as substitute for updating token endpoint properly")
+      else : 
+        raise AduneoError(self.log_error('Theoretically impossible to reach : no token endpoint scheme in either OIDC or OAuth idp_params'))
+      
+      # oauth2_idp_params = idp_params.get('oauth2')
+      # if not oauth2_idp_params:
+      #   raise AduneoError(f"OAuth 2 IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
+
       all_app_params = self.context.app_params
 
       # Jetons de rafraîchissement et clients associés
@@ -97,7 +116,7 @@ class OAuth2Refresh(FlowHandler):
 
       form_content = {
         'contextid': self.context['context_id'],
-        'token_endpoint': idp_params.get('token_endpoint', ''),
+        'token_endpoint': oauth2_idp_params.get('token_endpoint', ''),
         'refresh_tokens': default_refresh_token,
         'refresh_token': default_refresh_token if default_refresh_token != '__input__' else '',
         'grant_type': 'refresh_token',
