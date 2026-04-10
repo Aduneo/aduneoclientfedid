@@ -81,9 +81,6 @@ class OAuth2Introspection(FlowHandler):
       # if not oauth2_idp_params:
       #   raise AduneoError(f"OAuth 2 IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
       
-      app_params = self.context.last_app_params
-      api_params = self.context.last_api_params
-
       # API réalisant l'introspection
       idp_id = self.context.idp_id
       conf_idp = self.conf['idps'][idp_id]
@@ -109,6 +106,19 @@ class OAuth2Introspection(FlowHandler):
         cfiForm.setFieldValue('introspection_auth_method', apis[cfiForm.getThisFieldValue()].auth_method); 
       }"""
 
+      app_params = self.context.last_app_params
+      api_params = self.context.last_api_params
+
+      if api_params == {}:
+        # Récupérer la dernière clé API (défaut à '__input__')
+        first_api_key = str(list(api_values.keys())[-1])
+        # Récupérer la conf de la dernière API
+        api_params = conf_idp.get('oauth2_apis', {}).get(first_api_key, {})
+        # Par défaut, dictionnaire si pas d'API {'introspection_api': '__input__'}
+        api_params['introspection_api'] = first_api_key
+        if api_params['introspection_api'] == '__input__':
+          self.log_info("WARNING : Configure OAuth Introspection API for better testing experience")
+
       # Jetons d'accès
       access_tokens = {}
       default_access_token = None
@@ -126,7 +136,7 @@ class OAuth2Introspection(FlowHandler):
         'introspection_http_method': api_params.get('introspection_http_method', oauth2_idp_params.get('introspection_http_method', 'post')),
         'introspection_auth_method': api_params.get('introspection_auth_method', oauth2_idp_params.get('introspection_auth_method', 'basic')),
         'introspection_api': api_params.get('introspection_api', '__input__'),
-        'introspection_login': api_params.get('introspection_login', ''),
+        'introspection_login': api_params.get('login', oauth2_idp_params.get('client_id', '')),
         'introspection_secret': '',
         'introspection_endpoint_dns_override': oauth2_idp_params.get('introspection_endpoint_dns_override', ''),
       }
@@ -139,7 +149,7 @@ class OAuth2Introspection(FlowHandler):
           ) \
         .closed_list('introspection_api', label='API initiating introspection', 
           values = api_values,
-          default = '__input__',
+          default = str(list(api_values.keys())[-1]), # Si une API est enregistrée, =! '__input__'
           on_change = on_api_change,
           ) \
         .closed_list('introspection_http_method', label='Introspect. Request Method', displayed_when="@[introspection_api] = '__input__'",
