@@ -60,9 +60,23 @@ class OIDCUserinfo(FlowHandler):
       self.log_info(('  ' * 1)+'for context: '+self.context['context_id'])
 
       idp_params = self.context.idp_params
-      oidc_idp_params = idp_params.get('oidc')
-      if not oidc_idp_params:
-        raise AduneoError(f"OIDC IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
+      # Needed : 'userinfo_endpoint', 'userinfo_method', 'userinfo_endpoint_dns_override'
+      # Condition pour récupérer userinfo_endpoint dans une cinématique OAuth --> OIDC --> userinfo
+      # Il faut prendre les paramètres OAuth pour récupérer 'userinfo_endpoint'
+      oidc_idp_params = {}
+      # Cas par défaut : on prend les paramètres OIDC si ils existent
+      if 'userinfo_endpoint' in idp_params.get('oidc', {}):
+          oidc_idp_params = idp_params['oidc']
+      # Sinon on cherche dans les paramètres OAuth actualisés
+      elif 'userinfo_endpoint' in idp_params.get('oauth2', {}):
+          oidc_idp_params = idp_params['oauth2']
+          self.log_info("Using OAuth IDP parameters as substitute for userinfo_endpoint")
+      else : 
+        raise AduneoError(self.log_error('Theoretically impossible to reach : no userinfo_endpoint in idp_params'))
+      #oidc_idp_params = idp_params.get('oidc')
+      #if not oidc_idp_params:
+      #  raise AduneoError(f"OIDC IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
+      
       app_params = self.context.last_app_params
 
       access_tokens = {}
