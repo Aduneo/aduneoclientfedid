@@ -101,7 +101,7 @@ class CfiForm():
       30/08/2024 (mpham) options /requester/auth_method_options
       27/11/2024 (mpham) option /requester/include_empty_items qui indique si le contenu du formulaire doit contenir les éléments sans valeur
       03/12/2024 (mpham) tables contenant des valeurs exploitables par le Javascript
-      29/12/2204 (mpham) ajout de boutons
+      29/12/2024 (mpham) ajout de boutons
     """
   
     self.form_id = form_id

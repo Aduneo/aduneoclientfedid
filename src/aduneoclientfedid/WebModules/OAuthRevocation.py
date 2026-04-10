@@ -135,7 +135,7 @@ class OAuth2Revocation(FlowHandler):
           default = 'basic'
           ) \
         .text('client_id', label='Client ID', clipboard_category='client_id', displayed_when="@[revocation_auth_method] = 'basic'") \
-        .password('client_secret', label='Secret', clipboard_category='client_secret!', displayed_when="@[revocation_auth_method] = 'basic'") \
+        .password('client_secret', label='Client Secret', clipboard_category='client_secret!', displayed_when="@[revocation_auth_method] = 'basic'") \
         .text('revocation_endpoint_dns_override', label='Revocation endpoint DNS override', clipboard_category='revocation_endpoint_dns_override') \
         
       form.set_title('Revocation '+idp_params['name'])
