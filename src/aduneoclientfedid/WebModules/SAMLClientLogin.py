@@ -143,6 +143,9 @@ class SAMLClientLogin(FlowHandler):
         idp_authentication_binding_capabilities = self.conf.get('/default/saml/idp_authentication_binding_capabilities')
         if not idp_authentication_binding_capabilities:
           idp_authentication_binding_capabilities = ['urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST']
+      
+      # pour récupérer le contexte
+      self.set_session_value(self.context['context_id'], self.context)
 
       form_content = {
         'hr_context': self.context['context_id'],
