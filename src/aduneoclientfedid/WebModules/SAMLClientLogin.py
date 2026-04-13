@@ -362,10 +362,10 @@ class SAMLClientLogin(FlowHandler):
       ctx = xmlsec.SignatureContext()
       ctx.key = xmlsec.Key.from_memory(sp_private_key, xmlsec.KeyFormat.PEM, None)
       signature = ctx.sign_binary(message.encode(), xmlsec.constants.TransformRsaSha1)
-      base64_signature = base64.b64encode(signature).decode()
-      self.log_info('Signature: '+base64_signature)
+      base64_signature = base64.b64encode(signature)
+      self.log_info('Signature: ' + base64_signature.decode())
 
-      url = saml_idp_params['idp_sso_url'] + '?' + message + '&signature=' + urllib.parse.quote_plus(base64_signature)
+      url = saml_idp_params['idp_sso_url'] + '?' + message + '&Signature=' + urllib.parse.quote_plus(base64_signature)
       self.log_info('URL: '+url)
       self.log_info('Sending redirection')
       self.send_redirection(url)

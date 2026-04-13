@@ -385,10 +385,10 @@ class SAMLClientLogout(FlowHandler):
       ctx = xmlsec.SignatureContext()
       ctx.key = xmlsec.Key.from_memory(sp_private_key, xmlsec.KeyFormat.PEM, None)
       signature = ctx.sign_binary(message.encode(), xmlsec.constants.TransformRsaSha1)
-      base64_signature = base64.b64encode(signature).decode()
-      logging.info('Signature: '+base64_signature)
+      base64_signature = base64.b64encode(signature)
+      logging.info('Signature: ' + base64_signature.decode())
 
-      message += '&signature=' + urllib.parse.quote_plus(base64_signature)
+      message += '&Signature=' + urllib.parse.quote_plus(base64_signature)
 
     url = saml_idp_params['idp_slo_url'] + '?' + message
     logging.info('URL: '+url)
