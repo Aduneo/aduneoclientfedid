@@ -140,6 +140,14 @@ class OAuth2Introspection(FlowHandler):
         'introspection_secret': '',
         'introspection_endpoint_dns_override': oauth2_idp_params.get('introspection_endpoint_dns_override', ''),
       }
+
+      if form_content['introspection_http_method']=='inherit_from_idp' :
+          form_content['introspection_http_method'] = idp_params['oauth2']['introspection_http_method']
+          self.log_info("introspection_http_method of api inherited from IDP")
+      if form_content['introspection_auth_method']=='inherit_from_idp' :
+          form_content['introspection_auth_method'] = idp_params['oauth2']['introspection_auth_method']
+          self.log_info("introspection_auth_method of api inherited from IDP")
+
       form = RequesterForm('introspection', form_content, action='/client/oauth2/introspection/sendrequest', request_url='@[introspection_endpoint]', mode='api') \
         .hidden('contextid') \
         .text('introspection_endpoint', label='Introspection endpoint', clipboard_category='introspection_endpoint') \
