@@ -26,6 +26,7 @@ from ..Explanation import Explanation
 from ..Help import Help
 from ..CfiForm import RequesterForm
 from .FlowHandler import FlowHandler
+from ..WebRequest import WebRequest
 
 """
   Echange de jeton Token Exchange (RFC 8693)
@@ -59,22 +60,61 @@ class OAuth2TokenExchange(FlowHandler):
       idp_params = self.context.idp_params
 
       # Needed : 'token_endpoint'
-      # Condition pour charger proprement les champs lors d'une cinématique Login OIDC --> Exchange Token
+      # Condition pour charger proprement les champs lors d'une cinématique Login OIDC --> Exchange Token 
       # Il faut prendre les paramètres OIDC pour récupérer 'token_endpoint'
-      oauth2_idp_params = {}
+      oauth2_idp_params = idp_params.get('oauth2', {})
+      fetch_configuration_document = False
+
       # Cas par défaut : on prend les paramètres OAuth2 si ils existent
-      if 'token_endpoint' in idp_params.get('oauth2', {}):
-          oauth2_idp_params = idp_params['oauth2']
-      # Si la clé n'est pas présente, on prend les paramètres OIDC (cas exchange AuthN)
+      if 'token_endpoint' in oauth2_idp_params:
+        self.log_info("Using OAUTH IDP parameters for revocation endpoint")
+      # Si la clé n'est pas présente, on prend les paramètres OIDC (cas refresh AuthN)
       elif 'token_endpoint' in idp_params.get('oidc', {}):
-          oauth2_idp_params = idp_params['oidc']
-          self.log_info("Using OIDC IDP parameters as substitute for updating token endpoint properly")
-      else : 
-        raise AduneoError(self.log_error('Theoretically impossible to reach : no token endpoint scheme in either OIDC or OAuth idp_params'))
+        oauth2_idp_params = idp_params['oidc']
+        self.log_info("Using OIDC IDP parameters as substitute for updating token endpoint properly")
+      # Sinon on essaie de récupérer les infos en metadata uri
+      elif oauth2_idp_params.get('endpoint_configuration', 'local_configuration') != 'local_configuration':
+        if oauth2_idp_params.get('endpoint_configuration', '') == 'same_as_oidc':
+          # récupération des paramètres OAuth pour les endpoints
+          oidc_params = idp_params.get('oidc')
+          if not oidc_params:
+            raise AduneoError("can't retrieve endpoint parameters from OIDC configuration since OIDC is not configured")
+          if oidc_params.get('endpoint_configuration') == 'same_as_oauth2':
+            raise AduneoError("can't retrieve endpoint parameters from OIDC configuration since OIDC is configured with same_as_oauth2")
+          for param in ['endpoint_configuration', 'discovery_uri']:
+            oauth2_idp_params[param] = oidc_params.get(param, '')
+          if oauth2_idp_params.get('endpoint_configuration') == 'discovery_uri':
+            oauth2_idp_params['endpoint_configuration'] = 'metadata_uri'
+            oauth2_idp_params['metadata_uri'] = oidc_params.get('discovery_uri')
+        if oauth2_idp_params.get('endpoint_configuration', '') == 'metadata_uri':
+          fetch_configuration_document = True
+          self.log_info("Fetching OAuth IDP parameters for token_endpoint")
       
-      # oauth2_idp_params = idp_params.get('oauth2')
-      # if not oauth2_idp_params:
-      #   raise AduneoError(f"OAuth 2 IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
+      if fetch_configuration_document:
+        self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=oauth2_idp_params['metadata_uri']))
+        try:
+          self.log_info('Starting metadata retrieval')
+          self.log_info('metadata_uri: '+oauth2_idp_params['metadata_uri'])
+          verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
+          self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+          r = WebRequest.get(oauth2_idp_params['metadata_uri'], verify_certificate=verify_certificates)
+          self.log_info(r.data)
+          meta_data = r.json()
+          oauth2_idp_params.update(meta_data)
+          self.add_html("""<div class="intertable">Success</div>""")
+        except Exception as error:
+          self.log_error(traceback.format_exc())
+          self.add_html(f"""<div class="intertable">Failed: {error}</div>""")
+          self.send_page()
+          return
+        if r.status != 200:
+          self.log_error('Server responded with code '+str(r.status))
+          self.add_html(f"""<div class="intertable">Failed. Server responded with code {r.status}</div>""")
+          self.send_page()
+          return
+      
+      if 'token_endpoint' not in oauth2_idp_params: 
+        raise AduneoError(self.log_error('Theoretically impossible to reach : no token endpoint scheme in either OIDC or OAuth idp_params'))
 
       self.log_info(('  ' * 1)+'IdP: '+idp_params['name'])
 
