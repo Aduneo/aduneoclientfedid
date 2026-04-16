@@ -119,7 +119,10 @@ class OAuth2Revocation(FlowHandler):
       if 'revocation_endpoint' not in oauth2_idp_params: 
         raise AduneoError(self.log_error('Theoretically impossible to reach : no revocation endpoint scheme in either OIDC or OAuth idp_params'))
       
-      app_params = self.context.last_app_params_of('oauth2')
+      try : 
+        app_params = self.context.last_app_params_of('oauth2')
+      except :
+        app_params = self.context.last_app_params_of('oidc')
 
       # Jetons d'accès et de rafraîchissement
       token_wrappers = {}     # avec le type
@@ -249,7 +252,10 @@ class OAuth2Revocation(FlowHandler):
       # on récupére le client_secret
       if self.post_form.get('revocation_auth_method') in ['basic']:
         client_secret = self.post_form.get('client_secret', '')
-        app_params = self.context.last_app_params_of('oauth2')
+        try : 
+          app_params = self.context.last_app_params_of('oauth2')
+        except :
+          app_params = self.context.last_app_params_of('oidc')
         if client_secret != '':
           app_params['client_secret'] = client_secret
         else:
