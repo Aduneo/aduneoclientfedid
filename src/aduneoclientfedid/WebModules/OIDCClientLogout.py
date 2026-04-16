@@ -84,7 +84,7 @@ class OIDCClientLogout(FlowHandler):
             oidc_idp_params['discovery_uri'] = oauth2_params.get('metadata_uri')
         if oidc_idp_params.get('endpoint_configuration', '') == 'discovery_uri':
           fetch_configuration_document = True
-          self.log_info("Fetching OIDC IDP parameters for userinfo_endpoint")
+          self.log_info("Fetching OIDC IDP parameters for end_session_endpoint")
       
       if fetch_configuration_document:
         self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=oidc_idp_params['discovery_uri']))
@@ -109,8 +109,8 @@ class OIDCClientLogout(FlowHandler):
           self.send_page()
           return
       
-      if 'userinfo_endpoint' not in oidc_idp_params: 
-        raise AduneoError(self.log_error('Theoretically impossible to reach : no userinfo_endpoint in idp_params'))
+      if 'end_session_endpoint' not in oidc_idp_params: 
+        raise AduneoError(self.log_error('Theoretically impossible to reach : no end_session_endpoint in idp_params'))
       #oidc_idp_params = idp_params.get('oidc')
       #if not oidc_idp_params:
       #  raise AduneoError(f"OIDC IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
