@@ -92,6 +92,7 @@ class SAMLClientLogout(FlowHandler):
         'hr_context': self.context['context_id'],
         'idp_slo_url': saml_idp_params.get('idp_slo_url', ''),
         'sp_entity_id': app_params.get('sp_entity_id', ''),
+        'app_id': app_id,
         'name_id': default_assertion_wrapper.get('name_id', '') if default_assertion_wrapper else '',
         'name_id_format': default_assertion_wrapper.get('name_id_format', '') if default_assertion_wrapper else '',
         'session_index': default_assertion_wrapper.get('session_index', '') if default_assertion_wrapper else '',
@@ -107,6 +108,7 @@ class SAMLClientLogout(FlowHandler):
       form = CfiForm('samllogout', form_content, action='/client/saml/logout/sendrequest', mode='new_page') \
         .hidden('hr_context') \
         .hidden('request_id') \
+        .hidden('app_id') \
         .start_section('idp_params', title="IdP parameters") \
           .text('idp_slo_url', label='IdP SLO URL', clipboard_category='idp_slo_url', on_change='updateLogoutRequest(cfiForm)') \
         .end_section() \
@@ -194,7 +196,7 @@ class SAMLClientLogout(FlowHandler):
       if app_params['sp_private_key'] == '':
         self.log_info("  private key not in form, retrieving it from configuration")
         conf_idp = self.conf['idps'][self.context.idp_id]
-        conf_app = conf_idp['saml_clients'][self.context.app_id]
+        conf_app = conf_idp['saml_clients'][self.post_form.get('app_id','')]
         if conf_app.get('sp_key_configuration', 'clientfedid_keys') == 'specific_keys':
           self.log_info("  private key was in the SP configuration")
           app_params['sp_private_key'] = conf_app.get('sp_private_key', '')
