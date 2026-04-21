@@ -1,10 +1,11 @@
 # Use an official Python runtime as a base image
-FROM python:3.14-bookworm AS saml
+FROM python:3.14-slim-bookworm AS saml
+#FROM python:3.14-bookworm AS saml
 
 RUN useradd -ms /bin/bash aduneo
 
 # Install xmlsec (used by SAML)
-RUN apt-get update && apt-get install -y pkg-config libxml2-dev libxmlsec1-dev libxmlsec1-openssl && rm -rf /var/lib/apt/lists/*
+#RUN apt-get update && apt-get install -y pkg-config libxml2-dev libxmlsec1-dev libxmlsec1-openssl && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory, where the conf directory will be created (/app/conf)
 RUN mkdir /app && chown aduneo /app
@@ -13,7 +14,7 @@ WORKDIR /app
 RUN pip install aduneoclientfedid[saml]
 
 # I don't know how to add --no-binary in the pyproject.toml
-RUN pip install --force-reinstall --no-binary lxml,xmlsec lxml xmlsec
+#RUN pip install --force-reinstall --no-binary lxml,xmlsec lxml xmlsec
 
 USER aduneo
 
