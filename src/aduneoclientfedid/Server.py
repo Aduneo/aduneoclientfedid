@@ -28,6 +28,7 @@ from .CryptoTools import CryptoTools
 from .Help import Help
 from .WebConsole import WebConsole
 # les imports suivants sont nécessaires pour la fonctionnalité de reconnaissance dynamique des redirect uri OIDC et OAuth 2
+from .WebModules.OIDCClientAdminGuide import OIDCClientAdminGuide
 from .WebModules.OIDCClientLogin import OIDCClientLogin
 from .WebModules.OIDCClientLogout import OIDCClientLogout
 from .WebModules.OAuthClientLogin import OAuthClientLogin
@@ -314,7 +315,7 @@ class Server(BaseServer):
                 self._client_oidc_logout_callback()
           
         if not callback_found:
-          sp_acs_slo = app_params.get('sp_acs_url')
+          sp_acs_url = app_params.get('sp_acs_url')
           if sp_acs_url:
             session_url = urllib.parse.urlparse(sp_acs_url)
             if session_url.path == url_items.path:
@@ -323,7 +324,7 @@ class Server(BaseServer):
                 self._client_saml_acs()
       
         if not callback_found:
-          sp_acs_url = app_params.get('sp_slo_url')
+          sp_slo_url = app_params.get('sp_slo_url')
           if sp_slo_url:
             session_url = urllib.parse.urlparse(sp_slo_url)
             if session_url.path == url_items.path:
@@ -700,7 +701,7 @@ class Server(BaseServer):
     try:
       crt_file_path = self.check_saml_certificate_exists()
     except:
-      send_page_raw('Certificate not configured', code=400, clear_buffer=True)
+      self.send_page_raw('Certificate not configured', code=400, clear_buffer=True)
       return
     
     download_filename = os.path.basename(crt_file_path)

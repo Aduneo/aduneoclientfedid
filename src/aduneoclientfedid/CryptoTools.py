@@ -207,7 +207,7 @@ class CryptoTools:
         23/12/2022 (mpham) : création automatique de la clé si elle n'existe pas
         28/12/2022 (mpham) : déplacement depuis Configuration
     """
-    
+    from .Configuration import ConfCrypto
     if self.cipher is None:
       
       if not os.path.isfile(self.key_file_path):

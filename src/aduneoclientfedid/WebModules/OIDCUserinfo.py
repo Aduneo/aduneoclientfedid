@@ -25,6 +25,7 @@ from ..Explanation import Explanation
 from ..Help import Help
 from ..CfiForm import RequesterForm
 from .FlowHandler import FlowHandler
+from ..WebRequest import WebRequest
 
 """
   Récupération userinfo dans une cinématique OpenID Connect
@@ -60,10 +61,64 @@ class OIDCUserinfo(FlowHandler):
       self.log_info(('  ' * 1)+'for context: '+self.context['context_id'])
 
       idp_params = self.context.idp_params
-      oidc_idp_params = idp_params.get('oidc')
-      if not oidc_idp_params:
-        raise AduneoError(f"OIDC IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
-      app_params = self.context.last_app_params
+      # Needed : 'userinfo_endpoint', 'userinfo_method', 'userinfo_endpoint_dns_override'
+      # Condition pour récupérer userinfo_endpoint dans une cinématique OAuth --> OIDC --> userinfo
+      # Il faut prendre les paramètres OAuth pour récupérer 'userinfo_endpoint'
+      oidc_idp_params = idp_params.get('oidc', {})
+      fetch_configuration_document = False
+
+      # Cas par défaut : on prend les paramètres OIDC si ils existent
+      if 'userinfo_endpoint' in oidc_idp_params:
+        self.log_info("Using OIDC IDP parameters for userinfo_endpoint")
+      # Sinon on cherche dans les paramètres OAuth actualisés
+      elif 'userinfo_endpoint' in idp_params.get('oauth2', {}):
+        oidc_idp_params = idp_params['oauth2']
+        self.log_info("Using OAuth IDP parameters as substitute for userinfo_endpoint")
+      # Sinon on essaie de récupérer les infos en discovery
+      elif oidc_idp_params.get('endpoint_configuration', 'local_configuration') != 'local_configuration':
+        if oidc_idp_params.get('endpoint_configuration', '') == 'same_as_oauth2':
+          # récupération des paramètres OIDC pour les endpoints
+          oauth2_params = idp_params.get('oauth2')
+          if not oauth2_params:
+            raise AduneoError("can't retrieve endpoint parameters from OAuth 2 configuration since OAuth 2 is not configured")
+          if oauth2_params.get('endpoint_configuration') == 'same_as_oidc':
+            raise AduneoError("can't retrieve endpoint parameters from OAuth 2 configuration since OAuth 2 is configured with same_as_oidc")
+          for param in ['endpoint_configuration', 'metadata_uri']:
+            oidc_idp_params[param] = oauth2_params.get(param, '')
+          if oidc_idp_params.get('endpoint_configuration') == 'metadata_uri':
+            oidc_idp_params['endpoint_configuration'] = 'discovery_uri'
+            oidc_idp_params['discovery_uri'] = oauth2_params.get('metadata_uri')
+        if oidc_idp_params.get('endpoint_configuration', '') == 'discovery_uri':
+          fetch_configuration_document = True
+          self.log_info("Fetching OIDC IDP parameters for userinfo_endpoint")
+      
+      if fetch_configuration_document:
+        self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=oidc_idp_params['discovery_uri']))
+        try:
+          self.log_info('Starting metadata retrieval')
+          self.log_info('discovery_uri: '+oidc_idp_params['discovery_uri'])
+          verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
+          self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+          r = WebRequest.get(oidc_idp_params['discovery_uri'], verify_certificate=verify_certificates)
+          self.log_info(r.data)
+          meta_data = r.json()
+          oidc_idp_params.update(meta_data)
+          self.add_html("""<div class="intertable">Success</div>""")
+        except Exception as error:
+          self.log_error(traceback.format_exc())
+          self.add_html(f"""<div class="intertable">Failed: {error}</div>""")
+          self.send_page()
+          return
+        if r.status != 200:
+          self.log_error('Server responded with code '+str(r.status))
+          self.add_html(f"""<div class="intertable">Failed. Server responded with code {r.status}</div>""")
+          self.send_page()
+          return
+      
+      if 'userinfo_endpoint' not in oidc_idp_params: 
+        raise AduneoError(self.log_error('Theoretically impossible to reach : no userinfo_endpoint in idp_params'))
+      
+      # app_params = self.context.last_app_params
 
       access_tokens = {}
       default_access_token = None
@@ -146,7 +201,7 @@ class OIDCUserinfo(FlowHandler):
       idp_params = self.context.idp_params
       oidc_idp_params = idp_params.get('oidc')
       if not oidc_idp_params:
-        raise AduneoError(f"OIDC IdP configuration missing for {idp_params.get('name', idp_id)}")
+        raise AduneoError(f"OIDC IdP configuration missing for {idp_params.get('name', default='[Could not fetch name]')}")
       for item in ['userinfo_endpoint', 'userinfo_method', 'userinfo_endpoint_dns_override']:
         oidc_idp_params[item] = self.post_form.get(item, '')
 

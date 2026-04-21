@@ -25,6 +25,7 @@ from ..Explanation import Explanation
 from ..Help import Help
 from ..CfiForm import RequesterForm
 from .FlowHandler import FlowHandler
+from ..WebRequest import WebRequest
 
 """
   Validation de jeton d'accès par introspection (RFC 7662)
@@ -62,12 +63,64 @@ class OAuth2Introspection(FlowHandler):
       self.log_info(('  ' * 1)+'for context: '+self.context['context_id'])
 
       idp_params = self.context.idp_params
-      oauth2_idp_params = idp_params.get('oauth2')
-      if not oauth2_idp_params:
-        raise AduneoError(f"OAuth 2 IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
-      app_params = self.context.last_app_params
-      api_params = self.context.last_api_params
 
+      # Needed : 'introspection_endpoint', 'introspection_http_method', 'introspection_auth_method', 'introspection_endpoint_dns_override'
+      # Condition pour charger proprement les champs lors d'une cinématique Login OIDC --> Introspect Token
+      # Il faut prendre les paramètres OIDC pour récupérer 'introspection_endpoint'
+      oauth2_idp_params = idp_params.get('oauth2', {})
+      fetch_configuration_document = False
+
+      # Cas par défaut : on prend les paramètres OAuth2 si ils existent
+      if 'introspection_endpoint' in oauth2_idp_params :
+        self.log_info("Using OAUTH IDP parameters for introspection endpoint")
+      # Si la clé n'est pas présente, on prend les paramètres OIDC (cas introspect AuthN)
+      elif 'introspection_endpoint' in idp_params.get('oidc', {}) :
+        oauth2_idp_params = idp_params['oidc']
+        self.log_info("Using OIDC IDP parameters as substitute for updating introspection endpoint properly")
+      # Sinon on essaie de récupérer les infos en metadata uri
+      elif oauth2_idp_params.get('endpoint_configuration', 'local_configuration') != 'local_configuration':
+        if oauth2_idp_params.get('endpoint_configuration', '') == 'same_as_oidc':
+          # récupération des paramètres OAuth pour les endpoints
+          oidc_params = idp_params.get('oidc')
+          if not oidc_params:
+            raise AduneoError("can't retrieve endpoint parameters from OIDC configuration since OIDC is not configured")
+          if oidc_params.get('endpoint_configuration') == 'same_as_oauth2':
+            raise AduneoError("can't retrieve endpoint parameters from OIDC configuration since OIDC is configured with same_as_oauth2")
+          for param in ['endpoint_configuration', 'discovery_uri']:
+            oauth2_idp_params[param] = oidc_params.get(param, '')
+          if oauth2_idp_params.get('endpoint_configuration') == 'discovery_uri':
+            oauth2_idp_params['endpoint_configuration'] = 'metadata_uri'
+            oauth2_idp_params['metadata_uri'] = oidc_params.get('discovery_uri')
+        if oauth2_idp_params.get('endpoint_configuration', '') == 'metadata_uri':
+          fetch_configuration_document = True
+          self.log_info("Fetching OAuth IDP parameters for introspection_endpoint")
+      
+      if fetch_configuration_document:
+        self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=oauth2_idp_params['metadata_uri']))
+        try:
+          self.log_info('Starting metadata retrieval')
+          self.log_info('metadata_uri: '+oauth2_idp_params['metadata_uri'])
+          verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
+          self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+          r = WebRequest.get(oauth2_idp_params['metadata_uri'], verify_certificate=verify_certificates)
+          self.log_info(r.data)
+          meta_data = r.json()
+          oauth2_idp_params.update(meta_data)
+          self.add_html("""<div class="intertable">Success</div>""")
+        except Exception as error:
+          self.log_error(traceback.format_exc())
+          self.add_html(f"""<div class="intertable">Failed: {error}</div>""")
+          self.send_page()
+          return
+        if r.status != 200:
+          self.log_error('Server responded with code '+str(r.status))
+          self.add_html(f"""<div class="intertable">Failed. Server responded with code {r.status}</div>""")
+          self.send_page()
+          return
+      
+      if 'introspection_endpoint' not in oauth2_idp_params: 
+        raise AduneoError(self.log_error('Theoretically impossible to reach : no introspection endpoint scheme in either OIDC or OAuth idp_params'))
+      
       # API réalisant l'introspection
       idp_id = self.context.idp_id
       conf_idp = self.conf['idps'][idp_id]
@@ -93,6 +146,19 @@ class OAuth2Introspection(FlowHandler):
         cfiForm.setFieldValue('introspection_auth_method', apis[cfiForm.getThisFieldValue()].auth_method); 
       }"""
 
+      # app_params = self.context.last_app_params
+      api_params = self.context.last_api_params
+
+      if api_params == {}:
+        # Récupérer la dernière clé API (défaut à '__input__')
+        first_api_key = str(list(api_values.keys())[-1])
+        # Récupérer la conf de la dernière API
+        api_params = conf_idp.get('oauth2_apis', {}).get(first_api_key, {})
+        # Par défaut, dictionnaire si pas d'API {'introspection_api': '__input__'}
+        api_params['introspection_api'] = first_api_key
+        if api_params['introspection_api'] == '__input__':
+          self.log_info("WARNING : Configure OAuth Introspection API for better testing experience")
+
       # Jetons d'accès
       access_tokens = {}
       default_access_token = None
@@ -110,10 +176,18 @@ class OAuth2Introspection(FlowHandler):
         'introspection_http_method': api_params.get('introspection_http_method', oauth2_idp_params.get('introspection_http_method', 'post')),
         'introspection_auth_method': api_params.get('introspection_auth_method', oauth2_idp_params.get('introspection_auth_method', 'basic')),
         'introspection_api': api_params.get('introspection_api', '__input__'),
-        'introspection_login': api_params.get('introspection_login', ''),
+        'introspection_login': api_params.get('login', oauth2_idp_params.get('client_id', '')),
         'introspection_secret': '',
         'introspection_endpoint_dns_override': oauth2_idp_params.get('introspection_endpoint_dns_override', ''),
       }
+
+      if form_content['introspection_http_method']=='inherit_from_idp' :
+          form_content['introspection_http_method'] = idp_params['oauth2']['introspection_http_method']
+          self.log_info("introspection_http_method of api inherited from IDP")
+      if form_content['introspection_auth_method']=='inherit_from_idp' :
+          form_content['introspection_auth_method'] = idp_params['oauth2']['introspection_auth_method']
+          self.log_info("introspection_auth_method of api inherited from IDP")
+
       form = RequesterForm('introspection', form_content, action='/client/oauth2/introspection/sendrequest', request_url='@[introspection_endpoint]', mode='api') \
         .hidden('contextid') \
         .text('introspection_endpoint', label='Introspection endpoint', clipboard_category='introspection_endpoint') \
@@ -123,7 +197,7 @@ class OAuth2Introspection(FlowHandler):
           ) \
         .closed_list('introspection_api', label='API initiating introspection', 
           values = api_values,
-          default = '__input__',
+          default = str(list(api_values.keys())[-1]), # Si une API est enregistrée, =! '__input__'
           on_change = on_api_change,
           ) \
         .closed_list('introspection_http_method', label='Introspect. Request Method', displayed_when="@[introspection_api] = '__input__'",

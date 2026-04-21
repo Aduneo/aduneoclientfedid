@@ -242,6 +242,7 @@ First, the following packages must be manually installed:
 - deprecated
 - wrapt
 - jwcrypto
+- argon2-cffi
 
 Additionaly (for SAML):
 - lxml

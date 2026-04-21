@@ -140,3 +140,7 @@ dmypy.json
 *.key
 *.cnf
 *.crt
+
+# conf and logs directories created when running "python -m aduneoclientfedid" in /src/
+logs/
+conf/

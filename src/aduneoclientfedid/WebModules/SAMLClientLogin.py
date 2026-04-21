@@ -34,6 +34,7 @@ from ..BaseServer import register_web_module, register_url, register_page_url
 from ..CfiForm import CfiForm
 from ..Configuration import Configuration
 from ..Context import Context
+from ..Explanation import Explanation
 from ..Help import Help
 from .Clipboard import Clipboard
 from .FlowHandler import FlowHandler
@@ -142,6 +143,9 @@ class SAMLClientLogin(FlowHandler):
         idp_authentication_binding_capabilities = self.conf.get('/default/saml/idp_authentication_binding_capabilities')
         if not idp_authentication_binding_capabilities:
           idp_authentication_binding_capabilities = ['urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST']
+      
+      # pour récupérer le contexte
+      self.set_session_value(self.context['context_id'], self.context)
 
       form_content = {
         'hr_context': self.context['context_id'],
@@ -361,10 +365,10 @@ class SAMLClientLogin(FlowHandler):
       ctx = xmlsec.SignatureContext()
       ctx.key = xmlsec.Key.from_memory(sp_private_key, xmlsec.KeyFormat.PEM, None)
       signature = ctx.sign_binary(message.encode(), xmlsec.constants.TransformRsaSha1)
-      base64_signature = base64.b64encode(signature).decode()
-      self.log_info('Signature: '+base64_signature)
+      base64_signature = base64.b64encode(signature)
+      self.log_info('Signature: ' + base64_signature.decode())
 
-      url = saml_idp_params['idp_sso_url'] + '?' + message + '&signature=' + urllib.parse.quote_plus(base64_signature)
+      url = saml_idp_params['idp_sso_url'] + '?' + message + '&Signature=' + urllib.parse.quote_plus(base64_signature)
       self.log_info('URL: '+url)
       self.log_info('Sending redirection')
       self.send_redirection(url)
