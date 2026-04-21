@@ -1,5 +1,5 @@
 # Use an official Python runtime as a base image
-FROM python:3.13-bookworm AS saml
+FROM python:3.14-bookworm AS saml
 
 RUN useradd -ms /bin/bash aduneo
 
@@ -28,7 +28,7 @@ CMD ["-host", "0.0.0.0"]
 
 # no-saml version, for a lighter image
 # Use an official Python runtime as a base image
-FROM python:3.13-slim-bookworm AS no-saml
+FROM python:3.14-slim-bookworm AS no-saml
 
 RUN useradd -ms /bin/bash aduneo
 

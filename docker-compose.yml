@@ -1,8 +1,8 @@
 services:
   aduneoclientfedid:
-    image: marcpham/clientfedid
+    image: aduneo/aduneoclientfedid
     container_name: clientfedid
     volumes:
-      - ./conf-for-container:/app/conf
+      - ./src/conf:/app/conf
     ports:
       - "443:443"
