@@ -769,7 +769,7 @@ class SAMLClientAdmin(BaseHandler):
     try:
       crt_file_path = self._check_clientfedid_certificate_exists()
     except:
-      send_page('Certificate not configured', code=400, clear_buffer=True)
+      self.send_page('Certificate not configured', code=400, clear_buffer=True)
       return
     
     self.download_file(crt_file_path, content_type='application/x-pem-file')

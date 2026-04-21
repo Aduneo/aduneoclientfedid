@@ -101,7 +101,7 @@ class CfiForm():
       30/08/2024 (mpham) options /requester/auth_method_options
       27/11/2024 (mpham) option /requester/include_empty_items qui indique si le contenu du formulaire doit contenir les éléments sans valeur
       03/12/2024 (mpham) tables contenant des valeurs exploitables par le Javascript
-      29/12/2204 (mpham) ajout de boutons
+      29/12/2024 (mpham) ajout de boutons
     """
   
     self.form_id = form_id
@@ -1674,8 +1674,12 @@ class RequesterForm(CfiForm):
     except Exception as error:
       raise AduneoError(page_handler.log_error(('  ' * 1)+'http service error: '+str(error)))
     if response.status != 200:
-      raise AduneoError(page_handler.log_error('http service error: status code '+str(response.status)+", "+str(response.data)))
-    
+      try:
+        error_body = json.loads(response.data)
+        error_msg = str(error_body.get('error')) + " : " + str(error_body.get('error_description')) or str(error_body)
+      except (json.JSONDecodeError, AttributeError):
+        error_msg = str(response.data.decode('utf-8', errors='replace'))
+      raise AduneoError(page_handler.log_error('http service error: status code '+str(response.status)+", "+ error_msg))
     return response
 
     

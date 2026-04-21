@@ -168,7 +168,7 @@ class OIDCClientLogin(FlowHandler):
           return
         if r.status != 200:
           self.log_error('Server responded with code '+str(r.status))
-          self.add_html(f"""<div class="intertable">Failed. Server responded with code {status}</div>""")
+          self.add_html(f"""<div class="intertable">Failed. Server responded with code {r.status}</div>""")
           self.send_page()
           return
 

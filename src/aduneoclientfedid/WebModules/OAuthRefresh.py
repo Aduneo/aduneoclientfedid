@@ -27,6 +27,7 @@ from ..Explanation import Explanation
 from ..Help import Help
 from .FlowHandler import FlowHandler
 from .OAuthClientLogin import OAuthClientLogin
+from ..WebRequest import WebRequest
 """
   Rafraîchissement d'un jeton d'accès (RFC 6749)
 
@@ -68,7 +69,63 @@ class OAuth2Refresh(FlowHandler):
       conf_apps.update(conf_idp.get('oidc_clients', {}))
 
       idp_params = self.context.idp_params
-      all_app_params = self.context.app_params
+
+      # Needed : 'token_endpoint'
+      # Condition pour charger proprement les champs lors d'une cinématique Login OIDC --> Refresh Token
+      # Il faut prendre les paramètres OIDC pour récupérer 'token_endpoint'
+      oauth2_idp_params = idp_params.get('oauth2', {})
+      fetch_configuration_document = False
+
+      # Cas par défaut : on prend les paramètres OAuth2 si ils existent
+      if 'token_endpoint' in oauth2_idp_params:
+        self.log_info("Using OAUTH IDP parameters for revocation endpoint")
+      # Si la clé n'est pas présente, on prend les paramètres OIDC (cas refresh AuthN)
+      elif 'token_endpoint' in idp_params.get('oidc', {}):
+        oauth2_idp_params = idp_params['oidc']
+        self.log_info("Using OIDC IDP parameters as substitute for updating token endpoint properly")
+      # Sinon on essaie de récupérer les infos en metadata uri
+      elif oauth2_idp_params.get('endpoint_configuration', 'local_configuration') != 'local_configuration':
+        if oauth2_idp_params.get('endpoint_configuration', '') == 'same_as_oidc':
+          # récupération des paramètres OAuth pour les endpoints
+          oidc_params = idp_params.get('oidc')
+          if not oidc_params:
+            raise AduneoError("can't retrieve endpoint parameters from OIDC configuration since OIDC is not configured")
+          if oidc_params.get('endpoint_configuration') == 'same_as_oauth2':
+            raise AduneoError("can't retrieve endpoint parameters from OIDC configuration since OIDC is configured with same_as_oauth2")
+          for param in ['endpoint_configuration', 'discovery_uri']:
+            oauth2_idp_params[param] = oidc_params.get(param, '')
+          if oauth2_idp_params.get('endpoint_configuration') == 'discovery_uri':
+            oauth2_idp_params['endpoint_configuration'] = 'metadata_uri'
+            oauth2_idp_params['metadata_uri'] = oidc_params.get('discovery_uri')
+        if oauth2_idp_params.get('endpoint_configuration', '') == 'metadata_uri':
+          fetch_configuration_document = True
+          self.log_info("Fetching OAuth IDP parameters for token_endpoint")
+      
+      if fetch_configuration_document:
+        self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=oauth2_idp_params['metadata_uri']))
+        try:
+          self.log_info('Starting metadata retrieval')
+          self.log_info('metadata_uri: '+oauth2_idp_params['metadata_uri'])
+          verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
+          self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+          r = WebRequest.get(oauth2_idp_params['metadata_uri'], verify_certificate=verify_certificates)
+          self.log_info(r.data)
+          meta_data = r.json()
+          oauth2_idp_params.update(meta_data)
+          self.add_html("""<div class="intertable">Success</div>""")
+        except Exception as error:
+          self.log_error(traceback.format_exc())
+          self.add_html(f"""<div class="intertable">Failed: {error}</div>""")
+          self.send_page()
+          return
+        if r.status != 200:
+          self.log_error('Server responded with code '+str(r.status))
+          self.add_html(f"""<div class="intertable">Failed. Server responded with code {r.status}</div>""")
+          self.send_page()
+          return
+      
+      if 'token_endpoint' not in oauth2_idp_params: 
+        raise AduneoError(self.log_error('Theoretically impossible to reach : no token endpoint scheme in either OIDC or OAuth idp_params'))
 
       # Jetons de rafraîchissement et clients associés
       refresh_tokens = {'__input__': 'Direct Input'}    # clé : RT, valeur : nom d'affichage
@@ -97,7 +154,7 @@ class OAuth2Refresh(FlowHandler):
 
       form_content = {
         'contextid': self.context['context_id'],
-        'token_endpoint': idp_params.get('token_endpoint', ''),
+        'token_endpoint': oauth2_idp_params.get('token_endpoint', ''),
         'refresh_tokens': default_refresh_token,
         'refresh_token': default_refresh_token if default_refresh_token != '__input__' else '',
         'grant_type': 'refresh_token',

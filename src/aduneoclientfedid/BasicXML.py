@@ -113,7 +113,7 @@ class BasicXML(dict):
         return root_tag
 
 
-      def parse_start_tag(start_tag):
+      def parse_start_tag(self, start_tag):
         """ Analyse la balise de début d'un élément en nom et attributs
 
         Args:

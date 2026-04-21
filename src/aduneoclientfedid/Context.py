@@ -237,6 +237,23 @@ class Context(dict):
         })
 
     return all_token_wrappers
+  
+  def last_app_params_of(self, type='') -> dict:
+    """ Retourne le dictionnaire des paramètres du client ayant réalisé la dernière authentification
+    
+    Returns:
+      dict
+          
+    Versions:
+      05/09/2024 (mpham) version initiale
+    """
+    if self['app_id'].startswith(type):
+      key = self['app_id']
+    elif type == 'oidc' or type == 'oauth2' or type == 'saml' or type == 'cas':
+      key = [key for key in self['app_params'].keys() if key.startswith(type)][0]
+    else:
+      raise Exception(f"Could not find an app_params with app_id starting with {type}")
+    return self['app_params'][key]
     
 
   @property
@@ -291,7 +308,6 @@ class Context(dict):
       05/09/2024 (mpham) version initiale
     """
     return self['app_params'][self['app_id']]
-
 
   @property
   def last_api_params(self) -> dict:

@@ -32,6 +32,7 @@ from ..BaseServer import register_web_module, register_url, register_page_url
 from ..CfiForm import RequesterForm
 from ..Configuration import Configuration
 from ..Context import Context
+from ..Explanation import Explanation
 from ..Help import Help
 from ..JWT import JWT
 from ..WebRequest import WebRequest
@@ -148,7 +149,7 @@ class OAuthClientLogin(FlowHandler):
           return
         if r.status != 200:
           self.log_error('Server responded with code '+str(r.status))
-          self.add_html(f"""<div class="intertable">Failed. Server responded with code {status}</div>""")
+          self.add_html(f"""<div class="intertable">Failed. Server responded with code {r.status}</div>""")
           return
 
       
@@ -552,10 +553,10 @@ class OAuthClientLogin(FlowHandler):
       refresh_token = response.get('refresh_token')
       self.display_tokens(access_token, refresh_token, idp_params, client_secret)
       
-      # Nonce verification
+      # Nonce verification (OAuth should not have a nonce)
       idp_nonce = response.get('nonce')
       if idp_nonce:
-        session_nonce = request['nonce']
+        session_nonce = app_params.get('nonce', '')
         if session_nonce == idp_nonce:
           self.log_info("Nonce verification OK: "+session_nonce)
           self.add_result_row('Nonce verification', 'OK: '+session_nonce, 'nonce_verification')
@@ -713,110 +714,126 @@ class OAuthClientLogin(FlowHandler):
 
 
   def display_tokens(self, access_token:str, refresh_token:str, idp_params:dict, client_secret:str):
+    
+    # Needed : 'signature_key', 'signature_key_configuration', 'jwks_uri'
+    # Condition pour afficher les id_token dans "Refresh Token"
+    # Il faut prendre les paramètres OIDC pour récupérer 'signature_key_configuration' et 'jwks_uri'
+    oauth2_idp_params = {}
+    # Cas par défaut : on prend les paramètres OAuth2 si ils existent
+    if 'signature_key' in idp_params.get('oauth2', {}):
+        oauth2_idp_params = idp_params['oauth2']
+    # Si la clé n'est pas présente, on prend les paramètres OIDC (cas refresh AuthN)
+    elif 'signature_key' in idp_params.get('oidc', {}):
+        oauth2_idp_params = idp_params['oidc']
+        self.log_info("Using OIDC IDP parameters as substitute for displaying properly")
+    else : 
+      raise AduneoError(self.log_error('Theoretically impossible to reach : no signature scheme in either OIDC or OAuth idp_params'))
 
-      oauth2_idp_params = idp_params['oauth2']
+    # oauth2_idp_params = idp_params.get('oauth2')
+    # if not oauth2_idp_params:
+    #   raise AduneoError(f"OAuth 2 IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
 
-      self.add_result_row('Access Token', access_token, 'access_token')
-      if refresh_token:
-        self.add_result_row('Refresh token', refresh_token, 'refresh_token')
+    self.add_result_row('Access Token', access_token, 'access_token')
+    if refresh_token:
+      self.add_result_row('Refresh token', refresh_token, 'refresh_token')
 
-      if JWT.is_jwt(access_token):
-        # l'AT est un JWT, on l'affiche
-        self.add_result_row('Access Token Type', 'JWT')
-        jwt = JWT(access_token)
-        self.add_result_row('Access Token Header', json.dumps(jwt.header, indent=2), 'access_token_header')
-        self.log_info("Access token header:")
+    if JWT.is_jwt(access_token):
+      # l'AT est un JWT, on l'affiche
+      self.add_result_row('Access Token Type', 'JWT')
+      jwt = JWT(access_token)
+      self.add_result_row('Access Token Header', json.dumps(jwt.header, indent=2), 'access_token_header')
+      self.log_info("Access token header:")
+      self.log_info(json.dumps(jwt.header, indent=2))
+
+      self.add_result_row('Access Token Payload', json.dumps(jwt.payload, indent=2), 'access_token_payload')
+      self.log_info("Access token payload:")
+      self.log_info(json.dumps(jwt.payload, indent=2))
+      
+      # On vérifie la signature du JWT
+      alg = jwt.header.get('alg')
+      if not alg:
+        self.add_result_row('RT Signature Validation', 'JWT without algorithm in header')
+        self.log_info("  Can't verify Refresh Token signature : JWT without algorithm in header")
+      else:
+        
+        access_token_jwk = None
+        if alg.startswith('HS'):
+          self.log_info('HMAC signature, the secret is client_secret')
+          encoded_secret = base64.urlsafe_b64encode(str.encode(client_secret)).decode()
+          access_token_jwk = {"alg":alg,"kty":"oct","use":"sig","kid":"1","k":encoded_secret}
+        else:
+          # Signature asymétrique, on récupère la clé
+          if oauth2_idp_params['signature_key_configuration'] == 'Local configuration':
+          
+            # Clé de signature donnée dans la configuration
+            self.log_info('Signature JWK:')
+            self.log_info(oauth2_idp_params['signature_key'])
+            access_token_jwk = json.loads(oauth2_idp_params['signature_key'])
+
+          else:
+          
+            # Clé à récupérer auprès de l'IdP
+            self.log_info("Starting IdP keys retrieval")
+            self.add_result_row('JWKS endpoint', oauth2_idp_params['jwks_uri'], 'jwks_endpoint')
+            self.end_result_table()
+            self.add_html('<div class="intertable">Fetching public keys...</div>')
+            try:
+              verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
+              self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
+              r = WebRequest.get(oauth2_idp_params['jwks_uri'], verify_certificate=verify_certificates)
+            except Exception as error:
+              self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
+              raise AduneoError(self.log_error(('  ' * 2)+'IdP keys retrieval error: '+str(error)))
+            if r.status == 200:
+              self.add_html('<div class="intertable">Success</div>')
+            else:
+              self.add_html('<div class="intertable">Error, status code '+str(r.status)+'</div>')
+              raise AduneoError(self.log_error('IdP keys retrieval error: status code '+str(r.status)))
+
+            keyset = r.json()
+            self.log_info("IdP response:")
+            self.log_info(json.dumps(keyset, indent=2))
+            self.start_result_table()
+            self.add_result_row('Keyset', json.dumps(keyset, indent=2), 'keyset')
+            
+            # On en extrait les JWK qui correspondent aux jetons
+            self.add_result_row('Retrieved keys', '', 'retrieved_keys', copy_button=False)
+        
+            for jwk in keyset['keys']:
+                self.add_result_row(jwk['kid'], json.dumps(jwk, indent=2))
+                if jwk['kid'] == jwt.header.get('kid'):
+                  access_token_jwk = jwk
+
+        if not access_token_jwk:
+          self.add_result_row('AT Signature Validation', 'Signature key not found')
+          self.log_info("  Can't verify AT signature : signature key not found")
+        else:
+          self.log_info('Signature JWK:')
+          self.log_info(json.dumps(access_token_jwk, indent=2))
+          self.add_result_row('Signature JWK', json.dumps(access_token_jwk, indent=2), 'signature_jwk')
+          
+          if jwt.is_signature_valid(access_token_jwk, raise_exception=False):
+            self.log_info('Access Token signature verification OK')
+            self.add_result_row('AT Signature verification', 'OK', copy_button=False)
+          else:
+            self.add_result_row('AT Signature verification', 'Failed', copy_button=False)
+      
+    else:
+      self.add_result_row('Access Token Type', 'opaque')
+    
+    if refresh_token:
+      if JWT.is_jwt(refresh_token):
+        # le RT est un JWT, on l'affiche
+        self.add_result_row('Refresh Token Type', 'JWT')
+        jwt = JWT(refresh_token)
+        self.add_result_row('Refresh Token Header', json.dumps(jwt.header, indent=2), 'refresh_token_header')
+        self.log_info("Refresh token header:")
         self.log_info(json.dumps(jwt.header, indent=2))
 
-        self.add_result_row('Access Token Payload', json.dumps(jwt.payload, indent=2), 'access_token_payload')
-        self.log_info("Access token payload:")
+        self.add_result_row('Refresh Token Payload', json.dumps(jwt.payload, indent=2), 'refresh_token_payload')
+        self.log_info("Refresh token payload:")
         self.log_info(json.dumps(jwt.payload, indent=2))
         
-        # On vérifie la signature du JWT
-        alg = jwt.header.get('alg')
-        if not alg:
-          self.add_result_row('RT Signature Validation', 'JWT without algorithm in header')
-          self.log_info("  Can't verify Refresh Token signature : JWT without algorithm in header")
-        else:
-          
-          access_token_jwk = None
-          if alg.startswith('HS'):
-            self.log_info('HMAC signature, the secret is client_secret')
-            encoded_secret = base64.urlsafe_b64encode(str.encode(client_secret)).decode()
-            access_token_jwk = {"alg":alg,"kty":"oct","use":"sig","kid":"1","k":encoded_secret}
-          else:
-            # Signature asymétrique, on récupère la clé
-            if oauth2_idp_params['signature_key_configuration'] == 'Local configuration':
-            
-              # Clé de signature donnée dans la configuration
-              self.log_info('Signature JWK:')
-              self.log_info(oauth2_idp_params['signature_key'])
-              access_token_jwk = json.loads(oauth2_idp_params['signature_key'])
-
-            else:
-            
-              # Clé à récupérer auprès de l'IdP
-              self.log_info("Starting IdP keys retrieval")
-              self.add_result_row('JWKS endpoint', oauth2_idp_params['jwks_uri'], 'jwks_endpoint')
-              self.end_result_table()
-              self.add_html('<div class="intertable">Fetching public keys...</div>')
-              try:
-                verify_certificates = Configuration.is_on(idp_params.get('verify_certificates', 'on'))
-                self.log_info(('  ' * 1)+'Certificate verification: '+("enabled" if verify_certificates else "disabled"))
-                r = WebRequest.get(oauth2_idp_params['jwks_uri'], verify_certificate=verify_certificates)
-              except Exception as error:
-                self.add_html('<div class="intertable">Error : '+str(error)+'</div>')
-                raise AduneoError(self.log_error(('  ' * 2)+'IdP keys retrieval error: '+str(error)))
-              if r.status == 200:
-                self.add_html('<div class="intertable">Success</div>')
-              else:
-                self.add_html('<div class="intertable">Error, status code '+str(r.status)+'</div>')
-                raise AduneoError(self.log_error('IdP keys retrieval error: status code '+str(r.status)))
-
-              keyset = r.json()
-              self.log_info("IdP response:")
-              self.log_info(json.dumps(keyset, indent=2))
-              self.start_result_table()
-              self.add_result_row('Keyset', json.dumps(keyset, indent=2), 'keyset')
-              
-              # On en extrait les JWK qui correspondent aux jetons
-              self.add_result_row('Retrieved keys', '', 'retrieved_keys', copy_button=False)
-          
-              for jwk in keyset['keys']:
-                  self.add_result_row(jwk['kid'], json.dumps(jwk, indent=2))
-                  if jwk['kid'] == jwt.header.get('kid'):
-                    access_token_jwk = jwk
-
-          if not access_token_jwk:
-            self.add_result_row('AT Signature Validation', 'Signature key not found')
-            self.log_info("  Can't verify AT signature : signature key not found")
-          else:
-            self.log_info('Signature JWK:')
-            self.log_info(json.dumps(access_token_jwk, indent=2))
-            self.add_result_row('Signature JWK', json.dumps(access_token_jwk, indent=2), 'signature_jwk')
-            
-            if jwt.is_signature_valid(access_token_jwk, raise_exception=False):
-              self.log_info('Access Token signature verification OK')
-              self.add_result_row('AT Signature verification', 'OK', copy_button=False)
-            else:
-              self.add_result_row('AT Signature verification', 'Failed', copy_button=False)
-        
+        # Pas de vérification de signature du RT (aucun besoin, le RT est uniquement à renvoyer à l'IdP)
       else:
-        self.add_result_row('Access Token Type', 'opaque')
-      
-      if refresh_token:
-        if JWT.is_jwt(refresh_token):
-          # le RT est un JWT, on l'affiche
-          self.add_result_row('Refresh Token Type', 'JWT')
-          jwt = JWT(refresh_token)
-          self.add_result_row('Refresh Token Header', json.dumps(jwt.header, indent=2), 'refresh_token_header')
-          self.log_info("Refresh token header:")
-          self.log_info(json.dumps(jwt.header, indent=2))
-
-          self.add_result_row('Refresh Token Payload', json.dumps(jwt.payload, indent=2), 'refresh_token_payload')
-          self.log_info("Refresh token payload:")
-          self.log_info(json.dumps(jwt.payload, indent=2))
-          
-          # Pas de vérification de signature du RT (aucun besoin, le RT est uniquement à renvoyer à l'IdP)
-        else:
-          self.add_result_row('Refresh Token Type', 'opaque')
+        self.add_result_row('Refresh Token Type', 'opaque')
