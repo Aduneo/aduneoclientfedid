@@ -17,11 +17,15 @@ limitations under the License.
 from .BaseServer import AduneoError
 from .BaseServer import BaseHandler
 from .Configuration import Configuration
+import urllib.parse
 import html
 import json
 import logging
 import os
 
+from .BaseServer import register_web_module, register_url, register_page_url
+
+@register_web_module('/help')
 class Help(BaseHandler):
   """ Aide en ligne accessible dans les tableaux
   
@@ -43,6 +47,7 @@ class Help(BaseHandler):
   """
   
   help_json = None
+  edit_topics = True
   
   
   def help_window_definition(page_id:str=None):
@@ -101,7 +106,7 @@ class Help(BaseHandler):
       </div>
       """)
   
-  
+  @register_url(url='sendHelp', method='GET')
   def send_help(self):
     """ Retourne les rubriques d'aide sous forme de JSON
       "header": "...",
@@ -132,7 +137,7 @@ class Help(BaseHandler):
     response = {
       'help_id': help_id,
       'language': language,
-      'edit_topics': self.conf.is_on('preferences/help/edit_topics')
+      'edit_topics': Help.edit_topics
       }
     
     help_item = Help.help_json.get(help_id)
@@ -141,17 +146,17 @@ class Help(BaseHandler):
       content = help_item.get('content_'+language)
       content_format = help_item.get('format_'+language, 'html')
       if content_format == 'text':
-        content = html.escape(content)
+        content = content
       elif content_format == 'lmd':
         content = Help.convert_from_light_markdown(content)
     
       response.update({
-        'header': html.escape(help_item.get('header_'+language)),
+        'header': help_item.get('header_'+language),
         'content': content,
         'topics_defined': True,
         })
-      if self.conf.is_on('preferences/help/edit_topics'):
-        response['edit_content'] = html.escape(help_item.get('content_'+language))
+      if Help.edit_topics:
+        response['edit_content'] = help_item.get('content_'+language)
       else:
         response['edit_content'] = ''
 
@@ -165,7 +170,7 @@ class Help(BaseHandler):
     
     self.send_json(response)
 
-
+  @register_url(url='saveHelp', method='POST')
   def save_help(self):
     """ Enregistre de nouveaux textes pour une rubrique d'aide
 
@@ -177,9 +182,7 @@ class Help(BaseHandler):
       24/02/2024 (mpham) version initiale
     """
     
-    code = 200
-    
-    if self.conf.is_on('preferences/help/edit_topics'):
+    if Help.edit_topics:
 
       try:
 
@@ -190,15 +193,17 @@ class Help(BaseHandler):
         with open(help_filepath, encoding='utf8') as json_file:
           Help.help_json = json.load(json_file)
 
-        help_id = self.post_form['help_id']
-        language = self.post_form['language']
+        help_id = urllib.parse.unquote_plus(self.post_form['help_id'])
+        language = urllib.parse.unquote_plus(self.post_form['language'])
+        header   = urllib.parse.unquote_plus(self.post_form['header'])
+        content  = urllib.parse.unquote_plus(self.post_form['content'])
         
         help_item = Help.help_json.get(help_id)
         if help_item is None:
           Help.help_json[help_id] = {}
           help_item = Help.help_json.get(help_id)
-        help_item['header_'+language] = self.post_form['header']
-        help_item['content_'+language] = self.post_form['content']
+        help_item['header_'+language] = header
+        help_item['content_'+language] = content
         help_item['format_'+language] = 'lmd'
         
         with open(help_filepath, 'w', encoding='utf8') as json_file:
@@ -206,9 +211,18 @@ class Help(BaseHandler):
           
       except Exception as e:
         logging.error(f"can't save help topic : {e}")
-        code = 500
 
-    self.send_page(code=code)
+    response={
+      'help_id': self.post_form['help_id'],
+      'language': self.post_form['language'],
+      'edit_topics': Help.edit_topics,
+      'header': self.post_form['header'],
+      'content': Help.convert_from_light_markdown(self.post_form['content']),
+      'topics_defined': True,
+      'edit_content' : self.post_form['content']
+    }
+
+    self.send_json(response)
 
 
   def convert_from_light_markdown(text:str) -> str:

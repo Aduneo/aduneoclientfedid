@@ -875,23 +875,35 @@ class BaseHandler:
     return self.result_in_table
     
 
-  def row_label(self, label : str, help_id : str) -> str:
+  def row_label(self, label : str, form_id : str, help_id : str) -> str:
     
     """ Formate le titre d'une ligne avec une icône d'aide à droite
     
     :param str name: libellé de la ligne
-    :param str help_id: identifiant relatif de la rubrique d'aide (l'identifiant est préfixé par la fonction Javascript help() locale)
+    :param str form_id : identifiant du form auquel appartient 
+    :param str help_id: identifiant relatif de la rubrique d'aide
     :return: code HTML à insérer dans le <td>
     :rtype: str
     
     .. note::
       mpham 22/04/2021
+      vbittard 21/04/2026
     """
+    if help_id is None or form_id is None:
+      row_label = html.escape(label)
+    else:
+      complete_id = '/' + form_id + '/' + help_id
+      row_label = (
+      '<span class="celltxt">{label}</span>'
+      '<span class="cellimg">'
+      '<img onclick="help(this, \'{complete_id}\')" src="/images/help.png">'
+      '</span>'
+      ).format(label=html.escape(label), complete_id=html.escape(complete_id))
     
-    return '<span class="celltxt">{label}</span><span class="cellimg"><img onclick="help(this, \'{help_id}\')" src="/images/help.png"></span>'.format(label=html.escape(label), help_id=help_id)
+    return row_label
     
 
-  def add_result_row(self, title:str, value:str, help_id:str=None, copy_button=True, expanded=False):
+  def add_result_row(self, title:str, value:str, form_id:str=None, help_id:str=None, copy_button=True, expanded=False):
     """
     Ajoute une ligne à un tableau de retour d'authentification
     Tronque la valeur si elle est trop longue (avec bouton d'affichage complet)
@@ -916,10 +928,7 @@ class BaseHandler:
     """
 
     col_id = 'col' + str(uuid.uuid4())
-    if help_id is None:
-      row_label = html.escape(title)
-    else:
-      row_label = '<span class="celltxt">{label}</span><span class="cellimg"><img onclick="help(this, \'{help_id}\')" src="/images/help.png"></span>'.format(label=html.escape(title), help_id=help_id)
+    row_label = self.row_label(label=title, form_id=form_id, help_id=help_id)
     if self.is_continuous_page:
       self.add_html('<tr><td>'+row_label)
       self.add_html('<span id="'+col_id+'_raw" style="display: none;">'+value+'</span>')
