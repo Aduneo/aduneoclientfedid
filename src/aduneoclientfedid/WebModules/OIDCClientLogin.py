@@ -235,7 +235,7 @@ class OIDCClientLogin(FlowHandler):
         .start_section('client_params', title="Client Parameters", collapsible=True, collapsible_default=False) \
           .text('client_id', label='Client ID', clipboard_category='client_id') \
           .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
-          .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
+          .text('scope', label='Scope', clipboard_category='scope') \
           .closed_list('response_type', label='Reponse type', 
             values={'code': 'code'},
             default = 'code'

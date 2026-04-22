@@ -253,7 +253,7 @@ class OAuthClientLogin(FlowHandler):
           .password('client_secret', label='Client secret', clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
           .text('username', label='User name', clipboard_category='username', displayed_when="@[oauth_flow] = 'resource_owner_password_credentials'") \
           .password('password', label='User password', clipboard_category='userpassword', displayed_when="@[oauth_flow] = 'resource_owner_password_credentials'") \
-          .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
+          .text('scope', label='Scope', clipboard_category='scope') \
           .closed_list('response_type', label='Reponse type', displayed_when="@[oauth_flow] = 'authorization_code' or @[oauth_flow] = 'authorization_code_pkce'",
             values={'code': 'code'},
             default = 'code'

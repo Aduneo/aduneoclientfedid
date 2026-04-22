@@ -122,7 +122,7 @@ class WebTest(BaseHandler):
       .start_section('section_general', title="General configuration") \
         .text('name', label='Name', readonly=True) \
         .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri', help_button=False) \
-        .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
+        .text('scope', label='Scope', clipboard_category='scope') \
         .closed_list('endpoint_configuration', label='Endpoint configuration', 
           values={'discovery_uri': 'Discovery URI', 'local_configuration': 'Local configuration'},
           default = 'discovery_uri'
@@ -252,7 +252,7 @@ class WebTest(BaseHandler):
       .end_section() \
       .start_section('openid_connect_configuration', title="OpenID Connect Configuration") \
         .text('client_id', label='Client ID', clipboard_category='client_id') \
-        .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
+        .text('scope', label='Scope', clipboard_category='scope') \
         .closed_list('response_type', label='Reponse type', 
           values={'code': 'code'},
           default = 'code'
@@ -334,7 +334,7 @@ class WebTest(BaseHandler):
       .end_section() \
       .start_section('openid_connect_configuration', title="OpenID Connect Configuration") \
         .text('client_id', label='Client ID', clipboard_category='client_id') \
-        .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
+        .text('scope', label='Scope', clipboard_category='scope') \
         .closed_list('response_type', label='Reponse type', 
           values={'code': 'code'},
           default = 'code'
@@ -607,7 +607,7 @@ class WebTest(BaseHandler):
         .text('pkce_code_verifier', label='PKCE Code Verifier', displayed_when="@[oauth_flow] = 'authorization_code_pkce'") \
         .text('pkce_code_challenge', label='PKCE Code Challenge', displayed_when="@[oauth_flow] = 'authorization_code_pkce' and @[pkce_method] = 'S256'") \
         .text('client_id', label='Client ID', clipboard_category='client_id') \
-        .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
+        .text('scope', label='Scope', clipboard_category='scope') \
         .closed_list('response_type', label='Reponse type', 
           values={'code': 'code'},
           default = 'code'
