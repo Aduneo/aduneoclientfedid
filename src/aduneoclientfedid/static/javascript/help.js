@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2023 Aduneo
+ * Copyright 2026 Aduneo
  * SPDX-License-Identifier: Apache-2.0
  */
 function help(imgElement, itemId) {
@@ -8,14 +8,6 @@ function help(imgElement, itemId) {
   displayHelpPopup(rect.left+50, rect.top, itemId);
 }
 
-var help_topic = {
-  'content': '',
-  'edit_topics': false,
-  'header': '',
-  'help_id': null,
-  'language': 'en',
-  'topics_defined': false,
-};
 
 function displayHelpPopup(x, y, helpId) {
   
@@ -109,8 +101,8 @@ function closeHelpWindow() {
 
 function openDrag(elId, x, y) {
   dragWindow = document.getElementById(elId);
-  dragWindow.style.left = x;
-  dragWindow.style.top = y;
+  dragWindow.style.left = x + 'px';
+  dragWindow.style.top = y + 'px';
   dragWindow.style.visibility = 'visible';
 }
 

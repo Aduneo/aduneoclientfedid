@@ -22,7 +22,8 @@ dependencies = [
     "urllib3",
     "jwcrypto",
     "pyopenssl",
-    "argon2-cffi"
+    "argon2-cffi",
+    "markdown"
 ]
 requires-python = ">=3.6"
 

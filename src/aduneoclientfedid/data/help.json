@@ -1,542 +1,547 @@
 {
   "/oidcadmin/redirect_uri": {
-    "header_en": "URI de redirection",
-    "content_en": "Le client doit indiquer l'URL qui accueillera l'utilisateur à son retour d'authentification par l'IdP. Cette URL doit faire partie des URL configurées auprès de l'IdP.\n\nLa valeur proposée par défaut est déduite par Aduneo Identity Federation Test.\n\nLa valeur de ce champ doit donc être reportée dans la configuration de l'IdP.",
-    "format_en": "lmd"
+    "header_fr": "URI de redirection",
+    "content_fr": "Le client doit indiquer l'URL qui accueillera l'utilisateur à son retour d'authentification par l'IdP. Cette URL doit faire partie des URL configurées auprès de l'IdP.\n\nLa valeur proposée par défaut est déduite par Aduneo Identity Federation Test.\n\nLa valeur de ce champ doit donc être reportée dans la configuration de l'IdP.",
+    "format_fr": "md"
   },
   "/oidcadmin/discovery_uri": {
-    "header_en": "Discovery URI",
-    "content_en": "L'URI de découverte (Discovery URI) donne la configuration de l'OpenID Provider. Elle est définie dans la spécification [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html).\n\n- https://www.idp/com/.well-known/openid-configuration quand la configuration est globale\n- https://tenant.idp/com/.well-known/openid-configuration pour des IdP en tenant",
-    "format_en": "lmd"
+    "header_fr": "Discovery URI",
+    "content_fr": "L'URI de découverte (Discovery URI) donne la configuration de l'OpenID Provider. Elle est définie dans la spécification [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html).\n\n- https://www.idp/com/.well-known/openid-configuration quand la configuration est globale\n- https://tenant.idp/com/.well-known/openid-configuration pour des IdP en tenant",
+    "format_fr": "md"
   },
   "/oidcadmin/name": {
-    "header_en": "Nom du client",
-    "content_en": "Nom du client dans ClientFedID\n\nNe joue aucun rôle dans la cinématique *OpenID Connect*",
-    "format_en": "lmd"
+    "header_fr": "Nom du client",
+    "content_fr": "Nom du client dans ClientFedID\n\nNe joue aucun rôle dans la cinématique *OpenID Connect*",
+    "format_fr": "md"
   },
   "/oidcadmin/endpoint_configuration": {
-    "header_en": "Méthode de configuration des points d'entrée de l'OP",
-    "content_en": "Les points d'entrée de l'*OpenID Provider* correspondent aux URL accédés par le client.\n\nClientFedID propose deux méthodes :\n- *Discovery URI* : au travers d'un document de configuration\n- *Local configuration* : par saisie de chaque URL individuellement",
-    "format_en": "lmd"
+    "header_fr": "Méthode de configuration des points d'entrée de l'OP",
+    "content_fr": "Les points d'entrée de l'*OpenID Provider* correspondent aux URL accédés par le client.\n\nClientFedID propose deux méthodes :\n- *Discovery URI* : au travers d'un document de configuration\n- *Local configuration* : par saisie de chaque URL individuellement",
+    "format_fr": "md"
   },
   "/oidcadmin/issuer": {
-    "header_en": "Issuer",
-    "content_en": "L'émetteur (issuer) est l'entité qui authentifie l'utilisateur et génère les jetons.\n\n- https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/v2.0\n- https://societe.okta.com",
-    "format_en": "lmd"
+    "header_fr": "Issuer",
+    "content_fr": "L'émetteur (issuer) est l'entité qui authentifie l'utilisateur et génère les jetons.\n\n- https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/v2.0\n- https://societe.okta.com",
+    "format_fr": "md"
   },
   "/oidcadmin/authorization_endpoint": {
-    "header_en": "Authorization Endpoint",
-    "content_en": "L'endpoint d'autorisation est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs pour y être authentifiés.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/authorize\n- https://societe.okta.com/oauth2/v1/authorize",
-    "format_en": "lmd"
+    "header_fr": "Authorization Endpoint",
+    "content_fr": "L'endpoint d'autorisation est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs pour y être authentifiés.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/authorize\n- https://societe.okta.com/oauth2/v1/authorize",
+    "format_fr": "md"
   },
   "/oidcadmin/token_endpoint": {
-    "header_en": "Token Endpoint",
-    "content_en": "L'endpoint de jeton est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir les jetons.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/token\n- https://societe.okta.com/oauth2/v1/token",
-    "format_en": "lmd"
+    "header_fr": "Token Endpoint",
+    "content_fr": "L'endpoint de jeton est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir les jetons.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/token\n- https://societe.okta.com/oauth2/v1/token",
+    "format_fr": "md"
   },
   "/oidcadmin/client_id": {
-    "header_en": "Client ID",
-    "content_en": "L'IdP attribue un identifiant unique à chaque application qu'il doit authentifier. Cet identifiant est appelé Client ID.",
-    "format_en": "lmd"
+    "header_fr": "Client ID",
+    "content_fr": "L'IdP attribue un identifiant unique à chaque application qu'il doit authentifier. Cet identifiant est appelé Client ID.",
+    "format_fr": "md"
   },
   "/oidcadmin/client_secret": {
-    "header_en": "Client Secret",
-    "content_en": "Lorsque le client se connecte aux endpoint de l'IdP, il est formellement authentifié par la donnée du Client ID et par une méthode d'authentification.\n\n- client_secret_basic : transmission du mot de passe en en-tête\n- client_secret_jwt : authentification par JWT signé en HMAC\n- private_key_jwt : authentification par JWT signé par une clé privée",
-    "format_en": "lmd"
+    "header_fr": "Client Secret",
+    "content_fr": "Lorsque le client se connecte aux endpoint de l'IdP, il est formellement authentifié par la donnée du Client ID et par une méthode d'authentification.\n\n- client_secret_basic : transmission du mot de passe en en-tête\n- client_secret_jwt : authentification par JWT signé en HMAC\n- private_key_jwt : authentification par JWT signé par une clé privée",
+    "format_fr": "md"
   },
   "/oidcadmin/scope": {
-    "header_en": "Scope",
-    "content_en": "Le scope OAuth 2 permet de véhiculer le type d'autorisation demandée au serveur d'autorisation.\n\n- profile : ensemble d'informations par défaut\n- email : adresse de messagerie\n- address : adresse\n- phone : numéro de téléphone",
-    "format_en": "lmd"
+    "header_fr": "Scope",
+    "content_fr": "Le scope OAuth 2 permet de véhiculer le type d'autorisation demandée au serveur d'autorisation.\n\n- profile : ensemble d'informations par défaut\n- email : adresse de messagerie\n- address : adresse\n- phone : numéro de téléphone",
+    "format_fr": "md"
   },
   "/oidcadmin/response_type": {
-    "header_en": "Response Type",
-    "content_en": "Le paramètre response type indique la cinématique souhaitée par le client : code d'autorisation, implicite, hybride.",
-    "format_en": "lmd"
+    "header_fr": "Response Type",
+    "content_fr": "Le paramètre response type indique la cinématique souhaitée par le client : code d'autorisation, implicite, hybride.",
+    "format_fr": "md"
   },
   "/oidcadmin/token_endpoint_auth_method": {
-    "header_en": "Auth method",
-    "content_en": "Les méthodes d'autorisation courantes sont :\n\nClient Secret Basic :\n\nLe client utilise son client_id et son client_secret pour s'authentifier.\n\nClient Secret Post :\n\nComme Client Secret Basic, mais les informations sont transmises dans le corps de la requête POST.",
-    "format_en": "lmd"
+    "header_fr": "Auth method",
+    "content_fr": "Les méthodes d'autorisation courantes sont :\n\nClient Secret Basic :\n\nLe client utilise son client_id et son client_secret pour s'authentifier.\n\nClient Secret Post :\n\nComme Client Secret Basic, mais les informations sont transmises dans le corps de la requête POST.",
+    "format_fr": "md"
   },
   "/oidcadmin/fetch_userinfo": {
-    "header_en": "Userinfo Retrieval",
-    "content_en": "Ce paramètre indique au client de test de fédération que l'on souhaite tester l'endpoint userinfo après avoir récupéré les jetons.",
-    "format_en": "lmd"
+    "header_fr": "Userinfo Retrieval",
+    "content_fr": "Ce paramètre indique au client de test de fédération que l'on souhaite tester l'endpoint userinfo après avoir récupéré les jetons.",
+    "format_fr": "md"
   },
   "/oidcadmin/verify_certificates": {
-    "header_en": "Certificate verification",
-    "content_en": "Indique si le client doit vérifier la validité des certificats de l'IdP lors des connexions aux différents points d'entrées des API.",
-    "format_en": "lmd"
+    "header_fr": "Certificate verification",
+    "content_fr": "Indique si le client doit vérifier la validité des certificats de l'IdP lors des connexions aux différents points d'entrées des API.",
+    "format_fr": "md"
   },
   "/oidcadmin/signature_key_configuration": {
-    "header_en": "Signature Key Configuration",
-    "content_en": "Après retour d'authentification, le client se connecte à l'endpoint de jeton pour récupérer le jeton d'identité (ID token) qui doit être validé.\n\n- JWKS URI : URL de récupération automatique des clés publiques\n- Local configuration : la clé publique est fournie directement dans le formulaire",
-    "format_en": "lmd"
+    "header_fr": "Signature Key Configuration",
+    "content_fr": "Après retour d'authentification, le client se connecte à l'endpoint de jeton pour récupérer le jeton d'identité (ID token) qui doit être validé.\n\n- JWKS URI : URL de récupération automatique des clés publiques\n- Local configuration : la clé publique est fournie directement dans le formulaire",
+    "format_fr": "md"
   },
   "/oidcadmin/jwks_uri": {
-    "header_en": "JWKS URI",
-    "content_en": "L'URI JWKS est publiée par l'IdP pour que le client récupère en temps réel la liste des clés publiques.\n\n- https://login.microsoftonline.com/b22a2822/discovery/v2.0/keys\n- https://societe.okta.com/oauth2/v1/keys",
-    "format_en": "lmd"
+    "header_fr": "JWKS URI",
+    "content_fr": "L'URI JWKS est publiée par l'IdP pour que le client récupère en temps réel la liste des clés publiques.\n\n- https://login.microsoftonline.com/b22a2822/discovery/v2.0/keys\n- https://societe.okta.com/oauth2/v1/keys",
+    "format_fr": "md"
   },
   "/oidcadmin/signature_key": {
-    "header_en": "Signature Key",
-    "content_en": "Le client de test de fédération donne la possibilité de fournir directement la clé à utiliser.\n\n- {\"kty\":\"RSA\",\"alg\":\"RS256\",\"kid\":\"<id>\",\"use\":\"sig\",\"e\":\"AQAB\",\"n\":\"g53Bh...\"}",
-    "format_en": "lmd"
+    "header_fr": "Signature Key",
+    "content_fr": "Le client de test de fédération donne la possibilité de fournir directement la clé à utiliser.\n\n- {\"kty\":\"RSA\",\"alg\":\"RS256\",\"kid\":\"<id>\",\"use\":\"sig\",\"e\":\"AQAB\",\"n\":\"g53Bh...\"}",
+    "format_fr": "md"
   },
   "/oidcadmin/post_logout_redirect_uri": {
-    "header_en": "Logout Endpoint",
-    "content_en": "L'endpoint de déconnexion est le symétrique de l'endpoint d'autorisation. Il permet de mettre fin à la session.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/logout\n- https://societe.okta.com/oauth2/v1/logout",
-    "format_en": "lmd"
+    "header_fr": "Logout Endpoint",
+    "content_fr": "L'endpoint de déconnexion est le symétrique de l'endpoint d'autorisation. Il permet de mettre fin à la session.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/logout\n- https://societe.okta.com/oauth2/v1/logout",
+    "format_fr": "md"
   },
   "/oidcauth/token_endpoint_auth_method": {
-    "header_en": "Auth method",
-    "content_en": "Les méthodes d'autorisation courantes sont :\n\nClient Secret Basic : Le client utilise son client_id et client_secret encodés en base64.\n\nClient Secret Post : Comme Basic, mais dans le corps de la requête POST.",
-    "format_en": "lmd"
+    "header_fr": "Auth method",
+    "content_fr": "Les méthodes d'autorisation courantes sont :\n\nClient Secret Basic : Le client utilise son client_id et client_secret encodés en base64.\n\nClient Secret Post : Comme Basic, mais dans le corps de la requête POST.",
+    "format_fr": "md"
   },
   "/oidcauth/authorization_endpoint": {
-    "header_en": "Authorization Endpoint",
-    "content_en": "L'endpoint d'autorisation est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs. C'est le point de départ de la cinématique OpenID Connect.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/authorize\n- https://societe.okta.com/oauth2/v1/authorize",
-    "format_en": "lmd"
+    "header_fr": "Authorization Endpoint",
+    "content_fr": "L'endpoint d'autorisation est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs. C'est le point de départ de la cinématique OpenID Connect.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/authorize\n- https://societe.okta.com/oauth2/v1/authorize",
+    "format_fr": "md"
   },
   "/oidcauth/token_endpoint": {
-    "header_en": "Token Endpoint",
-    "content_en": "L'endpoint de jeton est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir les jetons.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/token\n- https://societe.okta.com/oauth2/v1/token",
-    "format_en": "lmd"
+    "header_fr": "Token Endpoint",
+    "content_fr": "L'endpoint de jeton est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir les jetons.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/token\n- https://societe.okta.com/oauth2/v1/token",
+    "format_fr": "md"
   },
   "/oidcauth/signature_key_configuration": {
-    "header_en": "Signature Key Configuration",
-    "content_en": "Le jeton d'identité (ID token) doit être validé avant de considérer l'authentification comme effective. La vérification de signature est l'un des tests les plus importants.\n\n- JWKS URI : URL de récupération automatique des clés publiques\n- Local configuration : la clé publique est fournie directement",
-    "format_en": "lmd"
+    "header_fr": "Signature Key Configuration",
+    "content_fr": "Le jeton d'identité (ID token) doit être validé avant de considérer l'authentification comme effective. La vérification de signature est l'un des tests les plus importants.\n\n- JWKS URI : URL de récupération automatique des clés publiques\n- Local configuration : la clé publique est fournie directement",
+    "format_fr": "md"
   },
   "/oidcauth/jwks_uri": {
-    "header_en": "JWKS URI",
-    "content_en": "L'URI JWKS est publiée par l'IdP pour que le client récupère en temps réel la liste des clés publiques.\n\n- https://login.microsoftonline.com/b22a2822/discovery/v2.0/keys\n- https://societe.okta.com/oauth2/v1/keys",
-    "format_en": "lmd"
+    "header_fr": "JWKS URI",
+    "content_fr": "L'URI JWKS est publiée par l'IdP pour que le client récupère en temps réel la liste des clés publiques.\n\n- https://login.microsoftonline.com/b22a2822/discovery/v2.0/keys\n- https://societe.okta.com/oauth2/v1/keys",
+    "format_fr": "md"
   },
   "/oidcauth/signature_key": {
-    "header_en": "Signature Key",
-    "content_en": "Le client de test de fédération donne la possibilité de fournir directement la clé à utiliser.\n\nCette information est aussi utilisée en signature HMAC (HS256, HS384 et HS512) dans des cas particuliers.",
-    "format_en": "lmd"
+    "header_fr": "Signature Key",
+    "content_fr": "Le client de test de fédération donne la possibilité de fournir directement la clé à utiliser.\n\nCette information est aussi utilisée en signature HMAC (HS256, HS384 et HS512) dans des cas particuliers.",
+    "format_fr": "md"
   },
   "/oidcauth/userinfo_endpoint": {
-    "header_en": "Userinfo Endpoint",
-    "content_en": "L'endpoint d'information sur l'utilisateur est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir des informations complémentaires sur l'utilisateur.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/userinfo\n- https://societe.okta.com/oauth2/v1/userinfo",
-    "format_en": "lmd"
+    "header_fr": "Userinfo Endpoint",
+    "content_fr": "L'endpoint d'information sur l'utilisateur est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir des informations complémentaires sur l'utilisateur.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/userinfo\n- https://societe.okta.com/oauth2/v1/userinfo",
+    "format_fr": "md"
   },
   "/oidcauth/issuer": {
-    "header_en": "Issuer",
-    "content_en": "L'émetteur (issuer) est l'entité qui authentifie l'utilisateur et génère les jetons.\n\n- https://login.microsoftonline.com/b22a2822/v2.0\n- https://societe.okta.com",
-    "format_en": "lmd"
+    "header_fr": "Issuer",
+    "content_fr": "L'émetteur (issuer) est l'entité qui authentifie l'utilisateur et génère les jetons.\n\n- https://login.microsoftonline.com/b22a2822/v2.0\n- https://societe.okta.com",
+    "format_fr": "md"
   },
   "/oidcauth/scope": {
-    "header_en": "Scope",
-    "content_en": "Le scope OAuth 2 sert au client à préciser la demande d'authentification.\n\n- profile : ensemble d'informations par défaut\n- email : adresse de messagerie\n- address : adresse\n- phone : numéro de téléphone",
-    "format_en": "lmd"
+    "header_fr": "Scope",
+    "content_fr": "Le scope OAuth 2 sert au client à préciser la demande d'authentification.\n\n- profile : ensemble d'informations par défaut\n- email : adresse de messagerie\n- address : adresse\n- phone : numéro de téléphone",
+    "format_fr": "md"
   },
   "/oidcauth/response_type": {
-    "header_en": "Response Type",
-    "content_en": "Le paramètre response type indique la cinématique souhaitée par le client.",
-    "format_en": "lmd"
+    "header_fr": "Response Type",
+    "content_fr": "Le paramètre response type indique la cinématique souhaitée par le client.",
+    "format_fr": "md"
   },
   "/oidcauth/client_id": {
-    "header_en": "Client ID",
-    "content_en": "L'IdP attribue un identifiant unique à chaque application : le Client ID.",
-    "format_en": "lmd"
+    "header_fr": "Client ID",
+    "content_fr": "L'IdP attribue un identifiant unique à chaque application : le Client ID.",
+    "format_fr": "md"
   },
   "/oidcauth/client_secret": {
-    "header_en": "Client Secret",
-    "content_en": "Le client est formellement authentifié par la donnée du Client ID et par une méthode d'authentification.\n\n- client_secret_basic : transmission du mot de passe en en-tête\n- client_secret_jwt : authentification par JWT signé en HMAC\n- private_key_jwt : authentification par JWT signé par une clé privée",
-    "format_en": "lmd"
+    "header_fr": "Client Secret",
+    "content_fr": "Le client est formellement authentifié par la donnée du Client ID et par une méthode d'authentification.\n\n- client_secret_basic : transmission du mot de passe en en-tête\n- client_secret_jwt : authentification par JWT signé en HMAC\n- private_key_jwt : authentification par JWT signé par une clé privée",
+    "format_fr": "md"
   },
   "/oidcauth/redirect_uri": {
-    "header_en": "Redirect URI",
-    "content_en": "Le client doit indiquer l'URL qui accueillera l'utilisateur à son retour d'authentification par l'IdP.",
-    "format_en": "lmd"
+    "header_fr": "Redirect URI",
+    "content_fr": "Le client doit indiquer l'URL qui accueillera l'utilisateur à son retour d'authentification par l'IdP.",
+    "format_fr": "md"
   },
   "/oidcauth/state": {
-    "header_en": "State",
-    "content_en": "Un client de fédération peut communiquer un identifiant de la requête (state) afin de vérifier que la réponse correspond bien à une demande effective.",
-    "format_en": "lmd"
+    "header_fr": "State",
+    "content_fr": "Un client de fédération peut communiquer un identifiant de la requête (state) afin de vérifier que la réponse correspond bien à une demande effective.",
+    "format_fr": "md"
   },
   "/oidcauth/nonce": {
-    "header_en": "Nonce",
-    "content_en": "Le nonce ajoute une protection contre les attaques de type rejeu. Il est généré par le client et transmis à l'IdP lors de la requête d'authentification.",
-    "format_en": "lmd"
+    "header_fr": "Nonce",
+    "content_fr": "Le nonce ajoute une protection contre les attaques de type rejeu. Il est généré par le client et transmis à l'IdP lors de la requête d'authentification.",
+    "format_fr": "md"
   },
   "/oidcauth/display": {
-    "header_en": "Display",
-    "content_en": "Le paramètre *display* indique à l'IdP le type d'interface à présenter à l'utilisateur :\n\n- page : comportement habituel\n- popup : via une iframe\n- touch : écran tactile\n- wap : ancien téléphone",
-    "format_en": "lmd"
+    "header_fr": "Display",
+    "content_fr": "Le paramètre *display* indique à l'IdP le type d'interface à présenter à l'utilisateur :\n\n- page : comportement habituel\n- popup : via une iframe\n- touch : écran tactile\n- wap : ancien téléphone",
+    "format_fr": "md"
   },
   "/oidcauth/prompt": {
-    "header_en": "Prompt",
-    "content_en": "Le paramètre *prompt* indique à l'IdP les interactions souhaitées avec l'utilisateur :\n\n- none : pas de page d'authentification\n- login : réauthentifier l'utilisateur\n- consent : redemander le consentement\n- select_account : choisir un compte",
-    "format_en": "lmd"
+    "header_fr": "Prompt",
+    "content_fr": "Le paramètre *prompt* indique à l'IdP les interactions souhaitées avec l'utilisateur :\n\n- none : pas de page d'authentification\n- login : réauthentifier l'utilisateur\n- consent : redemander le consentement\n- select_account : choisir un compte",
+    "format_fr": "md"
   },
   "/oidcauth/max_age": {
-    "header_en": "Max Age",
-    "content_en": "Le paramètre *max_age* applique une expiration de l'authentification en secondes.",
-    "format_en": "lmd"
+    "header_fr": "Max Age",
+    "content_fr": "Le paramètre *max_age* applique une expiration de l'authentification en secondes.",
+    "format_fr": "md"
   },
   "/oidcauth/ui_locales": {
-    "header_en": "UI Locales",
-    "content_en": "Le paramètre *ui_locales* indique à l'IdP les langues à utiliser dans les pages présentées au visiteur.",
-    "format_en": "lmd"
+    "header_fr": "UI Locales",
+    "content_fr": "Le paramètre *ui_locales* indique à l'IdP les langues à utiliser dans les pages présentées au visiteur.",
+    "format_fr": "md"
   },
   "/oidcauth/id_token_hint": {
-    "header_en": "ID Token Hint",
-    "content_en": "Il est possible de fournir le jeton d'identité courant lors d'une réauthentification au travers du paramètre *id_token_hint*.",
-    "format_en": "lmd"
+    "header_fr": "ID Token Hint",
+    "content_fr": "Il est possible de fournir le jeton d'identité courant lors d'une réauthentification au travers du paramètre *id_token_hint*.",
+    "format_fr": "md"
   },
   "/oidcauth/login_hint": {
-    "header_en": "Login Hint",
-    "content_en": "Le paramètre *login_hint* permet de préremplir l'identifiant de l'utilisateur dans la page d'authentification de l'IdP.",
-    "format_en": "lmd"
+    "header_fr": "Login Hint",
+    "content_fr": "Le paramètre *login_hint* permet de préremplir l'identifiant de l'utilisateur dans la page d'authentification de l'IdP.",
+    "format_fr": "md"
   },
   "/oidcauth/acr_values": {
-    "header_en": "ACR Values",
-    "content_en": "Avec le paramètre *acr_values*, une application peut demander que l'authentification se fasse avec un niveau minimum donné.",
-    "format_en": "lmd"
+    "header_fr": "ACR Values",
+    "content_fr": "Avec le paramètre *acr_values*, une application peut demander que l'authentification se fasse avec un niveau minimum donné.",
+    "format_fr": "md"
   },
   "/oidcauth/fetch_userinfo": {
-    "header_en": "Userinfo Retrieval",
-    "content_en": "Ce paramètre indique à Aduneo Identity Federation Test que l'on souhaite tester l'endpoint userinfo après avoir récupéré les jetons.",
-    "format_en": "lmd"
+    "header_fr": "Userinfo Retrieval",
+    "content_fr": "Ce paramètre indique à Aduneo Identity Federation Test que l'on souhaite tester l'endpoint userinfo après avoir récupéré les jetons.",
+    "format_fr": "md"
   },
   "/oidcauth/verify_certificates": {
-    "header_en": "Certificate verification",
-    "content_en": "Indique si le client doit vérifier la validité des certificats de l'IdP lors des connexions aux différents points d'entrées des API.",
-    "format_en": "lmd"
+    "header_fr": "Certificate verification",
+    "content_fr": "Indique si le client doit vérifier la validité des certificats de l'IdP lors des connexions aux différents points d'entrées des API.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/idp_state": {
-    "header_en": "State retourné par l'IDP",
-    "content_en": "Le paramètre *state* est un identifiant transmis dans la requête d'authentification. L'IdP le retourne tel quel dans l'URL de retour.",
-    "format_en": "lmd"
+    "header_fr": "State retourné par l'IDP",
+    "content_fr": "Le paramètre *state* est un identifiant transmis dans la requête d'authentification. L'IdP le retourne tel quel dans l'URL de retour.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/idp_code": {
-    "header_en": "Code d'autorisation",
-    "content_en": "Dans la cinématique *authorization code*, l'IdP transmet un code à usage unique utilisé par le client pour récupérer les jetons.",
-    "format_en": "lmd"
+    "header_fr": "Code d'autorisation",
+    "content_fr": "Dans la cinématique *authorization code*, l'IdP transmet un code à usage unique utilisé par le client pour récupérer les jetons.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/token_endpoint": {
-    "header_en": "Token Endpoint",
-    "content_en": "Le client va se connecter à cette API de l'IdP pour échanger le code contre un jeton d'identité et un jeton d'accès.",
-    "format_en": "lmd"
+    "header_fr": "Token Endpoint",
+    "content_fr": "Le client va se connecter à cette API de l'IdP pour échanger le code contre un jeton d'identité et un jeton d'accès.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/jwt_id_token": {
-    "header_en": "JWT ID Token",
-    "content_en": "L'IdP fournit le jeton d'identité sous forme d'un JWT (Json Web Token), structure JWS composée de trois éléments séparés par des points (.) et codés en Base64 URL.",
-    "format_en": "lmd"
+    "header_fr": "JWT ID Token",
+    "content_fr": "L'IdP fournit le jeton d'identité sous forme d'un JWT (Json Web Token), structure JWS composée de trois éléments séparés par des points (.) et codés en Base64 URL.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/id_token_header": {
-    "header_en": "ID Token header",
-    "content_en": "L'en-tête d'un jeton d'identité contient des informations sur la signature :\n- l'algorithme utilisé, par défaut RS256\n- l'identifiant de la clé (*kid*) ayant signé le jeton",
-    "format_en": "lmd"
+    "header_fr": "ID Token header",
+    "content_fr": "L'en-tête d'un jeton d'identité contient des informations sur la signature :\n- l'algorithme utilisé, par défaut RS256\n- l'identifiant de la clé (*kid*) ayant signé le jeton",
+    "format_fr": "md"
   },
   "/oidcauth_callback/id_token_claims_set": {
-    "header_en": "ID Token claims set",
-    "content_en": "Les informations véhiculées par un jeton d'identité sont représentées dans un objet JSON, appelé claims set, sous forme de couples *nom*/*valeur*.",
-    "format_en": "lmd"
+    "header_fr": "ID Token claims set",
+    "content_fr": "Les informations véhiculées par un jeton d'identité sont représentées dans un objet JSON, appelé claims set, sous forme de couples *nom*/*valeur*.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/id_token_sub": {
-    "header_en": "Identifiant de l'utilisateur (ID Token sub)",
-    "content_en": "La donnée *sub* représente le *sujet* et l'identité de l'entité authentifiée. Il doit s'agir d'un identifiant unique non réutilisable.",
-    "format_en": "lmd"
+    "header_fr": "Identifiant de l'utilisateur (ID Token sub)",
+    "content_fr": "La donnée *sub* représente le *sujet* et l'identité de l'entité authentifiée. Il doit s'agir d'un identifiant unique non réutilisable.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/nonce_verification": {
-    "header_en": "Vérification de nonce",
-    "content_en": "Le *nonce* est généré par le client et transmis à l'IdP lors de la requête d'authentification. L'IdP l'intègre tel quel dans le jeton.",
-    "format_en": "lmd"
+    "header_fr": "Vérification de nonce",
+    "content_fr": "Le *nonce* est généré par le client et transmis à l'IdP lors de la requête d'authentification. L'IdP l'intègre tel quel dans le jeton.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/expiration_verification": {
-    "header_en": "Vérification d'expiration",
-    "content_en": "Les jetons d'identité expirent au terme d'un délai décidé par l'OP. La valeur du claim *exp* est une date absolue en secondes depuis le 1er janvier 1970.",
-    "format_en": "lmd"
+    "header_fr": "Vérification d'expiration",
+    "content_fr": "Les jetons d'identité expirent au terme d'un délai décidé par l'OP. La valeur du claim *exp* est une date absolue en secondes depuis le 1er janvier 1970.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/issuer_verification": {
-    "header_en": "Vérification d'origine (issuer)",
-    "content_en": "Il est important de vérifier que le jeton provient bien de l'IdP interfacé avec le client. Le système d'origine est consigné dans le champ *iss* du jeton d'identité.",
-    "format_en": "lmd"
+    "header_fr": "Vérification d'origine (issuer)",
+    "content_fr": "Il est important de vérifier que le jeton provient bien de l'IdP interfacé avec le client. Le système d'origine est consigné dans le champ *iss* du jeton d'identité.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/audience_verification": {
-    "header_en": "Vérification du destinataire (audience)",
-    "content_en": "Le client OIDC doit vérifier que le jeton a bien été généré pour lui. L'IdP place dans le jeton le client ID dans le champ *aud*.",
-    "format_en": "lmd"
+    "header_fr": "Vérification du destinataire (audience)",
+    "content_fr": "Le client OIDC doit vérifier que le jeton a bien été généré pour lui. L'IdP place dans le jeton le client ID dans le champ *aud*.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/signature_key_kid": {
-    "header_en": "Identifiant de la clé de signature",
-    "content_en": "L'identifiant de clé (kid) est extrait du jeton et utilisé pour retrouver la bonne clé publique dans le JWKS.",
-    "format_en": "lmd"
+    "header_fr": "Identifiant de la clé de signature",
+    "content_fr": "L'identifiant de clé (kid) est extrait du jeton et utilisé pour retrouver la bonne clé publique dans le JWKS.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/jwks_endpoint": {
-    "header_en": "JWKS Endpoint",
-    "content_en": "L'endpoint de clé est l'URL où le client peut récupérer automatiquement les clés pour la vérification de signature des jetons.",
-    "format_en": "lmd"
+    "header_fr": "JWKS Endpoint",
+    "content_fr": "L'endpoint de clé est l'URL où le client peut récupérer automatiquement les clés pour la vérification de signature des jetons.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/keyset": {
-    "header_en": "Keyset",
-    "content_en": "Le client s'est connecté à l'endpoint JWKS et en a récupéré la liste des clés. On affiche ici les données brutes.",
-    "format_en": "lmd"
+    "header_fr": "Keyset",
+    "content_fr": "Le client s'est connecté à l'endpoint JWKS et en a récupéré la liste des clés. On affiche ici les données brutes.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/retrieved_keys": {
-    "header_en": "Clés récupérées auprès du serveur",
-    "content_en": "Les clés récupérées auprès de l'endpoint JWKS sont affichées individuellement, indexées par leur identifiant.",
-    "format_en": "lmd"
+    "header_fr": "Clés récupérées auprès du serveur",
+    "content_fr": "Les clés récupérées auprès de l'endpoint JWKS sont affichées individuellement, indexées par leur identifiant.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/signature_jwk": {
-    "header_en": "Clé de vérification de signature",
-    "content_en": "On affiche ici la clé qui va servir à la vérification de signature. Elle peut avoir été donnée explicitement ou récupérée auprès de l'endpoint JWKS.",
-    "format_en": "lmd"
+    "header_fr": "Clé de vérification de signature",
+    "content_fr": "On affiche ici la clé qui va servir à la vérification de signature. Elle peut avoir été donnée explicitement ou récupérée auprès de l'endpoint JWKS.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/userinfo_endpoint": {
-    "header_en": "Userinfo endpoint",
-    "content_en": "L'endpoint Userinfo est l'URL à laquelle se connecte le client pour obtenir des informations supplémentaires sur l'utilisateur. Les données sensibles sont récupérées par connexion directe à l'OP.",
-    "format_en": "lmd"
+    "header_fr": "Userinfo endpoint",
+    "content_fr": "L'endpoint Userinfo est l'URL à laquelle se connecte le client pour obtenir des informations supplémentaires sur l'utilisateur. Les données sensibles sont récupérées par connexion directe à l'OP.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/access_token": {
-    "header_en": "Jeton d'accès aux API de l'OP",
-    "content_en": "Le client obtient en même temps qu'un jeton d'identité un jeton d'accès lui permettant de se connecter aux API du serveur.",
-    "format_en": "lmd"
+    "header_fr": "Jeton d'accès aux API de l'OP",
+    "content_fr": "Le client obtient en même temps qu'un jeton d'identité un jeton d'accès lui permettant de se connecter aux API du serveur.",
+    "format_fr": "md"
   },
   "/oidcauth_callback/at_header": {
-    "header_en": "En-tête du jeton d'accès JWT",
-    "content_en": "En-têtes du jeton d'accès JWT :\n- le type de jeton (JWT) dans le champ *typ*\n- l'algorithme utilisé pour sa signature\n- l'identifiant de la clé utilisée pour signer le jeton",
-    "format_en": "lmd"
+    "header_fr": "En-tête du jeton d'accès JWT",
+    "content_fr": "En-têtes du jeton d'accès JWT :\n- le type de jeton (JWT) dans le champ *typ*\n- l'algorithme utilisé pour sa signature\n- l'identifiant de la clé utilisée pour signer le jeton",
+    "format_fr": "md"
   },
   "/oidcauth_callback/at_claims_set": {
-    "header_en": "Claims du jeton d'accès",
-    "content_en": "Contenu du jeton d'accès JWT. On y retrouve souvent : *iss*, *jti*, *aud*, *iat*, *exp*, *sub*.",
-    "format_en": "lmd"
+    "header_fr": "Claims du jeton d'accès",
+    "content_fr": "Contenu du jeton d'accès JWT. On y retrouve souvent : *iss*, *jti*, *aud*, *iat*, *exp*, *sub*.",
+    "format_fr": "md"
   },
   "/userinfo/userinfo_response": {
-    "header_en": "Données récupérées de l'endpoint Userinfo",
-    "content_en": "On affiche ici de manière brute les informations transmises par le serveur après appel à l'endpoint Userinfo, représentées dans un objet JSON.",
-    "format_en": "lmd"
+    "header_fr": "Données récupérées de l'endpoint Userinfo",
+    "content_fr": "On affiche ici de manière brute les informations transmises par le serveur après appel à l'endpoint Userinfo, représentées dans un objet JSON.",
+    "format_fr": "md"
   },
   "/oauth2admin/name": {
-    "header_en": "Name",
-    "content_en": "Le nom est un libéllé arbitraire que vous attribuez au client OAuth 2 que vous définissez.",
-    "format_en": "lmd"
+    "header_fr": "Name",
+    "content_fr": "Le nom est un libéllé arbitraire que vous attribuez au client OAuth 2 que vous définissez.",
+    "format_fr": "md"
   },
   "/oauth2admin/redirect_uri": {
-    "header_en": "URI de redirection",
-    "content_en": "Le client doit indiquer l'URL qui accueillera l'utilisateur à son retour d'authentification par l'IdP.",
-    "format_en": "lmd"
+    "header_fr": "URI de redirection",
+    "content_fr": "Le client doit indiquer l'URL qui accueillera l'utilisateur à son retour d'authentification par l'IdP.",
+    "format_fr": "md"
   },
   "/oauth2admin/endpoint_configuration": {
-    "header_en": "Endpoint Configuration",
-    "content_en": "Un client OAuth 2 a besoin de connaître les points d'entrées du serveur.\n\n- en choisissant Discovery URI, vous n'avez qu'à donner cette URL unique\n- avec Local Configuration, il vous faudra donner individuellement les URL de chaque endpoint",
-    "format_en": "lmd"
+    "header_fr": "Endpoint Configuration",
+    "content_fr": "Un client OAuth 2 a besoin de connaître les points d'entrées du serveur.\n\n- en choisissant Discovery URI, vous n'avez qu'à donner cette URL unique\n- avec Local Configuration, il vous faudra donner individuellement les URL de chaque endpoint",
+    "format_fr": "md"
   },
   "/oauth2admin/discovery_uri": {
-    "header_en": "Discovery URI",
-    "content_en": "L'URI de découverte donne la configuration du fournisseur d'accès (IdP).\n\n- https://www.idp/com/.well-known/openid-configuration quand la configuration est globale\n- https://tenant.idp/com/.well-known/openid-configuration pour des IdP en tenant",
-    "format_en": "lmd"
+    "header_fr": "Discovery URI",
+    "content_fr": "L'URI de découverte donne la configuration du fournisseur d'accès (IdP).\n\n- https://www.idp/com/.well-known/openid-configuration quand la configuration est globale\n- https://tenant.idp/com/.well-known/openid-configuration pour des IdP en tenant",
+    "format_fr": "md"
   },
   "/oauth2admin/issuer": {
-    "header_en": "Issuer",
-    "content_en": "L'émetteur (issuer) est l'entité qui authentifie l'utilisateur et génère les jetons.\n\n- https://login.microsoftonline.com/b22a2822/v2.0\n- https://societe.okta.com",
-    "format_en": "lmd"
+    "header_fr": "Issuer",
+    "content_fr": "L'émetteur (issuer) est l'entité qui authentifie l'utilisateur et génère les jetons.\n\n- https://login.microsoftonline.com/b22a2822/v2.0\n- https://societe.okta.com",
+    "format_fr": "md"
   },
   "/oauth2admin/authorization_endpoint": {
-    "header_en": "Authorization Endpoint",
-    "content_en": "L'endpoint d'autorisation est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs. C'est le point de départ de la cinématique OAuth 2.",
-    "format_en": "lmd"
+    "header_fr": "Authorization Endpoint",
+    "content_fr": "L'endpoint d'autorisation est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs. C'est le point de départ de la cinématique OAuth 2.",
+    "format_fr": "md"
   },
   "/oauth2admin/token_endpoint": {
-    "header_en": "Token Endpoint",
-    "content_en": "L'endpoint de jeton est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir les jetons.",
-    "format_en": "lmd"
+    "header_fr": "Token Endpoint",
+    "content_fr": "L'endpoint de jeton est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir les jetons.",
+    "format_fr": "md"
   },
   "/oauth2admin/end_session_endpoint": {
-    "header_en": "Logout Endpoint",
-    "content_en": "L'endpoint de déconnexion est le symétrique de l'endpoint d'autorisation. Il permet de mettre fin à la session.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/logout\n- https://societe.okta.com/oauth2/v1/logout",
-    "format_en": "lmd"
+    "header_fr": "Logout Endpoint",
+    "content_fr": "L'endpoint de déconnexion est le symétrique de l'endpoint d'autorisation. Il permet de mettre fin à la session.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/logout\n- https://societe.okta.com/oauth2/v1/logout",
+    "format_fr": "md"
   },
   "/oauth2admin/userinfo_endpoint": {
-    "header_en": "Userinfo Endpoint",
-    "content_en": "L'endpoint Userinfo est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir des informations complémentaires sur l'utilisateur.",
-    "format_en": "lmd"
+    "header_fr": "Userinfo Endpoint",
+    "content_fr": "L'endpoint Userinfo est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir des informations complémentaires sur l'utilisateur.",
+    "format_fr": "md"
   },
   "/oauth2admin/signature_key_configuration": {
-    "header_en": "Signature Key Configuration",
-    "content_en": "Le jeton d'identité (ID token) doit être validé avant de considérer l'authentification comme effective.\n\n- JWKS URI : URL de récupération automatique des clés publiques\n- Local configuration : la clé publique est fournie directement dans le formulaire",
-    "format_en": "lmd"
+    "header_fr": "Signature Key Configuration",
+    "content_fr": "Le jeton d'identité (ID token) doit être validé avant de considérer l'authentification comme effective.\n\n- JWKS URI : URL de récupération automatique des clés publiques\n- Local configuration : la clé publique est fournie directement dans le formulaire",
+    "format_fr": "md"
   },
   "/oauth2admin/jwks_uri": {
-    "header_en": "JWKS URI",
-    "content_en": "L'URI JWKS est publiée par l'IdP pour que le client récupère en temps réel la liste des clés publiques.",
-    "format_en": "lmd"
+    "header_fr": "JWKS URI",
+    "content_fr": "L'URI JWKS est publiée par l'IdP pour que le client récupère en temps réel la liste des clés publiques.",
+    "format_fr": "md"
   },
   "/oauth2admin/signature_key": {
-    "header_en": "Signature Key",
-    "content_en": "Le client de test de fédération donne la possibilité de fournir directement la clé à utiliser.",
-    "format_en": "lmd"
+    "header_fr": "Signature Key",
+    "content_fr": "Le client de test de fédération donne la possibilité de fournir directement la clé à utiliser.",
+    "format_fr": "md"
   },
   "/oauth2admin/client_id": {
-    "header_en": "Client ID",
-    "content_en": "L'IdP attribue un identifiant unique à chaque application : le Client ID.",
-    "format_en": "lmd"
+    "header_fr": "Client ID",
+    "content_fr": "L'IdP attribue un identifiant unique à chaque application : le Client ID.",
+    "format_fr": "md"
   },
   "/oauth2admin/client_secret": {
-    "header_en": "Client Secret",
-    "content_en": "Le client est formellement authentifié par la donnée du Client ID et par une méthode d'authentification.\n\n- client_secret_basic : mot de passe en en-tête\n- client_secret_jwt : JWT signé en HMAC\n- private_key_jwt : JWT signé par une clé privée",
-    "format_en": "lmd"
+    "header_fr": "Client Secret",
+    "content_fr": "Le client est formellement authentifié par la donnée du Client ID et par une méthode d'authentification.\n\n- client_secret_basic : mot de passe en en-tête\n- client_secret_jwt : JWT signé en HMAC\n- private_key_jwt : JWT signé par une clé privée",
+    "format_fr": "md"
   },
   "/oauth2admin/scope": {
-    "header_en": "Scope",
-    "content_en": "Le scope OAuth 2 permet de véhiculer le type d'autorisation demandée. En ajoutant offline_access, le client demande un jeton de rafraîchissement.",
-    "format_en": "lmd"
+    "header_fr": "Scope",
+    "content_fr": "Le scope OAuth 2 permet de véhiculer le type d'autorisation demandée. En ajoutant offline_access, le client demande un jeton de rafraîchissement.",
+    "format_fr": "md"
   },
   "/oauth2admin/response_type": {
-    "header_en": "Response Type",
-    "content_en": "Le paramètre response type indique la cinématique souhaitée par le client.",
-    "format_en": "lmd"
+    "header_fr": "Response Type",
+    "content_fr": "Le paramètre response type indique la cinématique souhaitée par le client.",
+    "format_fr": "md"
   },
   "/oauth2admin/token_endpoint_auth_method": {
-    "header_en": "Auth method",
-    "content_en": "Client Secret Basic : client_id et client_secret encodés en base64 dans le header.\n\nClient Secret Post : idem mais dans le corps de la requête POST.",
-    "format_en": "lmd"
+    "header_fr": "Auth method",
+    "content_fr": "Client Secret Basic : client_id et client_secret encodés en base64 dans le header.\n\nClient Secret Post : idem mais dans le corps de la requête POST.",
+    "format_fr": "md"
   },
   "/oauth2admin/introspect_at": {
-    "header_en": "Introspect access token",
-    "content_en": "Après obtention d'un access token on peut introspecter.",
-    "format_en": "lmd"
+    "header_fr": "Introspect access token",
+    "content_fr": "Après obtention d'un access token on peut introspecter.",
+    "format_fr": "md"
   },
   "/oauth2admin/rs_client_id": {
-    "header_en": "Resource server client ID",
-    "content_en": "",
-    "format_en": "lmd"
+    "header_fr": "Resource server client ID",
+    "content_fr": "",
+    "format_fr": "md"
   },
   "/oauth2admin/rs_client_secret": {
-    "header_en": "Resource server client secret",
-    "content_en": "",
-    "format_en": "lmd"
+    "header_fr": "Resource server client secret",
+    "content_fr": "",
+    "format_fr": "md"
   },
   "/oauth2admin/verify_certificates": {
-    "header_en": "Verify certificates",
-    "content_en": "Indique si le client doit vérifier la validité des certificats de l'IdP lors des connexions aux différents points d'entrées des API.",
-    "format_en": "lmd"
+    "header_fr": "Verify certificates",
+    "content_fr": "Indique si le client doit vérifier la validité des certificats de l'IdP lors des connexions aux différents points d'entrées des API.",
+    "format_fr": "md"
   },
   "/oauth2admin/introspection_endpoint": {
-    "header_en": "Introspection endpoint",
-    "content_en": "Cet endpoint permet à un client de demander à l'IdP si le token en sa possession est valide. Le client délègue la vérification au fournisseur d'accès.",
-    "format_en": "lmd"
+    "header_fr": "Introspection endpoint",
+    "content_fr": "Cet endpoint permet à un client de demander à l'IdP si le token en sa possession est valide. Le client délègue la vérification au fournisseur d'accès.",
+    "format_fr": "md"
   },
   "/oauth2admin/response_mode": {
-    "header_en": "Response mode",
-    "content_en": "Le paramètre response mode permet de préciser de quelle manière le serveur d'autorisation va transmettre les informations de retour au client.",
-    "format_en": "lmd"
+    "header_fr": "Response mode",
+    "content_fr": "Le paramètre response mode permet de préciser de quelle manière le serveur d'autorisation va transmettre les informations de retour au client.",
+    "format_fr": "md"
   },
   "/oauth2auth/name": {
-    "header_en": "Name",
-    "content_en": "Le nom est un libéllé arbitraire que vous attribuez au client OAuth 2 que vous définissez.",
-    "format_en": "lmd"
+    "header_fr": "Name",
+    "content_fr": "Le nom est un libéllé arbitraire que vous attribuez au client OAuth 2 que vous définissez.",
+    "format_fr": "md"
   },
   "/oauth2auth/redirect_uri": {
-    "header_en": "URI de redirection",
-    "content_en": "Le client doit indiquer l'URL qui accueillera l'utilisateur à son retour d'authentification par l'IdP.",
-    "format_en": "lmd"
+    "header_fr": "URI de redirection",
+    "content_fr": "Le client doit indiquer l'URL qui accueillera l'utilisateur à son retour d'authentification par l'IdP.",
+    "format_fr": "md"
   },
   "/oauth2auth/endpoint_configuration": {
-    "header_en": "Endpoint Configuration",
-    "content_en": "Un client OAuth 2 a besoin de connaître les points d'entrées du serveur.\n\n- Discovery URI : URL unique de configuration\n- Local Configuration : saisie individuelle de chaque endpoint",
-    "format_en": "lmd"
+    "header_fr": "Endpoint Configuration",
+    "content_fr": "Un client OAuth 2 a besoin de connaître les points d'entrées du serveur.\n\n- Discovery URI : URL unique de configuration\n- Local Configuration : saisie individuelle de chaque endpoint",
+    "format_fr": "md"
   },
   "/oauth2auth/discovery_uri": {
-    "header_en": "Discovery URI",
-    "content_en": "L'URI de découverte donne la configuration du fournisseur d'accès (IdP).\n\n- https://www.idp/com/.well-known/openid-configuration quand la configuration est globale",
-    "format_en": "lmd"
+    "header_fr": "Discovery URI",
+    "content_fr": "L'URI de découverte donne la configuration du fournisseur d'accès (IdP).\n\n- https://www.idp/com/.well-known/openid-configuration quand la configuration est globale",
+    "format_fr": "md"
   },
   "/oauth2auth/issuer": {
-    "header_en": "Issuer",
-    "content_en": "L'émetteur (issuer) est l'entité qui authentifie l'utilisateur et génère les jetons.",
-    "format_en": "lmd"
+    "header_fr": "Issuer",
+    "content_fr": "L'émetteur (issuer) est l'entité qui authentifie l'utilisateur et génère les jetons.",
+    "format_fr": "md"
   },
   "/oauth2auth/authorization_endpoint": {
-    "header_en": "Authorization Endpoint",
-    "content_en": "L'endpoint d'autorisation est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs. C'est le point de départ de la cinématique OAuth 2.",
-    "format_en": "lmd"
+    "header_fr": "Authorization Endpoint",
+    "content_fr": "L'endpoint d'autorisation est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs. C'est le point de départ de la cinématique OAuth 2.",
+    "format_fr": "md"
   },
   "/oauth2auth/token_endpoint": {
-    "header_en": "Token Endpoint",
-    "content_en": "L'endpoint de jeton est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir les jetons.",
-    "format_en": "lmd"
+    "header_fr": "Token Endpoint",
+    "content_fr": "L'endpoint de jeton est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir les jetons.",
+    "format_fr": "md"
   },
   "/oauth2auth/end_session_endpoint": {
-    "header_en": "Logout Endpoint",
-    "content_en": "L'endpoint de déconnexion permet de mettre fin à la session.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/logout\n- https://societe.okta.com/oauth2/v1/logout",
-    "format_en": "lmd"
+    "header_fr": "Logout Endpoint",
+    "content_fr": "L'endpoint de déconnexion permet de mettre fin à la session.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/logout\n- https://societe.okta.com/oauth2/v1/logout",
+    "format_fr": "md"
   },
   "/oauth2auth/userinfo_endpoint": {
-    "header_en": "Userinfo Endpoint",
-    "content_en": "L'endpoint Userinfo est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir des informations complémentaires sur l'utilisateur.",
-    "format_en": "lmd"
+    "header_fr": "Userinfo Endpoint",
+    "content_fr": "L'endpoint Userinfo est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir des informations complémentaires sur l'utilisateur.",
+    "format_fr": "md"
   },
   "/oauth2auth/signature_key_configuration": {
-    "header_en": "Signature Key Configuration",
-    "content_en": "Le jeton d'identité (ID token) doit être validé avant de considérer l'authentification comme effective.\n\n- JWKS URI : URL de récupération automatique des clés publiques\n- Local configuration : la clé publique est fournie directement",
-    "format_en": "lmd"
+    "header_fr": "Signature Key Configuration",
+    "content_fr": "Le jeton d'identité (ID token) doit être validé avant de considérer l'authentification comme effective.\n\n- JWKS URI : URL de récupération automatique des clés publiques\n- Local configuration : la clé publique est fournie directement",
+    "format_fr": "md"
   },
   "/oauth2auth/jwks_uri": {
-    "header_en": "JWKS URI",
-    "content_en": "L'URI JWKS est publiée par l'IdP pour récupérer en temps réel la liste des clés publiques.",
-    "format_en": "lmd"
+    "header_fr": "JWKS URI",
+    "content_fr": "L'URI JWKS est publiée par l'IdP pour récupérer en temps réel la liste des clés publiques.",
+    "format_fr": "md"
   },
   "/oauth2auth/signature_key": {
-    "header_en": "Signature Key",
-    "content_en": "Le client de test de fédération donne la possibilité de fournir directement la clé à utiliser.",
-    "format_en": "lmd"
+    "header_fr": "Signature Key",
+    "content_fr": "Le client de test de fédération donne la possibilité de fournir directement la clé à utiliser.",
+    "format_fr": "md"
   },
   "/oauth2auth/client_id": {
-    "header_en": "Client ID",
-    "content_en": "L'IdP attribue un identifiant unique à chaque application : le Client ID.",
-    "format_en": "lmd"
+    "header_fr": "Client ID",
+    "content_fr": "L'IdP attribue un identifiant unique à chaque application : le Client ID.",
+    "format_fr": "md"
   },
   "/oauth2auth/client_secret": {
-    "header_en": "Client Secret",
-    "content_en": "Le client est formellement authentifié par la donnée du Client ID et par une méthode d'authentification.",
-    "format_en": "lmd"
+    "header_fr": "Client Secret",
+    "content_fr": "Le client est formellement authentifié par la donnée du Client ID et par une méthode d'authentification.",
+    "format_fr": "md"
   },
   "/oauth2auth/scope": {
-    "header_en": "Scope",
-    "content_en": "Le scope OAuth 2 permet de véhiculer le type d'autorisation demandée.",
-    "format_en": "lmd"
+    "header_fr": "Scope",
+    "content_fr": "Le scope OAuth 2 permet de véhiculer le type d'autorisation demandée.",
+    "format_fr": "md"
   },
   "/oauth2auth/response_type": {
-    "header_en": "Response Type",
-    "content_en": "Le paramètre response type indique la cinématique souhaitée par le client.",
-    "format_en": "lmd"
+    "header_fr": "Response Type",
+    "content_fr": "Le paramètre response type indique la cinématique souhaitée par le client.",
+    "format_fr": "md"
   },
   "/oauth2auth/introspection_uri": {
-    "header_en": "Introspection endpoint",
-    "content_en": "Cet endpoint permet à un client de demander à l'IdP si le token en sa possession est valide.",
-    "format_en": "lmd"
+    "header_fr": "Introspection endpoint",
+    "content_fr": "Cet endpoint permet à un client de demander à l'IdP si le token en sa possession est valide.",
+    "format_fr": "md"
   },
   "/oauth2auth/response_mode": {
-    "header_en": "Response mode",
-    "content_en": "Le paramètre response mode permet de préciser de quelle manière le serveur d'autorisation va transmettre les informations de retour au client.",
-    "format_en": "lmd"
+    "header_fr": "Response mode",
+    "content_fr": "Le paramètre response mode permet de préciser de quelle manière le serveur d'autorisation va transmettre les informations de retour au client.",
+    "format_fr": "md"
   },
   "/oauth2auth/validation_method": {
-    "header_en": "Validation method",
-    "content_en": "Ce paramètre définit la manière dont le client va vérifier la validité du jeton d'accès. L'Introspection délègue la vérification à l'IdP. L'option signature signifie que le client vérifie lui-même la signature.",
-    "format_en": "lmd"
+    "header_fr": "Validation method",
+    "content_fr": "Ce paramètre définit la manière dont le client va vérifier la validité du jeton d'accès. L'Introspection délègue la vérification à l'IdP. L'option signature signifie que le client vérifie lui-même la signature.",
+    "format_fr": "md"
   },
   "/oauth2auth/state": {
-    "header_en": "State",
-    "content_en": "Un client de fédération peut communiquer un identifiant de la requête (state) pour vérifier que la réponse correspond bien à une demande effective.",
-    "format_en": "lmd"
+    "header_fr": "State",
+    "content_fr": "Un client de fédération peut communiquer un identifiant de la requête (state) pour vérifier que la réponse correspond bien à une demande effective.",
+    "format_fr": "md"
   },
   "/oauth2auth/nonce": {
-    "header_en": "Nonce",
-    "content_en": "Le nonce ajoute une protection contre les attaques de type rejeu. Il est généré par le client et transmis à l'IdP.",
-    "format_en": "lmd"
+    "header_fr": "Nonce",
+    "content_fr": "Le nonce ajoute une protection contre les attaques de type rejeu. Il est généré par le client et transmis à l'IdP.",
+    "format_fr": "md"
   },
   "/oauth2auth/prompt": {
-    "header_en": "Prompt",
-    "content_en": "Le paramètre *prompt* indique à l'IdP les interactions souhaitées avec l'utilisateur :\n\n- none : pas de page d'authentification\n- login : réauthentifier\n- consent : redemander le consentement\n- select_account : choisir un compte",
-    "format_en": "lmd"
+    "header_fr": "Prompt",
+    "content_fr": "Le paramètre *prompt* indique à l'IdP les interactions souhaitées avec l'utilisateur :\n\n- none : pas de page d'authentification\n- login : réauthentifier\n- consent : redemander le consentement\n- select_account : choisir un compte",
+    "format_fr": "md"
+  },
+  "/oidcauth/hr_verify_certificates": {
+    "header_fr": "/oidcauth/hr_verify_certificates",
+    "content_fr": "",
+    "format_fr": "md"
   }
 }

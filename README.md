@@ -243,6 +243,7 @@ First, the following packages must be manually installed:
 - wrapt
 - jwcrypto
 - argon2-cffi
+- markdown
 
 Additionaly (for SAML):
 - lxml
