@@ -107,7 +107,9 @@ class CASClientLogin(FlowHandler):
       self.log_info(('  ' * 1) + f"validation version {app_params.get('ticket_validation_version')}")
       self.log_info(('  ' * 1) + f"validation URL {cas_server_validate_url}")
 
+      form_id = 'casauth'
       form_content = {
+        'form_id' : form_id,
         'contextid': self.context['context_id'],  # TODO : remplacer par hr_context ?
         'cas_server_login_url': cas_idp_params.get('cas_server_url', '')+'/login',
         'service_url': app_params.get('service_url', ''),
@@ -118,7 +120,8 @@ class CASClientLogin(FlowHandler):
         'validation_response_format': app_params.get('validation_response_format', 'XML'),
       }
       
-      form = RequesterForm('casauth', form_content, action='/client/cas/login/sendrequest', mode='new_page', request_url='@[cas_server_login_url]') \
+      form = RequesterForm(form_id, form_content, action='/client/cas/login/sendrequest', mode='new_page', request_url='@[cas_server_login_url]') \
+        .hidden('form_id') \
         .hidden('contextid') \
         .start_section('clientfedid_params', title="ClientFedID Parameters") \
           .text('service_url', label='Service URL', clipboard_category='service_url') \
@@ -291,21 +294,22 @@ class CASClientLogin(FlowHandler):
       self.add_html(f"<h3>CAS callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
 
       self.start_result_table()
+      form_id = 'casauth_callback'
       
       cas_ticket = self.get_query_string_param('ticket')
       if cas_ticket:
         self.log_info(f"  ticket in query string: {cas_ticket}")
-        self.add_result_row('Ticket in query string', cas_ticket, 'cas_ticket')
+        self.add_result_row('Ticket in query string', cas_ticket, form_id, 'cas_ticket')
       else:
         cas_ticket = self.post_form.get('ticket')
         if cas_ticket:
           self.log_info(f"  ticket in body: {cas_ticket}")
-          self.add_result_row('Ticket in body', cas_ticket, 'cas_ticket')
+          self.add_result_row('Ticket in body', cas_ticket, form_id, 'cas_ticket')
         else:
           cas_ticket = self.headers.get('ticket')
           if cas_ticket:
             self.log_info(f"  ticket in header: {cas_ticket}")
-            self.add_result_row('Ticket in header', cas_ticket, 'cas_ticket')
+            self.add_result_row('Ticket in header', cas_ticket, form_id, 'cas_ticket')
           else:
             raise AduneoError(self.log_error("ticket not found in CAS response"))
 
@@ -313,7 +317,7 @@ class CASClientLogin(FlowHandler):
       self.log_info("  Start validating ticket")
       cas_server_validate_url = cas_idp_params['cas_server_validate_url']
 
-      self.add_result_row('Validate URL', cas_server_validate_url, 'cas_server_validate_url')
+      self.add_result_row('Validate URL', cas_server_validate_url, form_id, 'cas_server_validate_url')
       self.end_result_table()
       self.add_html('<div class="intertable">Validating ticket...</div>')
 
@@ -346,13 +350,13 @@ class CASClientLogin(FlowHandler):
       authentication_successful = False
       if app_params.get('validation_response_format') == 'json':
         response = r.json()
-        self.add_result_row('CAS response', json.dumps(response, indent=2), '')
+        self.add_result_row('CAS response', json.dumps(response, indent=2), form_id, 'cas_response')
         service_response = response.get('serviceResponse')
         if service_response:
           if service_response.get('authenticationSuccess'):
             authentication_successful = True
       else:
-        self.add_result_row('CAS response', r.text, '')
+        self.add_result_row('CAS response', r.text, form_id, 'cas_response')
         response = BasicXML.parse(r.text)
         service_response = response.get('cas:serviceResponse')
         if service_response:

@@ -152,7 +152,9 @@ class OAuth2Refresh(FlowHandler):
               client_ids[app_id] = conf_app['client_id']
               token_endpoint_auth_methods[app_id] = {'none': 'none', 'client_secret_basic': 'basic', 'client_secret_post': 'form'}.get(conf_app.get('token_endpoint_auth_methods', 'client_secret_basic'), 'client_secret_basic')
 
+      form_id = 'refresh'
       form_content = {
+        'form_id' : form_id,
         'contextid': self.context['context_id'],
         'token_endpoint': oauth2_idp_params.get('token_endpoint', ''),
         'refresh_tokens': default_refresh_token,
@@ -163,7 +165,8 @@ class OAuth2Refresh(FlowHandler):
         'client_id': client_ids[default_app_id],
         'token_endpoint_auth_method': token_endpoint_auth_methods[default_app_id],
       }
-      form = RequesterForm('refresh', form_content, action='/client/oauth2/refresh/sendrequest', request_url='@[token_endpoint]', mode='api') \
+      form = RequesterForm(form_id, form_content, action='/client/oauth2/refresh/sendrequest', request_url='@[token_endpoint]', mode='api') \
+        .hidden('form_id') \
         .hidden('contextid') \
         .text('token_endpoint', label='Token endpoint', clipboard_category='token_endpoint') \
         .closed_list('refresh_tokens', label='Select refresh token', 
@@ -281,11 +284,12 @@ class OAuth2Refresh(FlowHandler):
       
       self.start_result_table()
       self.log_info('Refresh response'+json.dumps(json_response, indent=2))
-      self.add_result_row('Refresh response', json.dumps(json_response, indent=2), 'refresh_response', expanded=False)
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Refresh response', json.dumps(json_response, indent=2), form_id, 'refresh_response', expanded=False)
       
       new_access_token = json_response.get('access_token')
       new_refresh_token = json_response.get('refresh_token')
-      OAuthClientLogin.display_tokens(self, new_access_token, new_refresh_token, idp_params, client_secret)
+      OAuthClientLogin.display_tokens(self, new_access_token, new_refresh_token, idp_params, client_secret, form_id)
 
       if (new_access_token):
         

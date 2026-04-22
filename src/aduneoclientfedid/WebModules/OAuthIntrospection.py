@@ -169,7 +169,9 @@ class OAuth2Introspection(FlowHandler):
         if not default_access_token:
             default_access_token = token_wrapper['access_token']  
 
+      form_id = 'introspection'
       form_content = {
+        'form_id' : form_id,
         'contextid': self.context['context_id'],
         'introspection_endpoint': oauth2_idp_params.get('introspection_endpoint', ''),
         'access_token': default_access_token,
@@ -188,7 +190,8 @@ class OAuth2Introspection(FlowHandler):
           form_content['introspection_auth_method'] = idp_params['oauth2']['introspection_auth_method']
           self.log_info("introspection_auth_method of api inherited from IDP")
 
-      form = RequesterForm('introspection', form_content, action='/client/oauth2/introspection/sendrequest', request_url='@[introspection_endpoint]', mode='api') \
+      form = RequesterForm(form_id, form_content, action='/client/oauth2/introspection/sendrequest', request_url='@[introspection_endpoint]', mode='api') \
+        .hidden('form_id') \
         .hidden('contextid') \
         .text('introspection_endpoint', label='Introspection endpoint', clipboard_category='introspection_endpoint') \
         .closed_list('access_token', label='Access Token', 
@@ -302,7 +305,8 @@ class OAuth2Introspection(FlowHandler):
       
       self.start_result_table()
       self.log_info('Introspection response'+json.dumps(json_response, indent=2))
-      self.add_result_row('Introspection response', json.dumps(json_response, indent=2), 'introspection_response', expanded=True)
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Introspection response', json.dumps(json_response, indent=2), form_id, 'introspection_response', expanded=True)
       self.end_result_table()
       
     except AduneoError as error:

@@ -543,9 +543,9 @@ class SAMLClientLogin(FlowHandler):
       self.add_html(f"<h3>SAML callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
 
       self.start_result_table()
-      self.add_result_row('Relay state returned by IdP', idp_relay_state, 'idp_relay_state')
-      
-      self.add_result_row('Raw response', str(self.post_form), 'idp_raw_response')
+      form_id = 'samlauth_callback' # Doit matcher Requesterform ?
+      self.add_result_row('Relay state returned by IdP', idp_relay_state, form_id, 'idp_relay_state')
+      self.add_result_row('Raw response', str(self.post_form), form_id, 'idp_raw_response')
 
       # analyse du XML de réponse
       base64_resp = self.post_form.get('SAMLResponse', None)
@@ -556,7 +556,7 @@ class SAMLClientLogin(FlowHandler):
       self.log_info(xml_resp)
 
       root_el = etree.fromstring(xml_resp.encode())
-      self.add_result_row('XML response', etree.tostring(root_el, pretty_print=True).decode(), 'xml_response')
+      self.add_result_row('XML response', etree.tostring(root_el, pretty_print=True).decode(), form_id, 'xml_response')
       
       # Vérification du statut
       try:
@@ -570,9 +570,9 @@ class SAMLClientLogin(FlowHandler):
         self.log_info('Status code: '+status_code)
         
         if status_code == 'urn:oasis:names:tc:SAML:2.0:status:Success':
-          self.add_result_row('Status authenticated', status_code, 'status_code')
+          self.add_result_row('Status authenticated', status_code, form_id, 'status_code')
         else:
-          self.add_result_row('Status failed', status_code, 'status_code')
+          self.add_result_row('Status failed', status_code, form_id, 'status_code')
           raise AduneoError('wrong status: '+status_code)
         
       except Exception as error:
@@ -590,11 +590,11 @@ class SAMLClientLogin(FlowHandler):
         self.log_info('IdP entity id: '+saml_idp_params['idp_entity_id'])
         
         if issuer == saml_idp_params['idp_entity_id']:
-          self.add_result_row('Issuer verification passed', issuer, 'issuer_verification')
+          self.add_result_row('Issuer verification passed', issuer, form_id, 'issuer_verification')
         else:
           title = 'Issuer verification failed'
           value = issuer+' (response) != '+saml_idp_params['idp_entity_id']+' (conf)'
-          self.add_result_row(title, value, 'issuer_verification')
+          self.add_result_row(title, value, form_id, 'issuer_verification')
           raise AduneoError(title)
         
       except Exception as error:
@@ -620,11 +620,11 @@ class SAMLClientLogin(FlowHandler):
         ctx = xmlsec.SignatureContext(manager)
         ctx.verify(signature_node)
         self.log_info('Response signature verification: OK')
-        self.add_result_row('Response signature verification', 'Passed', 'response_signature_verification', copy_button=False)
+        self.add_result_row('Response signature verification', 'Passed', form_id, 'response_signature_verification', copy_button=False)
       
       except Exception as error:
         self.log_error("Response signature verification failed: "+str(error))
-        self.add_result_row('Response signature failed', str(error), 'response_signature_verification')
+        self.add_result_row('Response signature failed', str(error), form_id, 'response_signature_verification')
         raise AduneoError('Response signature verification failed: '+str(error))
 
       # Extraction de l'assertion
@@ -652,11 +652,11 @@ class SAMLClientLogin(FlowHandler):
         enc_data = xmlsec.tree.find_child(encrypted_assertion_el, "EncryptedData", xmlsec.constants.EncNs)
         assertion_el = enc_ctx.decrypt(enc_data)
         self.log_info('Assertion decrypted')
-        self.add_result_row('Assertion decryption', 'OK')
+        self.add_result_row('Assertion decryption', 'OK', form_id, 'assertion_decryption',  copy_button=False)
       
       self.log_info('XML assertion')
       self.log_info(etree.tostring(assertion_el).decode())
-      self.add_result_row('XML assertion', etree.tostring(assertion_el, pretty_print=True).decode(), 'assertion')
+      self.add_result_row('XML assertion', etree.tostring(assertion_el, pretty_print=True).decode(), form_id, 'assertion')
 
       # Extraction des conditions de validité de l'assertion
       conditions_el = assertion_el.find('{urn:oasis:names:tc:SAML:2.0:assertion}Conditions')
@@ -678,10 +678,10 @@ class SAMLClientLogin(FlowHandler):
       self.log_info("Now                : "+str(now)+' UTC')
       if now > not_before_date:
         self.log_info("NotBefore condition verification OK")
-        self.add_result_row('NotBefore condition passed', str(not_before_date)+' UTC (now is '+str(now)+' UTC)', 'notbefore_verification')
+        self.add_result_row('NotBefore condition passed', str(not_before_date)+' UTC (now is '+str(now)+' UTC)', form_id,  'notbefore_verification')
       else:
         self.log_info("NotBefore condition verification failed")
-        self.add_result_row('NotBefore condition failed', str(not_before_date)+' UTC (now is '+str(now)+' UTC)', 'notbefore_verification')
+        self.add_result_row('NotBefore condition failed', str(not_before_date)+' UTC (now is '+str(now)+' UTC)', form_id, 'notbefore_verification')
         raise AduneoError('NotBefore condition failed')
         
       self.log_info("NotOnOrAfter condition verification:")
@@ -695,10 +695,10 @@ class SAMLClientLogin(FlowHandler):
       self.log_info("Now                : "+str(now)+' UTC')
       if now < not_on_or_after_date:
         self.log_info("NotOnOrAfter condition verification OK")
-        self.add_result_row('NotOnOrAfter condition passed', str(not_on_or_after_date)+' UTC (now is '+str(now)+' UTC)', 'notonorafter_verification')
+        self.add_result_row('NotOnOrAfter condition passed', str(not_on_or_after_date)+' UTC (now is '+str(now)+' UTC)', form_id, 'notonorafter_verification')
       else:
         self.log_info("NotOnOrAfter condition verification failed")
-        self.add_result_row('NotOnOrAfter condition failed', str(not_on_or_after_date)+' UTC (now is '+str(now)+' UTC)', 'notonorafter_verification')
+        self.add_result_row('NotOnOrAfter condition failed', str(not_on_or_after_date)+' UTC (now is '+str(now)+' UTC)', form_id, 'notonorafter_verification')
         raise AduneoError('NotOnOrAfter condition failed')
       
       # Vérification d'audience
@@ -715,12 +715,12 @@ class SAMLClientLogin(FlowHandler):
       self.log_info("SP Entity ID: "+app_params['sp_entity_id'])
       if audience == app_params['sp_entity_id']:
         self.log_info("Audience condition OK")
-        self.add_result_row('Audience condition passed', audience, 'audience_verification')
+        self.add_result_row('Audience condition passed', audience, form_id, 'audience_verification')
       else:
         self.log_info("Audience condition failed")
         title = 'Audience condition failed'
         value = audience+' (response) != '+app_params['sp_entity_id']+' (conf)'
-        self.add_result_row(title, value, 'audience_verification')
+        self.add_result_row(title, value, form_id, 'audience_verification')
         raise AduneoError(title)
       
       # Vérification de signature de l'assertion
@@ -744,17 +744,17 @@ class SAMLClientLogin(FlowHandler):
           ctx = xmlsec.SignatureContext(manager)
           ctx.verify(signature_node)
           self.log_info('Assertion signature verification: OK')
-          self.add_result_row('Assertion signature verification', 'Passed', 'assertion_signature_verification', copy_button=False)
+          self.add_result_row('Assertion signature verification', 'Passed', form_id, 'assertion_signature_verification', copy_button=False)
           
         else:
 
           self.log_info('Signature not found in assertion')
-          self.add_result_row('Assertion signature verification', 'Warning: signature not found in assertion', 'assertion_signature_verification', copy_button=False)
+          self.add_result_row('Assertion signature verification', 'Warning: signature not found in assertion', form_id, 'assertion_signature_verification', copy_button=False)
           warnings.append('Signature not found in assertion')
       
       except Exception as error:
         self.log_error("Assertion signature verification failed: "+str(error))
-        self.add_result_row('Assertion signature failed', str(error), 'assertion_signature_verification')
+        self.add_result_row('Assertion signature failed', str(error), form_id, 'assertion_signature_verification')
         print(traceback.format_exc())
         raise AduneoError('Assertion signature verification failed: '+str(error))
 
@@ -764,35 +764,35 @@ class SAMLClientLogin(FlowHandler):
       subject_el = assertion_el.find('{urn:oasis:names:tc:SAML:2.0:assertion}Subject')
       if subject_el is None:
         self.log_info('Subject element not found in assertion')
-        self.add_result_row('Subject', 'Not found in assertion')
+        self.add_result_row('Subject', 'Not found in assertion', form_id)
         raise AduneoError('Subject element not found in assertion')
         
       # Récupération du NameID
       nameid_el = subject_el.find('{urn:oasis:names:tc:SAML:2.0:assertion}NameID')
       if nameid_el is None:
         self.log_info('NameID element not found in subject')
-        self.add_result_row('NameID', 'Not found in subject')
+        self.add_result_row('NameID', 'Not found in subject', form_id)
         raise AduneoError('NameID element not found in subject')
         
       name_id = nameid_el.text
       self.log_info('NameID: '+name_id)
-      self.add_result_row('NameID', name_id, 'name_id')
+      self.add_result_row('NameID', name_id, form_id, 'name_id')
       
       name_id_format = nameid_el.attrib.get('Format', 'unspecified')
       self.log_info('NameID format: '+name_id_format)
-      self.add_result_row('NameID format', name_id_format, 'name_id_format')
+      self.add_result_row('NameID format', name_id_format, form_id, 'name_id_format')
           
       # Validation du subject
       subjectconfirmation_el = subject_el.find('{urn:oasis:names:tc:SAML:2.0:assertion}SubjectConfirmation')
       if subjectconfirmation_el is None:
         self.log_info('SubjectConfirmation element not found in subject')
-        self.add_result_row('SubjectConfirmation', 'Not found in subject')
+        self.add_result_row('SubjectConfirmation', 'Not found in subject', form_id,)
         raise AduneoError('SubjectConfirmation element not found in subject')
       
       subjectconfirmationdata_el = subjectconfirmation_el.find('{urn:oasis:names:tc:SAML:2.0:assertion}SubjectConfirmationData')
       if subjectconfirmationdata_el is None:
         self.log_info('SubjectConfirmationData element not found in SubjectConfirmation')
-        self.add_result_row('SubjectConfirmation', 'Not found in SubjectConfirmation')
+        self.add_result_row('SubjectConfirmation', 'Not found in SubjectConfirmation', form_id,)
         raise AduneoError('SubjectConfirmation element not found in SubjectConfirmation')
       
       # Vérification de l'identifiant de la requête
@@ -803,12 +803,12 @@ class SAMLClientLogin(FlowHandler):
         self.log_info("Request ID  : "+app_params['request_id'])
         if in_response_to == app_params['request_id']:
           self.log_info("Subject InResponseTo verification passed")
-          self.add_result_row('Subject InResponseTo verification passed', in_response_to, 'inresponseto_verification')
+          self.add_result_row('Subject InResponseTo verification passed', in_response_to, form_id, 'inresponseto_verification')
         else:
           self.log_info("Subject InResponseTo verification failed")
           title = 'Subject InResponseTo verification failed'
           value = in_response_to+' (response) != '+app_params['request_id']+' (authn request)'
-          self.add_result_row(title, value, 'inresponseto_verification')
+          self.add_result_row(title, value, form_id, 'inresponseto_verification')
           raise AduneoError(title)
       
       # Vérification du destinataire
@@ -819,12 +819,12 @@ class SAMLClientLogin(FlowHandler):
         self.log_info("SP ACS URL: "+app_params['sp_acs_url'])
         if recipient == app_params['sp_acs_url']:
           self.log_info("Subject Recipient verification passed")
-          self.add_result_row('Subject Recipient verification passed', recipient, 'subject_recipient_verification')
+          self.add_result_row('Subject Recipient verification passed', recipient, form_id, 'subject_recipient_verification')
         else:
           self.log_info("Subject Recipient verification failed")
           title = 'Subject Recipient verification failed'
           value = recipient+' (response) != '+app_params['sp_acs_url']+' (SP ACS URL)'
-          self.add_result_row(title, value, 'subject_recipient_verification')
+          self.add_result_row(title, value, form_id, 'subject_recipient_verification')
           raise AduneoError(title)
 
       # Vérification d'expiration (NotOnOrAfter)
@@ -834,12 +834,12 @@ class SAMLClientLogin(FlowHandler):
         not_on_or_after_date = self._parse_saml_date(not_on_or_after_str)
         if now < not_on_or_after_date:
           self.log_info("Subject NotOnOrAfter verification passed")
-          self.add_result_row('Subject NotOnOrAfter verification passed', str(not_on_or_after_date)+' UTC (now is '+str(now)+' UTC)', 'subject_notonorafter_verification')
+          self.add_result_row('Subject NotOnOrAfter verification passed', str(not_on_or_after_date)+' UTC (now is '+str(now)+' UTC)', form_id, 'subject_notonorafter_verification')
         else:
           self.log_info("Subject NotOnOrAfter verification failed")
           title = 'Subject NotOnOrAfter verification failed'
           value = str(not_on_or_after_date)+' UTC (now is '+str(now)+' UTC)'
-          self.add_result_row(title, value, 'subject_notonorafter_verification')
+          self.add_result_row(title, value, form_id, 'subject_notonorafter_verification')
           raise AduneoError(title)
       
       # Extraction de SessionIndex
@@ -847,11 +847,11 @@ class SAMLClientLogin(FlowHandler):
       authn_statement_el = assertion_el.find('{urn:oasis:names:tc:SAML:2.0:assertion}AuthnStatement')
       if authn_statement_el is None:
         self.log_info('AuthnStatement element not found in assertion')
-        self.add_result_row('AuthnStatement', 'Not found in assertion')
+        self.add_result_row('AuthnStatement', 'Not found in assertion', form_id,)
         raise AduneoError('AuthnStatement element not found in assertion')
       session_index = authn_statement_el.attrib.get('SessionIndex', '')
       self.log_info("SessionIndex: "+session_index)
-      self.add_result_row('SessionIndex', session_index, 'session_index')
+      self.add_result_row('SessionIndex', session_index, form_id, 'session_index')
       
       self.end_result_table()
       self.add_html('<h3>Authentication successful</h3>')

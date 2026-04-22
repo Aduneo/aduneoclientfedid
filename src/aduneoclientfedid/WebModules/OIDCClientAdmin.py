@@ -132,7 +132,7 @@ class OIDCClientAdmin(BaseHandler):
       'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
       }
     
-    form = CfiForm('oidcadminsingle', form_content, action='modifyclientsingle', submit_label='Save') \
+    form = CfiForm('oidcadmin', form_content, action='modifyclientsingle', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
       .text('idp_name', label='IdP name') \
@@ -531,7 +531,7 @@ class OIDCClientAdmin(BaseHandler):
       'acr_values': app_params.get('acr_values', ''),
       }
     
-    form = CfiForm('oidcadminmulti', form_content, action='modifymulti', submit_label='Save') \
+    form = CfiForm('oidcadmin', form_content, action='modifymulti', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
       .text('name', label='Name') \

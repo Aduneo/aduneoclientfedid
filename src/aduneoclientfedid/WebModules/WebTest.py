@@ -464,11 +464,11 @@ class WebTest(BaseHandler):
     self.add_html('<h3>Callback OIDC</h3>')
 
     self.start_result_table()
-    self.add_result_row('Code', 'did78ufj4e', 'code')
+    self.add_result_row('Code', 'did78ufj4e', 'form_id', 'code')
     self.end_result_table()
     self.add_html('<div class="intertable">Fetching token</div>')
     self.start_result_table()
-    self.add_result_row('Operation', 'fetching token', 'code')
+    self.add_result_row('Operation', 'fetching token', 'form_id', 'code')
     self.end_result_table()
   
     menu_id = 'id'+str(uuid.uuid4())

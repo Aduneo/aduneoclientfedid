@@ -179,7 +179,9 @@ class OIDCClientLogin(FlowHandler):
       # pour récupérer le contexte depuis le state (puisque c'est la seule information exploitable retournée par l'IdP)
       self.set_session_value(state, self.context['context_id'])
 
+      form_id = 'oidcauth'
       form_content = {
+        'form_id' : form_id,
         'contextid': self.context['context_id'],  # TODO : remplacer par hr_context ?
         'redirect_uri': app_params.get('redirect_uri', ''),
         'authorization_endpoint': oidc_idp_params.get('authorization_endpoint', ''),
@@ -206,7 +208,8 @@ class OIDCClientLogin(FlowHandler):
         'nonce': nonce,
       }
       
-      form = RequesterForm('oidcauth', form_content, action='/client/oidc/login/sendrequest', mode='new_page', request_url='@[authorization_endpoint]') \
+      form = RequesterForm(form_id, form_content, action='/client/oidc/login/sendrequest', mode='new_page', request_url='@[authorization_endpoint]') \
+        .hidden('form_id') \
         .hidden('contextid') \
         .start_section('clientfedid_params', title="ClientFedID Parameters") \
           .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri') \
@@ -448,7 +451,8 @@ class OIDCClientLogin(FlowHandler):
       self.add_html(f"<h3>OIDC callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
 
       self.start_result_table()
-      self.add_result_row('State returned by IdP', idp_state, 'idp_state')
+      form_id = 'oidcauth_callback' # Doit matcher Requesterform ?
+      self.add_result_row('State returned by IdP', idp_state,  form_id, 'idp_state')
       
       client_secret = app_params['client_secret']
 
@@ -462,7 +466,7 @@ class OIDCClientLogin(FlowHandler):
 
       grant_type = "authorization_code";
       code = self.get_query_string_param('code')
-      self.add_result_row('Code returned by IdP', code, 'idp_code')
+      self.add_result_row('Code returned by IdP', code,  form_id, 'idp_code')
       
       data = {
         'grant_type':grant_type,
@@ -480,7 +484,7 @@ class OIDCClientLogin(FlowHandler):
         raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be basic or form')
       self.log_info(f"{'  ' * 1}Authentication scheme: {token_endpoint_auth_method}")
       
-      self.add_result_row('Token endpoint', token_endpoint, 'token_endpoint')
+      self.add_result_row('Token endpoint', token_endpoint, form_id, 'token_endpoint')
       self.end_result_table()
       self.add_html('<div class="intertable">Fetching token...</div>')
       self.log_info("Start fetching token")
@@ -513,7 +517,7 @@ class OIDCClientLogin(FlowHandler):
       self.log_info(json.dumps(response, indent=2))
       id_token = response['id_token']
       self.start_result_table()
-      self.add_result_row('JWT ID Token', id_token, 'jwt_id_token')
+      self.add_result_row('JWT ID Token', id_token, form_id, 'jwt_id_token')
       
       self.log_info("Decoding ID token")
       token_items = id_token.split('.')
@@ -523,13 +527,13 @@ class OIDCClientLogin(FlowHandler):
       token_payload = base64.urlsafe_b64decode(encoded_token_payload + '=' * (4 - len(encoded_token_payload) % 4))
 
       token_header = json.loads(token_header_string)
-      self.add_result_row('ID Token header', json.dumps(token_header, indent=2), 'id_token_header')
+      self.add_result_row('ID Token header', json.dumps(token_header, indent=2), form_id, 'id_token_header')
       self.log_info("ID token header:")
       self.log_info(json.dumps(token_header, indent=2))
 
       json_token = json.loads(token_payload)
-      self.add_result_row('ID Token claims set', json.dumps(json_token, indent=2), 'id_token_claims_set')
-      self.add_result_row('ID Token sub', json_token['sub'], 'id_token_sub')
+      self.add_result_row('ID Token claims set', json.dumps(json_token, indent=2), form_id, 'id_token_claims_set')
+      self.add_result_row('ID Token sub', json_token['sub'], form_id, 'id_token_sub')
       self.log_info("ID token payload:")
       self.log_info(json.dumps(json_token, indent=2))
 
@@ -541,12 +545,12 @@ class OIDCClientLogin(FlowHandler):
         idp_nonce = json_token['nonce']
         if session_nonce == idp_nonce:
           self.log_info("Nonce verification OK: "+session_nonce)
-          self.add_result_row('Nonce verification', 'OK: '+session_nonce, 'nonce_verification')
+          self.add_result_row('Nonce verification', 'OK: '+session_nonce, form_id, 'nonce_verification')
         else:
           self.log_error(('  ' * 1)+"Nonce verification failed")
           self.log_error(('  ' * 2)+"client nonce: "+session_nonce)
           self.log_error(('  ' * 2)+"IdP nonce   :"+idp_nonce)
-          self.add_result_row('Nonce verification', "Failed\n  client nonce: "+session_nonce+"\n  IdP nonce: "+idp_nonce, 'nonce_verification')
+          self.add_result_row('Nonce verification', "Failed\n  client nonce: "+session_nonce+"\n  IdP nonce: "+idp_nonce, form_id, 'nonce_verification')
           raise AduneoError('nonce verification failed')
 
       # Vérification de validité du jeton
@@ -559,12 +563,12 @@ class OIDCClientLogin(FlowHandler):
         self.log_info("Token expiration verification OK:")
         self.log_info("Token expiration: "+str(tokenExpiryTime)+' UTC')
         self.log_info("Now             : "+str(datetime.datetime.utcnow())+' UTC')
-        self.add_result_row('Expiration verification', 'OK:'+str(tokenExpiryTime)+' UTC (now is '+str(datetime.datetime.utcnow())+' UTC)', 'expiration_verification')
+        self.add_result_row('Expiration verification', 'OK:'+str(tokenExpiryTime)+' UTC (now is '+str(datetime.datetime.utcnow())+' UTC)', form_id, 'expiration_verification')
       else:
         self.log_error(('  ' * 1)+"Token expiration verification failed:")
         self.log_error(('  ' * 2)+"Token expiration: "+str(tokenExpiryTime)+' UTC')
         self.log_error(('  ' * 2)+"Now             : "+str(datetime.datetime.utcnow())+' UTC')
-        self.add_result_row('Expiration verification', 'Failed:'+str(tokenExpiryTime)+' UTC (now is '+str(datetime.datetime.utcnow())+' UTC)', 'expiration_verification')
+        self.add_result_row('Expiration verification', 'Failed:'+str(tokenExpiryTime)+' UTC (now is '+str(datetime.datetime.utcnow())+' UTC)', form_id, 'expiration_verification')
         raise AduneoError('token expiration verification failed')
       
       # On vérifie l'origine du jeton 
@@ -573,12 +577,12 @@ class OIDCClientLogin(FlowHandler):
         raise AduneoError("Issuer missing in authentication configuration", explanation_code='oidc_missing_issuer')
       if token_issuer == oidc_idp_params['issuer']:
         self.log_info("Token issuer verification OK: "+token_issuer)
-        self.add_result_row('Issuer verification', 'OK: '+token_issuer, 'issuer_verification')
+        self.add_result_row('Issuer verification', 'OK: '+token_issuer, form_id, 'issuer_verification')
       else:
         self.log_error(('  ' * 1)+"Expiration verification failed:")
         self.log_error(('  ' * 2)+"Token issuer   : "+token_issuer)
         self.log_error(('  ' * 2)+"Metadata issuer: "+oidc_idp_params['issuer'])
-        self.add_result_row('Issuer verification', "Failed\n  token issuer: "+token_issuer+"\n  metadata issuer:"+oidc_idp_params['issuer'], 'issuer_verification')
+        self.add_result_row('Issuer verification', "Failed\n  token issuer: "+token_issuer+"\n  metadata issuer:"+oidc_idp_params['issuer'], form_id, 'issuer_verification')
         raise AduneoError('token issuer verification failed')
       
       # On vérifie l'audience du jeton, qui doit être le client ID
@@ -590,12 +594,12 @@ class OIDCClientLogin(FlowHandler):
       
       if client_id in token_audience:
         self.log_info("Token audience verification OK: "+str(token_audience))
-        self.add_result_row('Audience verification', 'OK: '+str(token_audience), 'audience_verification')
+        self.add_result_row('Audience verification', 'OK: '+str(token_audience), form_id, 'audience_verification')
       else:
         self.log_error(('  ' * 1)+"Audience verification failed:")
         self.log_error(('  ' * 2)+"Token audience: "+str(token_audience))
         self.log_error(('  ' * 2)+"ClientID      : "+client_id)
-        self.add_result_row('Audience verification', 'Failed ('+client_id+' != '+str(token_audience), 'audience_verification')
+        self.add_result_row('Audience verification', 'Failed ('+client_id+' != '+str(token_audience), form_id, 'audience_verification')
         raise AduneoError('token audience verification failed')
       
       # Vérification de signature, on commence par regarde l'algorithme
@@ -609,7 +613,7 @@ class OIDCClientLogin(FlowHandler):
       elif alg.startswith('HS'):
         # Signature symétrique HMAC
         self.log_info('HMAC signature, the secret is client_secret')
-        self.add_result_row('Signature algorithm', f'Symmetric: {alg}', 'signature_algorithm')
+        self.add_result_row('Signature algorithm', f'Symmetric: {alg}', form_id, 'signature_algorithm')
         encoded_secret = base64.urlsafe_b64encode(str.encode(client_secret)).decode()
         key = {"alg":alg,"kty":"oct","use":"sig","kid":"1","k":encoded_secret}
         token_key = key
@@ -617,7 +621,7 @@ class OIDCClientLogin(FlowHandler):
       else:
         # Signature asymétrique
         self.log_info('Asymmetric signature, fetching public key')
-        self.add_result_row('Signature algorithm', f'Asymmetric: {alg}', 'signature_algorithm')
+        self.add_result_row('Signature algorithm', f'Asymmetric: {alg}', form_id, 'signature_algorithm')
       
         # On regarde si on doit aller chercher les clés avec l'endpoint JWKS ou si la clé a été donnée localement
         if oidc_idp_params['signature_key_configuration'] == 'Local configuration':
@@ -629,11 +633,11 @@ class OIDCClientLogin(FlowHandler):
           # On extrait l'identifiant de la clé depuis l'id token
           idp_kid = token_header['kid']
           self.log_info('Signature key kid: '+idp_kid)
-          self.add_result_row('Signature key kid', idp_kid, 'signature_key_kid')
+          self.add_result_row('Signature key kid', idp_kid, form_id, 'signature_key_kid')
           
           # on va chercher la liste des clés
           self.log_info("Starting IdP keys retrieval")
-          self.add_result_row('JWKS endpoint', oidc_idp_params['jwks_uri'], 'jwks_endpoint')
+          self.add_result_row('JWKS endpoint', oidc_idp_params['jwks_uri'], form_id, 'jwks_endpoint')
           self.end_result_table()
           self.add_html('<div class="intertable">Fetching public keys...</div>')
           try:
@@ -653,20 +657,20 @@ class OIDCClientLogin(FlowHandler):
           self.log_info("IdP response:")
           self.log_info(json.dumps(keyset, indent=2))
           self.start_result_table()
-          self.add_result_row('Keyset', json.dumps(keyset, indent=2), 'keyset')
+          self.add_result_row('Keyset', json.dumps(keyset, indent=2), form_id, 'keyset')
           
           # On en extrait la JWK qui correspond au token
-          self.add_result_row('Retrieved keys', '', 'retrieved_keys', copy_button=False)
+          self.add_result_row('Retrieved keys', '', form_id, 'retrieved_keys', copy_button=False)
           token_jwk = None
           for jwk in keyset['keys']:
-              self.add_result_row(jwk['kid'], json.dumps(jwk, indent=2))
+              self.add_result_row(jwk['kid'], json.dumps(jwk, indent=2), form_id)
               if jwk['kid'] == idp_kid:
                 token_jwk = jwk
                 
           self.log_info('Signature JWK:')
           self.log_info(json.dumps(token_jwk, indent=2))
           
-        self.add_result_row('Signature JWK', json.dumps(token_jwk, indent=2), 'signature_jwk')
+        self.add_result_row('Signature JWK', json.dumps(token_jwk, indent=2), form_id, 'signature_jwk')
         token_key = token_jwk
 
       try:
@@ -674,8 +678,8 @@ class OIDCClientLogin(FlowHandler):
         jwt.is_signature_valid(token_key, raise_exception=True)
         self.log_info('Signature verification OK')
         if alg.startswith('HS'):
-          self.add_result_row('Signature key', 'Client secret', copy_button=False)
-        self.add_result_row('Signature verification', 'OK', copy_button=False)
+          self.add_result_row('Signature key', 'Client secret', form_id, copy_button=False)
+        self.add_result_row('Signature verification', 'OK', form_id, copy_button=False)
       except Exception as error:
       
         default_case = True
@@ -701,27 +705,27 @@ class OIDCClientLogin(FlowHandler):
           
             try:
               jwt.is_signature_valid(token_key, raise_exception=True)
-              self.add_result_row('Signature key', 'Local configuration', copy_button=False)
+              self.add_result_row('Signature key', 'Local configuration', form_id, copy_button=False)
               self.log_info('Signature verification OK')
-              self.add_result_row('Signature verification', 'OK', copy_button=False)
+              self.add_result_row('Signature verification', 'OK', form_id, copy_button=False)
             except Exception as error:
               default_case = True
           
         if default_case:
           # Cas normal de la signature non vérifiée
-          self.add_result_row('Signature verification', 'Failed', copy_button=False)
+          self.add_result_row('Signature verification', 'Failed', form_id, copy_button=False)
           raise AduneoError(self.log_error('Signature verification failed'))
 
       op_access_token = response.get('access_token')
       if op_access_token:
         # Jeton d'accès pour authentification auprès de l'OP (userinfo en particulier)
-        self.add_result_row('OP access token', op_access_token, 'op_access_token')
+        self.add_result_row('OP access token', op_access_token, form_id, 'op_access_token')
         self.log_info('OP access token: '+op_access_token)
 
       op_refresh_token = response.get('refresh_token')
       if op_refresh_token:
         # Jeton de rafraichissement du jeton d'accès pour authentification auprès de l'OP (userinfo en particulier)
-        self.add_result_row('OP refresh token', op_refresh_token, 'op_refresh_token')
+        self.add_result_row('OP refresh token', op_refresh_token, form_id, 'op_refresh_token')
         self.log_info('OP refresh token: '+op_refresh_token)
 
       self.end_result_table()

@@ -104,7 +104,7 @@ class CASClientAdmin(BaseHandler):
       'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
       }
     
-    form = CfiForm('casadminsingle', form_content, action='modifyclientsingle', submit_label='Save') \
+    form = CfiForm('casadmin', form_content, action='modifyclientsingle', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
       .text('idp_name', label='IdP name') \
@@ -432,7 +432,7 @@ class CASClientAdmin(BaseHandler):
       'validation_response_format': app_params.get('validation_response_format', 'XML'),
       }
     
-    form = CfiForm('oidcadminmulti', form_content, action='modifymulti', submit_label='Save') \
+    form = CfiForm('casadmin', form_content, action='modifymulti', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
       .text('name', label='Name') \

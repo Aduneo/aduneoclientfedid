@@ -175,7 +175,9 @@ class OAuthClientLogin(FlowHandler):
       pkce_code_challenge = base64.urlsafe_b64encode(sha.digest()).decode('utf-8').replace('=', '')        
       self.log_info(('  ' * 2)+'Code challenge: '+pkce_code_challenge)
 
+      form_id = 'oauth2auth'
       form_content = {
+        'form_id' : form_id,
         'contextid': self.context['context_id'],
         'redirect_uri': app_params.get('redirect_uri', ''),
         'authorization_endpoint': oauth2_idp_params.get('authorization_endpoint', ''),
@@ -203,7 +205,8 @@ class OAuthClientLogin(FlowHandler):
         'state': state,
       }
       
-      form = RequesterForm('oauth2auth', form_content, action='/client/oauth2/login/sendrequest', mode='api', request_url='@[authorization_endpoint]') \
+      form = RequesterForm(form_id, form_content, action='/client/oauth2/login/sendrequest', mode='api', request_url='@[authorization_endpoint]') \
+        .hidden('form_id') \
         .hidden('contextid') \
         .start_section('clientfedid_params', title="ClientFedID parameters") \
           .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri') \
@@ -394,10 +397,11 @@ class OAuthClientLogin(FlowHandler):
 
       # Si on est en Resource Owner Password Credentials ou en Client Credentials, on fait une requête directe
       oauth_flow = self.post_form['oauth_flow']
+      form_id = self.post_form.get('form_id')
       if oauth_flow == 'resource_owner_password_credentials':
-        self._resource_owner_password_credentials()
+        self._resource_owner_password_credentials(form_id)
       elif oauth_flow == 'client_credentials':
-        self._client_credentials()
+        self._client_credentials(form_id)
       else:
 
         # Redirection vers l'IdP
@@ -472,7 +476,8 @@ class OAuthClientLogin(FlowHandler):
       self.add_html(f"<h3>OAuth 2 callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
 
       self.start_result_table()
-      self.add_result_row('State returned by IdP', idp_state, 'idp_state')
+      form_id = 'oauth2auth_callback' # Doit matcher Requesterform ?
+      self.add_result_row('State returned by IdP', idp_state, form_id, 'idp_state')
 
       code = self.get_query_string_param('code')
       if not code:
@@ -486,7 +491,7 @@ class OAuthClientLogin(FlowHandler):
 
       self.log_info('Start retrieving token for code '+code)
       self.log_info(('  ' * 1)+'from '+token_endpoint)
-      self.add_result_row('Token endpoint', token_endpoint, 'token_endpoint')
+      self.add_result_row('Token endpoint', token_endpoint, form_id, 'token_endpoint')
       
       # Construction de la requête de récupération du jeton
       api_call_data = {
@@ -512,7 +517,7 @@ class OAuthClientLogin(FlowHandler):
       self.log_info(f"{'  ' * 1}Authentication scheme: {token_endpoint_auth_method}")
       
       self.log_info(('  ' * 1)+'Token request data: '+str(api_call_data))
-      self.add_result_row('Token request data', json.dumps(api_call_data, indent=2), 'token_request_data')
+      self.add_result_row('Token request data', json.dumps(api_call_data, indent=2), form_id, 'token_request_data')
       self.end_result_table()
       self.add_html('<div class="intertable">Fetching token...</div>')
       self.log_info("Start fetching token")
@@ -543,7 +548,7 @@ class OAuthClientLogin(FlowHandler):
       self.log_info('AS response:')
       self.log_info(json.dumps(response, indent=2))
       self.start_result_table()
-      self.add_result_row('Raw AS response', json.dumps(response, indent=2), 'as_raw_response')
+      self.add_result_row('Raw AS response', json.dumps(response, indent=2), form_id, 'as_raw_response')
       
       if 'access_token' not in response:
         raise AduneoError(self.log_error('access token not found in response'))
@@ -551,7 +556,7 @@ class OAuthClientLogin(FlowHandler):
       # Affichage des jetons d'accès et de rafraîchissement
       access_token = response['access_token']
       refresh_token = response.get('refresh_token')
-      self.display_tokens(access_token, refresh_token, idp_params, client_secret)
+      self.display_tokens(access_token, refresh_token, idp_params, client_secret, form_id)
       
       # Nonce verification (OAuth should not have a nonce)
       idp_nonce = response.get('nonce')
@@ -559,12 +564,12 @@ class OAuthClientLogin(FlowHandler):
         session_nonce = app_params.get('nonce', '')
         if session_nonce == idp_nonce:
           self.log_info("Nonce verification OK: "+session_nonce)
-          self.add_result_row('Nonce verification', 'OK: '+session_nonce, 'nonce_verification')
+          self.add_result_row('Nonce verification', 'OK: '+session_nonce, form_id, 'nonce_verification')
         else:
           self.log_error(('  ' * 1)+"Nonce verification failed")
           self.log_error(('  ' * 2)+"client nonce: "+session_nonce)
           self.log_error(('  ' * 2)+"IdP nonce   :"+idp_nonce)
-          self.add_result_row('Nonce verification', "Failed\n  client nonce: "+session_nonce+"\n  IdP nonce: "+idp_nonce, 'nonce_verification')
+          self.add_result_row('Nonce verification', "Failed\n  client nonce: "+session_nonce+"\n  IdP nonce: "+idp_nonce, form_id, 'nonce_verification')
           raise AduneoError('nonce verification failed')
 
       else:
@@ -599,7 +604,7 @@ class OAuthClientLogin(FlowHandler):
     self.send_page()
 
 
-  def _client_credentials(self):
+  def _client_credentials(self, form_id):
     """ Envoi de la requête Client Credentials à l'IdP
     
     Versions:
@@ -626,8 +631,8 @@ class OAuthClientLogin(FlowHandler):
       
       self.start_result_table()
       self.log_info('Token response'+json.dumps(json_response, indent=2))
-      self.add_result_row('Token response', json.dumps(json_response, indent=2), 'token_response', expanded=True)
-      self.display_tokens(access_token, refresh_token, idp_params, None)
+      self.add_result_row('Token response', json.dumps(json_response, indent=2), form_id, 'token_response', expanded=True)
+      self.display_tokens(access_token, refresh_token, idp_params, None, form_id)
       self.end_result_table()
 
       # Enregistrement des jetons dans la session pour manipulation ultérieure
@@ -656,7 +661,7 @@ class OAuthClientLogin(FlowHandler):
     self.send_page()
 
 
-  def _resource_owner_password_credentials(self):
+  def _resource_owner_password_credentials(self, form_id):
     """ Envoi de la requête Resource owner password credentials à l'IdP
     
     Versions:
@@ -683,8 +688,8 @@ class OAuthClientLogin(FlowHandler):
       
       self.start_result_table()
       self.log_info('Token response'+json.dumps(json_response, indent=2))
-      self.add_result_row('Token response', json.dumps(json_response, indent=2), 'token_response', expanded=True)
-      self.display_tokens(access_token, refresh_token, idp_params, None)
+      self.add_result_row('Token response', json.dumps(json_response, indent=2), form_id, 'token_response', expanded=True)
+      self.display_tokens(access_token, refresh_token, idp_params, None, form_id)
       self.end_result_table()
 
       # Enregistrement des jetons dans la session pour manipulation ultérieure
@@ -713,7 +718,7 @@ class OAuthClientLogin(FlowHandler):
     self.send_page()
 
 
-  def display_tokens(self, access_token:str, refresh_token:str, idp_params:dict, client_secret:str):
+  def display_tokens(self, access_token:str, refresh_token:str, idp_params:dict, client_secret:str, form_id:str):
     
     # Needed : 'signature_key', 'signature_key_configuration', 'jwks_uri'
     # Condition pour afficher les id_token dans "Refresh Token"
@@ -733,26 +738,26 @@ class OAuthClientLogin(FlowHandler):
     # if not oauth2_idp_params:
     #   raise AduneoError(f"OAuth 2 IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
 
-    self.add_result_row('Access Token', access_token, 'access_token')
+    self.add_result_row('Access Token', access_token, form_id, 'access_token')
     if refresh_token:
-      self.add_result_row('Refresh token', refresh_token, 'refresh_token')
+      self.add_result_row('Refresh token', refresh_token, form_id, 'refresh_token')
 
     if JWT.is_jwt(access_token):
       # l'AT est un JWT, on l'affiche
-      self.add_result_row('Access Token Type', 'JWT')
+      self.add_result_row('Access Token Type', 'JWT', form_id, copy_button=False)
       jwt = JWT(access_token)
-      self.add_result_row('Access Token Header', json.dumps(jwt.header, indent=2), 'access_token_header')
+      self.add_result_row('Access Token Header', json.dumps(jwt.header, indent=2), form_id, 'access_token_header')
       self.log_info("Access token header:")
       self.log_info(json.dumps(jwt.header, indent=2))
 
-      self.add_result_row('Access Token Payload', json.dumps(jwt.payload, indent=2), 'access_token_payload')
+      self.add_result_row('Access Token Payload', json.dumps(jwt.payload, indent=2), form_id, 'access_token_payload')
       self.log_info("Access token payload:")
       self.log_info(json.dumps(jwt.payload, indent=2))
       
       # On vérifie la signature du JWT
       alg = jwt.header.get('alg')
       if not alg:
-        self.add_result_row('RT Signature Validation', 'JWT without algorithm in header')
+        self.add_result_row('RT Signature Validation', 'JWT without algorithm in header', form_id, copy_button=False)
         self.log_info("  Can't verify Refresh Token signature : JWT without algorithm in header")
       else:
         
@@ -774,7 +779,7 @@ class OAuthClientLogin(FlowHandler):
           
             # Clé à récupérer auprès de l'IdP
             self.log_info("Starting IdP keys retrieval")
-            self.add_result_row('JWKS endpoint', oauth2_idp_params['jwks_uri'], 'jwks_endpoint')
+            self.add_result_row('JWKS endpoint', oauth2_idp_params['jwks_uri'], form_id, 'jwks_endpoint')
             self.end_result_table()
             self.add_html('<div class="intertable">Fetching public keys...</div>')
             try:
@@ -794,46 +799,46 @@ class OAuthClientLogin(FlowHandler):
             self.log_info("IdP response:")
             self.log_info(json.dumps(keyset, indent=2))
             self.start_result_table()
-            self.add_result_row('Keyset', json.dumps(keyset, indent=2), 'keyset')
+            self.add_result_row('Keyset', json.dumps(keyset, indent=2), form_id, 'keyset')
             
             # On en extrait les JWK qui correspondent aux jetons
-            self.add_result_row('Retrieved keys', '', 'retrieved_keys', copy_button=False)
+            self.add_result_row('Retrieved keys', '', form_id, 'retrieved_keys', copy_button=False)
         
             for jwk in keyset['keys']:
-                self.add_result_row(jwk['kid'], json.dumps(jwk, indent=2))
+                self.add_result_row(jwk['kid'], json.dumps(jwk, indent=2), form_id)
                 if jwk['kid'] == jwt.header.get('kid'):
                   access_token_jwk = jwk
 
         if not access_token_jwk:
-          self.add_result_row('AT Signature Validation', 'Signature key not found')
+          self.add_result_row('AT Signature Validation', 'Signature key not found', form_id, copy_button=False)
           self.log_info("  Can't verify AT signature : signature key not found")
         else:
           self.log_info('Signature JWK:')
           self.log_info(json.dumps(access_token_jwk, indent=2))
-          self.add_result_row('Signature JWK', json.dumps(access_token_jwk, indent=2), 'signature_jwk')
+          self.add_result_row('Signature JWK', json.dumps(access_token_jwk, indent=2), form_id, 'signature_jwk')
           
           if jwt.is_signature_valid(access_token_jwk, raise_exception=False):
             self.log_info('Access Token signature verification OK')
-            self.add_result_row('AT Signature verification', 'OK', copy_button=False)
+            self.add_result_row('AT Signature verification', 'OK', form_id, copy_button=False)
           else:
-            self.add_result_row('AT Signature verification', 'Failed', copy_button=False)
+            self.add_result_row('AT Signature verification', 'Failed', form_id, copy_button=False)
       
     else:
-      self.add_result_row('Access Token Type', 'opaque')
+      self.add_result_row('Access Token Type', 'opaque', form_id, copy_button=False)
     
     if refresh_token:
       if JWT.is_jwt(refresh_token):
         # le RT est un JWT, on l'affiche
-        self.add_result_row('Refresh Token Type', 'JWT')
+        self.add_result_row('Refresh Token Type', 'JWT', form_id, copy_button=False)
         jwt = JWT(refresh_token)
-        self.add_result_row('Refresh Token Header', json.dumps(jwt.header, indent=2), 'refresh_token_header')
+        self.add_result_row('Refresh Token Header', json.dumps(jwt.header, indent=2), form_id, 'refresh_token_header')
         self.log_info("Refresh token header:")
         self.log_info(json.dumps(jwt.header, indent=2))
 
-        self.add_result_row('Refresh Token Payload', json.dumps(jwt.payload, indent=2), 'refresh_token_payload')
+        self.add_result_row('Refresh Token Payload', json.dumps(jwt.payload, indent=2), form_id, 'refresh_token_payload')
         self.log_info("Refresh token payload:")
         self.log_info(json.dumps(jwt.payload, indent=2))
         
         # Pas de vérification de signature du RT (aucun besoin, le RT est uniquement à renvoyer à l'IdP)
       else:
-        self.add_result_row('Refresh Token Type', 'opaque')
+        self.add_result_row('Refresh Token Type', 'opaque', form_id, copy_button=False)

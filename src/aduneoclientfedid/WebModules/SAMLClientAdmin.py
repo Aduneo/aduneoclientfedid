@@ -134,7 +134,7 @@ class SAMLClientAdmin(BaseHandler):
       'sign_logout_request': Configuration.is_on(app_params.get('sign_logout_request', 'off')),
       }
     
-    form = CfiForm('samladminsingle', form_content, action='modifyclientsingle', submit_label='Save') \
+    form = CfiForm('samladmin', form_content, action='modifyclientsingle', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
       .text('idp_name', label='IdP name') \
@@ -586,7 +586,7 @@ class SAMLClientAdmin(BaseHandler):
       'sign_logout_request': Configuration.is_on(app_params.get('sign_logout_request', 'off')),
       }
     
-    form = CfiForm('samladminmulti', form_content, action='modifymulti', submit_label='Save') \
+    form = CfiForm('samladmin', form_content, action='modifymulti', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
       .text('name', label='Name') \

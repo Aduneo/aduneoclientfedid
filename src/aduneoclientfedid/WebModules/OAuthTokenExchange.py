@@ -142,7 +142,9 @@ class OAuth2TokenExchange(FlowHandler):
             default_wrapper = wrapper
           i += 1
 
+      form_id = 'tokenexchange'
       form_content = {
+        'form_id' : form_id,
         'contextid': self.context['context_id'],
         'token_endpoint': oauth2_idp_params.get('token_endpoint', ''),
         'grant_type': 'urn:ietf:params:oauth:grant-type:token-exchange',
@@ -160,7 +162,8 @@ class OAuth2TokenExchange(FlowHandler):
         'actor_token': '',
         'actor_token_type': '',
       }
-      form = RequesterForm('tokenexchange', form_content, action='/client/oauth2/tokenexchange/sendrequest', request_url='@[token_endpoint]', mode='api') \
+      form = RequesterForm(form_id, form_content, action='/client/oauth2/tokenexchange/sendrequest', request_url='@[token_endpoint]', mode='api') \
+        .hidden('form_id') \
         .hidden('contextid') \
         .text('token_endpoint', label='Token endpoint', clipboard_category='token_endpoint') \
         .text('grant_type', label='Grant type', clipboard_category='grant_type') \
@@ -287,7 +290,8 @@ class OAuth2TokenExchange(FlowHandler):
       
       self.start_result_table()
       self.log_info('Token exchange response'+json.dumps(json_response, indent=2))
-      self.add_result_row('Token exchange response', json.dumps(json_response, indent=2), 'token_exchange_response', expanded=True)
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Token exchange response', json.dumps(json_response, indent=2), form_id, 'token_exchange_response', expanded=True)
       self.end_result_table()
       
       if response.status_code == 200:

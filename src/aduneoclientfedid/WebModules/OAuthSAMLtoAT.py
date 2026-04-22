@@ -84,7 +84,9 @@ class OAuth2SAMLtoAT(FlowHandler):
         if default_assertion == '__input__':
           default_assertion = wrapper['saml_assertion']
 
+      form_id = 'samltoat'
       form_content = {
+        'form_id' : form_id,
         'contextid': self.context['context_id'],
         'grant_type': 'urn:ietf:params:oauth:grant-type:saml2-bearer',
         'known_assertions': default_assertion,
@@ -97,7 +99,8 @@ class OAuth2SAMLtoAT(FlowHandler):
         'client_secret': '',
         'scope': '',
       }
-      form = RequesterForm('samltoat', form_content, action='/client/oauth2/samltoat/sendrequest', request_url='@[token_endpoint]', mode='api') \
+      form = RequesterForm(form_id, form_content, action='/client/oauth2/samltoat/sendrequest', request_url='@[token_endpoint]', mode='api') \
+        .hidden('form_id') \
         .hidden('contextid') \
         .text('grant_type', label='Grant type', clipboard_category='grant_type') \
         .closed_list('known_assertions', label='Known SAML assertions', 
@@ -218,7 +221,8 @@ class OAuth2SAMLtoAT(FlowHandler):
       
       self.start_result_table()
       self.log_info('Token exchange response'+json.dumps(json_response, indent=2))
-      self.add_result_row('Token exchange response', json.dumps(json_response, indent=2), 'userinfo_response', expanded=True)
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Token exchange response', json.dumps(json_response, indent=2), form_id, 'token_exchange_response', expanded=True)
       self.end_result_table()
       
       if response.status_code == 200:

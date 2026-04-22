@@ -147,7 +147,9 @@ class OAuth2Revocation(FlowHandler):
             default_token = refresh_token 
             default_wrapper = token_wrapper 
 
+      form_id = 'revocation'
       form_content = {
+        'form_id' : form_id,
         'contextid': self.context['context_id'],
         'revocation_endpoint': oauth2_idp_params.get('revocation_endpoint', ''),
         'tokens': default_token,
@@ -157,7 +159,8 @@ class OAuth2Revocation(FlowHandler):
         'client_id': app_params.get('client_id', ''),
         'revocation_endpoint_dns_override': oauth2_idp_params.get('revocation_endpoint_dns_override', ''),
       }
-      form = RequesterForm('revocation', form_content, action='/client/oauth2/revocation/sendrequest', request_url='@[revocation_endpoint]', mode='api') \
+      form = RequesterForm(form_id, form_content, action='/client/oauth2/revocation/sendrequest', request_url='@[revocation_endpoint]', mode='api') \
+        .hidden('form_id') \
         .hidden('contextid') \
         .text('revocation_endpoint', label='Revocation endpoint', clipboard_category='revocation_endpoint') \
         .closed_list('tokens', label='Select token', 
@@ -269,7 +272,8 @@ class OAuth2Revocation(FlowHandler):
       
       self.start_result_table()
       self.log_info('Revocation response: '+str(response.status))
-      self.add_result_row('Revocation response', str(response.status), 'revocation_response', expanded=True)
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Revocation response', str(response.status), form_id, 'revocation_response', expanded=True)
       self.end_result_table()
       
       # on note le jeton comme révoqué dans le contexte

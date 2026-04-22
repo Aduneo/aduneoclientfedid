@@ -152,7 +152,9 @@ class OIDCClientLogout(FlowHandler):
         }
         """
 
+      form_id = 'oidclogout'
       form_content = {
+        'form_id' : form_id,
         'hr_context': self.context['context_id'],
         'end_session_endpoint': oidc_idp_params.get('end_session_endpoint', ''),
         'end_session_endpoint_method': app_params.get('end_session_endpoint_method', 'post'),
@@ -165,7 +167,8 @@ class OIDCClientLogout(FlowHandler):
         'state': state,
       }
       
-      form = RequesterForm('oidclogout', form_content, action='sendrequest', mode='new_page', request_url='@[end_session_endpoint]') \
+      form = RequesterForm(form_id, form_content, action='sendrequest', mode='new_page', request_url='@[end_session_endpoint]') \
+        .hidden('form_id') \
         .start_section('clientfedid_params', title="ClientFedID parameters") \
           .text('post_logout_redirect_uri', label='Post logout redirect URI', clipboard_category='post_logout_redirect_uri') \
         .end_section() \

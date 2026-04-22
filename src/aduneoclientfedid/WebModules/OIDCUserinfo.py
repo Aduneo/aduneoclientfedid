@@ -129,14 +129,17 @@ class OIDCUserinfo(FlowHandler):
           if not default_access_token:
               default_access_token = token_wrapper['access_token']
 
+      form_id = 'userinfo'
       form_content = {
+        'form_id' : form_id,
         'contextid': self.context['context_id'],
         'userinfo_endpoint': oidc_idp_params.get('userinfo_endpoint', ''),
         'access_token': default_access_token,
         'userinfo_method': oidc_idp_params.get('userinfo_method', 'get'),
         'userinfo_endpoint_dns_override': oidc_idp_params.get('userinfo_endpoint_dns_override', ''),
       }
-      form = RequesterForm('userinfo', form_content, action='/client/oidc/userinfo/sendrequest', request_url='@[userinfo_endpoint]', mode='api') \
+      form = RequesterForm(form_id, form_content, action='/client/oidc/userinfo/sendrequest', request_url='@[userinfo_endpoint]', mode='api') \
+        .hidden('form_id') \
         .hidden('contextid') \
         .text('userinfo_endpoint', label='Userinfo endpoint', clipboard_category='userinfo_endpoint') \
         .closed_list('access_token', label='Access Token', 
@@ -216,7 +219,8 @@ class OIDCUserinfo(FlowHandler):
       
       self.start_result_table()
       self.log_info('Userinfo response'+json.dumps(json_response, indent=2))
-      self.add_result_row('Userinfo response', json.dumps(json_response, indent=2), 'userinfo_response', expanded=True)
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Userinfo response', json.dumps(json_response, indent=2), form_id, 'userinfo_response', expanded=True)
       self.end_result_table()
       
     except Exception as error:
