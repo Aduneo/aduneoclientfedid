@@ -14,9 +14,13 @@
 
   <div id="helpWindow" class="dragWindow" onmousedown="startDrag(this, event)">
     <form>
-    <div class="dragHeader">
-      <span id="helpHeader" class="helpHeader" style="display: inline;"></span>
-      <span id="helpHeaderEdit" style="display: none;"><input id="helpHeaderInput" type="text" style="width: 500px;" /></span><span style="float: right; cursor: pointer;" onclick="closeHelpWindow()">&#x2716;</span><span id="helpEditButton" class="smallbutton" style="float: right; display: inline;" onclick="editHelp()">Edit</span>
+    <div class="dragHeader" style="display: flex; align-items: center;">
+      <span id="helpHeader" class="helpHeader" style="display: inline; flex: 1;"></span>
+      <span id="helpHeaderEdit" style="display: none; flex: 1;"><input id="helpHeaderInput" type="text" style="width: 500px;" /></span>
+      <div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+        <span id="helpEditButton" class="smallbutton" style="display: inline;" onclick="editHelp()">Edit</span>
+        <span style="cursor: pointer;" onclick="closeHelpWindow()">&#x2716;</span>
+      </div>
     </div>
     <div id="helpContent" class="helpContent dragContent" style="display: block;">
     </div>
