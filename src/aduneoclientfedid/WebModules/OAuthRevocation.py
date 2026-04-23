@@ -283,6 +283,10 @@ class OAuth2Revocation(FlowHandler):
             acces_token_wrapper['name'] = 'REVOKED - ' + acces_token_wrapper['name']
       
     except AduneoError as error:
+      self.start_result_table()
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Revocation response', str(error), form_id, 'revocation_response', expanded=True)
+      self.end_result_table()
       self.add_html("""<div class="intertable">Erreur lors de l'appel à revocation : {error}""".format(error=html.escape(str(error))))
     except Exception as error:
       self.log_error(('  ' * 1)+traceback.format_exc())

@@ -294,7 +294,7 @@ class OAuth2TokenExchange(FlowHandler):
       self.add_result_row('Token exchange response', json.dumps(json_response, indent=2), form_id, 'token_exchange_response', expanded=True)
       self.end_result_table()
       
-      if response.status_code == 200:
+      if response.status == 200:
 
         token_name = 'Exchange from '+self.post_form.get('token_name', '?')+' - '+time.strftime("%H:%M:%S", time.localtime())
         token = {'name': token_name, 'app_id': self.post_form.get('app_id')}
@@ -313,6 +313,10 @@ class OAuth2TokenExchange(FlowHandler):
           self.context['access_tokens'][str(time.time())] = token
       
     except AduneoError as error:
+      self.start_result_table()
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Token exchange response', str(error), form_id, 'token_exchange_response', expanded=True)
+      self.end_result_table()
       self.add_html("""<div class="intertable">Erreur lors de l'appel à Token exchange : {error}""".format(error=html.escape(str(error))))
     except Exception as error:
       self.log_error(('  ' * 1)+traceback.format_exc())
