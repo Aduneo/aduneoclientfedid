@@ -1,7 +1,7 @@
 {
   "/oidcadmin/redirect_uri": {
     "header_fr": "URI de redirection",
-    "content_fr": "🔴**REQUIRED**🔴\n\nLe client doit indiquer l'URL qui accueillera l'utilisateur à son retour d'authentification par l'IdP. Cette URL doit faire partie des URL configurées auprès de l'IdP.\n\nLa valeur proposée par défaut est déduite par Aduneo Identity Federation Test.\n\nLa valeur de ce champ doit donc être reportée dans la configuration de l'IdP.\n\n- https://monapp.example.com/callback",
+    "content_fr": "🔴**REQUIRED**🔴\n\nLe client doit indiquer l'URL qui accueillera l'utilisateur à son retour d'authentification par l'IdP. Cette URL doit faire partie des URL configurées auprès de l'IdP.\n\nLa valeur proposée par défaut est déduite par Aduneo Identity Federation Test.\n\nLa valeur de ce champ doit donc être reportée dans la configuration de l'IdP.",
     "format_fr": "md"
   },
   "/oidcadmin/discovery_uri": {
@@ -11,7 +11,12 @@
   },
   "/oidcadmin/name": {
     "header_fr": "Name",
-    "content_fr": "Nom du client *OpenID Connect* dans ClientFedID.\n\nNe joue aucun rôle dans la cinématique *OpenID Connect*. Il sert uniquement à identifier la configuration dans l'interface.",
+    "content_fr": "Nom arbitraire attribué à ce client *OpenID Connect* dans ClientFedID.\n\nNe joue aucun rôle dans la cinématique *OpenID Connect*. Il sert uniquement à identifier la configuration dans l'interface.",
+    "format_fr": "md"
+  },
+  "/oidcadmin/app_name": {
+    "header_fr": "Name",
+    "content_fr": "Nom arbitraire attribué à ce client *OpenID Connect* dans ClientFedID.\n\nNe joue aucun rôle dans la cinématique *OpenID Connect*. Il sert uniquement à identifier la configuration dans l'interface.",
     "format_fr": "md"
   },
   "/oidcadmin/endpoint_configuration": {
@@ -21,27 +26,27 @@
   },
   "/oidcadmin/issuer": {
     "header_fr": "Issuer",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'émetteur (issuer) est l'identifiant unique de l'OpenID Provider. Il est utilisé pour valider le champ *iss* du jeton d'identité.\n\nC'est une URL HTTPS sensible à la casse, sans fragment ni query string.\n\n- https://login.microsoftonline.com/b22a2822-5261-4ea7-b000-c17131389b33/v2.0\n- https://societe.okta.com",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'émetteur (issuer) est l'identifiant unique de l'OpenID Provider. Il est utilisé pour valider le champ *iss* du jeton d'identité.\n\nC'est une URL HTTPS sensible à la casse, sans fragment ni query string.",
     "format_fr": "md"
   },
   "/oidcadmin/authorization_endpoint": {
     "header_fr": "Authorization Endpoint",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint d'autorisation est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs pour y être authentifiés. C'est le point de départ de la cinématique *Authorization Code*.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/authorize\n- https://societe.okta.com/oauth2/v1/authorize",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint d'autorisation est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs pour y être authentifiés. C'est le point de départ de la cinématique *Authorization Code*.",
     "format_fr": "md"
   },
   "/oidcadmin/token_endpoint": {
     "header_fr": "Token Endpoint",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint de jeton est l'URL de l'API de l'IdP appelée directement par le client (back-channel) afin d'échanger le code d'autorisation contre des jetons (ID token, access token, refresh token).\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/token\n- https://societe.okta.com/oauth2/v1/token",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint de jeton est l'URL de l'API de l'IdP appelée directement par le client (back-channel) afin d'échanger le code d'autorisation contre des jetons (ID token, access token, refresh token).",
     "format_fr": "md"
   },
   "/oidcadmin/client_id": {
     "header_fr": "Client ID",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'IdP attribue un identifiant unique à chaque application qu'il doit authentifier. Cet identifiant, appelé *Client ID*, est transmis dans chaque requête vers l'IdP pour identifier l'application.\n\n- 04a6e8d3-1234-5678-abcd-9f0e1b2c3d4e (Azure AD)\n- 0oa1ab2cd3EF4GhIJ5d7 (Okta)",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'IdP attribue un identifiant unique à chaque application qu'il doit authentifier. Cet identifiant, appelé *Client ID*, est transmis dans chaque requête vers l'IdP pour identifier l'application.",
     "format_fr": "md"
   },
   "/oidcadmin/client_secret": {
     "header_fr": "Client Secret",
-    "content_fr": "🟢**OPTIONAL**🟢\n\nLorsque le client se connecte aux endpoints de l'IdP, il s'authentifie grâce au Client ID et à une méthode d'authentification. Le Client Secret est le mot de passe associé au Client ID.\n\nMéthodes supportées :\n- *client_secret_basic* : transmission du secret en en-tête HTTP (Base64)\n- *client_secret_post* : transmission dans le corps de la requête POST\n- *client_secret_jwt* : authentification par JWT signé en HMAC\n- *private_key_jwt* : authentification par JWT signé par une clé privée (pas de secret)",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nLorsque le client se connecte aux endpoints de l'IdP, il s'authentifie grâce au Client ID et à une méthode d'authentification. Le Client Secret est le mot de passe associé au Client ID.\n\nMéthodes supportées :\n\n- *client_secret_basic* : transmission du secret en en-tête HTTP (Base64)\n- *client_secret_post* : transmission dans le corps de la requête POST\n- *client_secret_jwt* : authentification par JWT signé en HMAC\n- *private_key_jwt* : authentification par JWT signé par une clé privée (pas de secret)",
     "format_fr": "md"
   },
   "/oidcadmin/scope": {
@@ -71,12 +76,12 @@
   },
   "/oidcadmin/signature_key_configuration": {
     "header_fr": "Signature Key Configuration",
-    "content_fr": "🔴**REQUIRED**🔴\n\nAprès obtention du jeton d'identité (ID token), le client doit vérifier sa signature pour garantir qu'il provient bien de l'IdP et n'a pas été altéré.\n\nDeux méthodes :\n- *JWKS URI* : le client récupère automatiquement les clés publiques à partir de l'URI publiée par l'IdP\n- *Local configuration* : la clé publique est fournie directement dans le formulaire (utile pour les tests)",
+    "content_fr": "🔴**REQUIRED**🔴\n\nAprès obtention du jeton d'identité (ID token), le client doit vérifier sa signature pour garantir qu'il provient bien de l'IdP et n'a pas été altéré.\n\nDeux méthodes :\n\n- *JWKS URI* : le client récupère automatiquement les clés publiques à partir de l'URI publiée par l'IdP\n- *Local configuration* : la clé publique est fournie directement dans le formulaire (utile pour les tests)",
     "format_fr": "md"
   },
   "/oidcadmin/jwks_uri": {
     "header_fr": "JWKS URI",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'URI JWKS (*JSON Web Key Set*) est publiée par l'IdP. Le client l'interroge pour récupérer en temps réel la liste des clés publiques permettant de vérifier la signature des jetons.\n\n- https://login.microsoftonline.com/b22a2822/discovery/v2.0/keys\n- https://societe.okta.com/oauth2/v1/keys",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URI JWKS (*JSON Web Key Set*) est publiée par l'IdP. Le client l'interroge pour récupérer en temps réel la liste des clés publiques permettant de vérifier la signature des jetons.",
     "format_fr": "md"
   },
   "/oidcadmin/signature_key": {
@@ -86,7 +91,7 @@
   },
   "/oidcadmin/post_logout_redirect_uri": {
     "header_fr": "Logout Endpoint",
-    "content_fr": "🟢**OPTIONAL**🟢\n\nL'endpoint de déconnexion permet de terminer la session auprès de l'IdP. Après déconnexion, l'utilisateur est redirigé vers l'URL de retour configurée (*post_logout_redirect_uri*).\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/logout\n- https://societe.okta.com/oauth2/v1/logout",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nL'endpoint de déconnexion permet de terminer la session auprès de l'IdP. Après déconnexion, l'utilisateur est redirigé vers l'URL de retour configurée (*post_logout_redirect_uri*).",
     "format_fr": "md"
   },
   "/oidcauth/token_endpoint_auth_method": {
@@ -96,12 +101,12 @@
   },
   "/oidcauth/authorization_endpoint": {
     "header_fr": "Authorization Endpoint",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint d'autorisation est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs. C'est le point de départ de la cinématique OpenID Connect.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/authorize\n- https://societe.okta.com/oauth2/v1/authorize",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint d'autorisation est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs. C'est le point de départ de la cinématique OpenID Connect.",
     "format_fr": "md"
   },
   "/oidcauth/token_endpoint": {
     "header_fr": "Token Endpoint",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint de jeton est l'URL de l'API de l'IdP appelée directement par le client (back-channel) afin d'échanger le code d'autorisation contre les jetons.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/token\n- https://societe.okta.com/oauth2/v1/token",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint de jeton est l'URL de l'API de l'IdP appelée directement par le client (back-channel) afin d'échanger le code d'autorisation contre les jetons.",
     "format_fr": "md"
   },
   "/oidcauth/signature_key_configuration": {
@@ -111,7 +116,7 @@
   },
   "/oidcauth/jwks_uri": {
     "header_fr": "JWKS URI",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'URI JWKS est publiée par l'IdP pour que le client récupère en temps réel la liste des clés publiques de vérification de signature.\n\n- https://login.microsoftonline.com/b22a2822/discovery/v2.0/keys\n- https://societe.okta.com/oauth2/v1/keys",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URI JWKS est publiée par l'IdP pour que le client récupère en temps réel la liste des clés publiques de vérification de signature.",
     "format_fr": "md"
   },
   "/oidcauth/signature_key": {
@@ -121,12 +126,12 @@
   },
   "/oidcauth/userinfo_endpoint": {
     "header_fr": "Userinfo Endpoint",
-    "content_fr": "🟢**OPTIONAL**🟢\n\nL'endpoint Userinfo est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir des informations complémentaires sur l'utilisateur authentifié. L'access token est présenté en Bearer token.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/userinfo\n- https://societe.okta.com/oauth2/v1/userinfo",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nL'endpoint Userinfo est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir des informations complémentaires sur l'utilisateur authentifié. L'access token est présenté en Bearer token.",
     "format_fr": "md"
   },
   "/oidcauth/issuer": {
     "header_fr": "Issuer",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'émetteur (issuer) est l'identifiant unique de l'OpenID Provider, utilisé pour valider le champ *iss* du jeton d'identité. C'est une URL HTTPS sensible à la casse.\n\n- https://login.microsoftonline.com/b22a2822/v2.0\n- https://societe.okta.com",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'émetteur (issuer) est l'identifiant unique de l'OpenID Provider, utilisé pour valider le champ *iss* du jeton d'identité. C'est une URL HTTPS sensible à la casse.",
     "format_fr": "md"
   },
   "/oidcauth/scope": {
@@ -151,7 +156,7 @@
   },
   "/oidcauth/redirect_uri": {
     "header_fr": "Redirect URI ",
-    "content_fr": "🔴**REQUIRED**🔴\n\nLe client doit indiquer l'URL qui accueillera l'utilisateur à son retour d'authentification par l'IdP. Cette URL doit être pré-enregistrée auprès de l'IdP.\n\n- https://monapp.example.com/callback",
+    "content_fr": "🔴**REQUIRED**🔴\n\nLe client doit indiquer l'URL qui accueillera l'utilisateur à son retour d'authentification par l'IdP. Cette URL doit être pré-enregistrée auprès de l'IdP.",
     "format_fr": "md"
   },
   "/oidcauth/state": {
@@ -301,12 +306,12 @@
   },
   "/oidcauth_callback/at_header": {
     "header_fr": "En-tête du jeton d'accès JWT",
-    "content_fr": "Lorsque l'access token est un JWT, son en-tête contient :\n- `typ` : type de jeton (`at+JWT` ou `JWT`)\n- `alg` : algorithme de signature\n- `kid` : identifiant de la clé de signature",
+    "content_fr": "Lorsque l'access token est un JWT, son en-tête contient :\n\n- `typ` : type de jeton (`at+JWT` ou `JWT`)\n- `alg` : algorithme de signature\n- `kid` : identifiant de la clé de signature",
     "format_fr": "md"
   },
   "/oidcauth_callback/at_claims_set": {
     "header_fr": "Claims du jeton d'accès",
-    "content_fr": "Contenu du jeton d'accès JWT. On y retrouve généralement :\n- `iss` : émetteur\n- `sub` : identifiant du sujet\n- `aud` : destinataire (resource server)\n- `iat` : date d'émission\n- `exp` : date d'expiration\n- `jti` : identifiant unique du jeton\n- `scope` : droits accordés",
+    "content_fr": "Contenu du jeton d'accès JWT. On y retrouve généralement :\n\n- `iss` : émetteur\n- `sub` : identifiant du sujet\n- `aud` : destinataire (resource server)\n- `iat` : date d'émission\n- `exp` : date d'expiration\n- `jti` : identifiant unique du jeton\n- `scope` : droits accordés",
     "format_fr": "md"
   },
   "/userinfo/userinfo_response": {
@@ -319,9 +324,14 @@
     "content_fr": "Nom arbitraire attribué à ce client OAuth 2 dans ClientFedID. Utilisé uniquement pour identifier la configuration dans l'interface, sans impact sur la cinématique OAuth 2.",
     "format_fr": "md"
   },
+  "/oauth2admin/app_name": {
+    "header_fr": "Name",
+    "content_fr": "Nom arbitraire attribué à ce client OAuth 2 dans ClientFedID. Utilisé uniquement pour identifier la configuration dans l'interface, sans impact sur la cinématique OAuth 2.",
+    "format_fr": "md"
+  },
   "/oauth2admin/redirect_uri": {
     "header_fr": "URI de redirection",
-    "content_fr": "🔴**REQUIRED**🔴\n\nURL vers laquelle l'utilisateur est redirigé après autorisation par le serveur d'autorisation. Elle doit être pré-enregistrée auprès du serveur d'autorisation.\n\n- https://monapp.example.com/callback",
+    "content_fr": "🔴**REQUIRED**🔴\n\nURL vers laquelle l'utilisateur est redirigé après autorisation par le serveur d'autorisation. Elle doit être pré-enregistrée auprès du serveur d'autorisation.",
     "format_fr": "md"
   },
   "/oauth2admin/endpoint_configuration": {
@@ -329,29 +339,24 @@
     "content_fr": "🔴**REQUIRED**🔴\n\nUn client OAuth 2 a besoin de connaître les points d'entrée du serveur d'autorisation.\n\nClientFedID propose trois méthodes :\n\n- *Authorization Server Metadata URI* : une URL unique suffit, le client récupère automatiquement tous les endpoints\n- *Local Configuration* : saisie individuelle de chaque URL (authorization endpoint, token endpoint, etc.)\n- *Same as OIDC* : On utilise la configuration OIDC pour renseigner automatiquement les endpoints",
     "format_fr": "md"
   },
-  "/oauth2admin/discovery_uri": {
-    "header_fr": "Discovery URI",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'URI de découverte donne la configuration complète du serveur d'autorisation (endpoints, algorithmes supportés, scopes…).\n\n- https://www.idp.com/.well-known/openid-configuration pour une configuration globale\n- https://tenant.idp.com/.well-known/openid-configuration pour des IdP en mode tenant",
-    "format_fr": "md"
-  },
   "/oauth2admin/issuer": {
     "header_fr": "Issuer",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'émetteur (issuer) est l'identifiant unique du serveur d'autorisation. Utilisé pour valider les jetons reçus.\n\n- https://login.microsoftonline.com/b22a2822/v2.0\n- https://societe.okta.com",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'émetteur (issuer) est l'identifiant unique du serveur d'autorisation. Utilisé pour valider les jetons reçus.",
     "format_fr": "md"
   },
   "/oauth2admin/authorization_endpoint": {
     "header_fr": "Authorization Endpoint",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint d'autorisation est l'URL vers laquelle l'utilisateur est redirigé pour accorder ses droits au client. C'est le point de départ de la cinématique OAuth 2 *Authorization Code*.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/authorize\n- https://societe.okta.com/oauth2/v1/authorize",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint d'autorisation est l'URL vers laquelle l'utilisateur est redirigé pour accorder ses droits au client. C'est le point de départ de la cinématique OAuth 2 *Authorization Code*.",
     "format_fr": "md"
   },
   "/oauth2admin/token_endpoint": {
     "header_fr": "Token Endpoint",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint de jeton est l'URL de l'API du serveur d'autorisation appelée en back-channel pour obtenir les jetons (access token, refresh token) en échange du code d'autorisation.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/token\n- https://societe.okta.com/oauth2/v1/token",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint de jeton est l'URL de l'API du serveur d'autorisation appelée en back-channel pour obtenir les jetons (access token, refresh token) en échange du code d'autorisation.",
     "format_fr": "md"
   },
   "/oauth2admin/end_session_endpoint": {
     "header_fr": "Logout Endpoint",
-    "content_fr": "🟢**OPTIONAL**🟢\n\nL'endpoint de déconnexion permet de terminer la session auprès du serveur d'autorisation.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/logout\n- https://societe.okta.com/oauth2/v1/logout",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nL'endpoint de déconnexion permet de terminer la session auprès du serveur d'autorisation.",
     "format_fr": "md"
   },
   "/oauth2admin/userinfo_endpoint": {
@@ -421,7 +426,7 @@
   },
   "/oauth2admin/introspection_endpoint": {
     "header_fr": "Introspection endpoint",
-    "content_fr": "🟢**OPTIONAL**🟢\n\nL'endpoint d'introspection (RFC 7662) permet à un client ou à un resource server de vérifier auprès du serveur d'autorisation la validité d'un token et d'obtenir ses métadonnées : statut actif, sujet, scope, expiration…\n\n- https://societe.okta.com/oauth2/v1/introspect",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nL'endpoint d'introspection (RFC 7662) permet à un client ou à un resource server de vérifier auprès du serveur d'autorisation la validité d'un token et d'obtenir ses métadonnées : statut actif, sujet, scope, expiration…",
     "format_fr": "md"
   },
   "/oauth2admin/response_mode": {
@@ -436,17 +441,12 @@
   },
   "/oauth2auth/redirect_uri": {
     "header_fr": "URI de redirection",
-    "content_fr": "🔴**REQUIRED**🔴\n\nURL vers laquelle l'utilisateur est redirigé après autorisation. Elle doit être pré-enregistrée auprès du serveur d'autorisation.\n\n- https://monapp.example.com/callback",
+    "content_fr": "🔴**REQUIRED**🔴\n\nURL vers laquelle l'utilisateur est redirigé après autorisation. Elle doit être pré-enregistrée auprès du serveur d'autorisation.",
     "format_fr": "md"
   },
   "/oauth2auth/endpoint_configuration": {
     "header_fr": "Endpoint Configuration",
     "content_fr": "🔴**REQUIRED**🔴\n\nUn client OAuth 2 a besoin de connaître les points d'entrée du serveur d'autorisation.\n\n- *Discovery URI* : URL unique de configuration, le client récupère tous les endpoints automatiquement\n- *Local Configuration* : saisie individuelle de chaque endpoint",
-    "format_fr": "md"
-  },
-  "/oauth2auth/discovery_uri": {
-    "header_fr": "Discovery URI",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'URI de découverte donne la configuration complète du serveur d'autorisation.\n\n- https://www.idp.com/.well-known/openid-configuration pour une configuration globale",
     "format_fr": "md"
   },
   "/oauth2auth/issuer": {
@@ -456,17 +456,17 @@
   },
   "/oauth2auth/authorization_endpoint": {
     "header_fr": "Authorization Endpoint",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint d'autorisation est l'URL vers laquelle l'utilisateur est redirigé pour accorder ses droits. C'est le point de départ de la cinématique OAuth 2 *Authorization Code*.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/authorize\n- https://societe.okta.com/oauth2/v1/authorize",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint d'autorisation est l'URL vers laquelle l'utilisateur est redirigé pour accorder ses droits. C'est le point de départ de la cinématique OAuth 2 *Authorization Code*.",
     "format_fr": "md"
   },
   "/oauth2auth/token_endpoint": {
     "header_fr": "Token Endpoint",
-    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint de jeton est l'URL appelée en back-channel pour obtenir les jetons en échange du code d'autorisation.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/token\n- https://societe.okta.com/oauth2/v1/token",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint de jeton est l'URL appelée en back-channel pour obtenir les jetons en échange du code d'autorisation.",
     "format_fr": "md"
   },
   "/oauth2auth/end_session_endpoint": {
     "header_fr": "Logout Endpoint",
-    "content_fr": "🟢**OPTIONAL**🟢\n\nL'endpoint de déconnexion permet de mettre fin à la session auprès du serveur d'autorisation.\n\n- https://login.microsoftonline.com/b22a2822/oauth2/v2.0/logout\n- https://societe.okta.com/oauth2/v1/logout",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nL'endpoint de déconnexion permet de mettre fin à la session auprès du serveur d'autorisation.",
     "format_fr": "md"
   },
   "/oauth2auth/userinfo_endpoint": {
@@ -509,7 +509,7 @@
     "content_fr": "🔴**REQUIRED**🔴\n\nLe paramètre *response_type* indique la cinématique souhaitée :\n\n- `code` : cinématique *Authorization Code* (recommandée)\n- `token` : cinématique *Implicite* (dépréciée)",
     "format_fr": "md"
   },
-  "/oauth2auth/introspection_uri": {
+  "/oauth2auth/introspection_endpoint": {
     "header_fr": "Introspection endpoint",
     "content_fr": "🟢**OPTIONAL**🟢\n\nL'endpoint d'introspection permet de vérifier auprès du serveur d'autorisation la validité d'un access token et d'obtenir ses métadonnées (statut, sujet, scope, expiration…).",
     "format_fr": "md"
@@ -545,13 +545,668 @@
     "format_fr": "md"
   },
   "/samladmin/name": {
-    "header_fr": "Name",
-    "content_fr": "Nom arbitraire attribué à ce client SAML dans ClientFedID. Utilisé uniquement pour identifier la configuration dans l'interface, sans impact sur la cinématique SAML.",
+    "header_fr": "SP Name",
+    "content_fr": "Nom arbitraire attribué au SP SAML dans ClientFedID. Utilisé uniquement pour identifier la configuration dans l'interface, sans impact sur la cinématique SAML.",
     "format_fr": "md"
   },
-    "/oauth2auth/hr_verify_certificates": {
+  "/samladmin/app_name": {
+    "header_fr": "SP Name",
+    "content_fr": "Nom arbitraire attribué à au SP SAML dans ClientFedID. Utilisé uniquement pour identifier la configuration dans l'interface, sans impact sur la cinématique SAML.",
+    "format_fr": "md"
+  },
+  "/oauth2auth/hr_verify_certificates": {
     "header_fr": "Verify certificates",
     "content_fr": "🟢**OPTIONAL**🟢\n\nIndique si le client doit vérifier la validité des certificats TLS lors des connexions aux endpoints du serveur d'autorisation.\n\nDésactiver cette vérification peut être utile en environnement de test mais est fortement déconseillé en production.",
+    "format_fr": "md"
+  },
+  "/oauth2admin/oauth_flow": {
+    "header_fr": "OAuth Flow",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit le type de flux OAuth 2.0 utilisé par le client :\n\n- *Authorization Code* : flux recommandé, le code d'autorisation est échangé en back-channel contre des jetons\n- *Client Credentials* : flux machine-to-machine, aucun utilisateur impliqué , le client s'authentifie directement\n- *Resource Owner Password Credentials* : flux déprécié, les identifiants utilisateur sont transmis directement au client (déconseillé)\n- *Implicit* : flux déprécié, les jetons sont retournés directement dans l'URL de redirection",
+    "format_fr": "md"
+  },
+  "/oauth2admin/pkce_method": {
+    "header_fr": "Méthode PKCE",
+    "content_fr": "🟢**OPTIONAL**🟢\n\n*Proof Key for Code Exchange* (PKCE, RFC 7636) est une extension du flux *Authorization Code* qui protège contre l'interception du code d'autorisation, notamment pour les clients publics.\n\nLe client génère un *code_verifier* aléatoire, en dérive un *code_challenge* et l'envoie avec la requête d'autorisation. Lors de l'échange du code, il transmet le *code_verifier* original que le serveur vérifie.\n\n- *S256* : le *code_challenge* est le hash SHA-256 du *code_verifier*, encodé en Base64 URL (recommandé)\n- *plain* : le *code_challenge* est identique au *code_verifier* (déconseillé)",
+    "format_fr": "md"
+  },
+  "/oauth2admin/metadata_uri": {
+    "header_fr": "Authorization Server Metadata URI",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URI de métadonnées (Authorization Server Metadata, RFC 8414) permet au client de récupérer automatiquement la configuration complète du serveur d'autorisation : endpoints, algorithmes supportés, scopes disponibles…\n\nElle est équivalente à la *Discovery URI* d'OpenID Connect.\n\n- https://www.idp.com/.well-known/oauth-authorization-server\n- https://www.idp.com/.well-known/openid-configuration (souvent compatible)",
+    "format_fr": "md"
+  },
+  "/oauth2admin/introspection_method": {
+    "header_fr": "Méthode d'introspection",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nDéfinit la méthode d'authentification utilisée par le *resource server* pour s'authentifier auprès de l'endpoint d'introspection (RFC 7662) :\n\n- *client_secret_basic* : identifiant et secret encodés en Base64 dans le header `Authorization`\n- *client_secret_post* : identifiant et secret transmis dans le corps de la requête POST\n- *bearer_token* : présentation d'un access token en Bearer token dans le header `Authorization`",
+    "format_fr": "md"
+  },
+  "/oauth2admin/revocation_endpoint": {
+    "header_fr": "Revocation Endpoint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nL'endpoint de révocation (RFC 7009) permet au client d'invalider un jeton auprès du serveur d'autorisation. Une fois révoqué, le jeton ne peut plus être utilisé.\n\nLa révocation peut porter sur un access token ou un refresh token. Si un refresh token est révoqué, le serveur d'autorisation peut également invalider les access tokens associés.",
+    "format_fr": "md"
+  },
+  "/oauth2api/introspection_http_method": {
+    "header_fr": "Méthode HTTP d'introspection",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit la méthode HTTP utilisée pour appeler l'endpoint d'introspection (RFC 7662). La spécification préconise :\n\n- *POST* : méthode recommandée, les paramètres sont transmis dans le corps de la requête au format `application/x-www-form-urlencoded`\n- *GET* : certains serveurs d'autorisation acceptent également les requêtes GET avec les paramètres en query string",
+    "format_fr": "md"
+  },
+  "/oauth2api/introspection_auth_method": {
+    "header_fr": "Méthode d'authentification pour l'introspection",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit comment le *resource server* s'authentifie auprès de l'endpoint d'introspection. Selon la RFC 7662, l'endpoint doit exiger une authentification :\n\n- *client_secret_basic* : identifiant et secret encodés en Base64 dans le header `Authorization: Basic`\n- *client_secret_post* : identifiant et secret transmis dans le corps de la requête POST\n- *bearer_token* : un access token dédié est présenté en `Authorization: Bearer`",
+    "format_fr": "md"
+  },
+  "/oauth2api/login": {
+    "header_fr": "Login (Resource Server Client ID)",
+    "content_fr": "🔴**REQUIRED**🔴\n\nIdentifiant du *resource server* utilisé pour s'authentifier auprès de l'endpoint d'introspection. Correspond au `client_id` attribué au resource server par le serveur d'autorisation.",
+    "format_fr": "md"
+  },
+  "/oauth2api/secret": {
+    "header_fr": "Secret (Resource Server Client Secret)",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nSecret du *resource server* utilisé conjointement au *login* pour s'authentifier auprès de l'endpoint d'introspection. Non requis si la méthode d'authentification choisie est *bearer_token*.",
+    "format_fr": "md"
+  },
+  "/oidcauth/userinfo_method": {
+    "header_fr": "Méthode d'appel Userinfo",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nDéfinit la méthode HTTP utilisée pour interroger l'endpoint Userinfo :\n\n- *GET* : l'access token est transmis dans le header `Authorization: Bearer <token>`\n- *POST* : l'access token est transmis dans le corps de la requête au format `application/x-www-form-urlencoded`\n\nLa méthode GET est la plus couramment utilisée.",
+    "format_fr": "md"
+  },
+  "/userinfo/userinfo_endpoint": {
+    "header_fr": "Userinfo Endpoint",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URL de l'endpoint Userinfo à appeler pour obtenir des informations complémentaires sur l'utilisateur authentifié. L'access token est présenté en Bearer token dans le header `Authorization`.",
+    "format_fr": "md"
+  },
+  "/userinfo/access_token": {
+    "header_fr": "Access Token",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'access token obtenu lors de la cinématique d'authentification OIDC. Il est présenté en *Bearer token* dans le header HTTP `Authorization` pour accéder à l'endpoint Userinfo.\n\nSa durée de vie est généralement courte. Si l'access token est expiré, l'appel à l'endpoint Userinfo échouera.",
+    "format_fr": "md"
+  },
+  "/userinfo/userinfo_method": {
+    "header_fr": "Méthode HTTP",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nDéfinit la méthode HTTP utilisée pour interroger l'endpoint Userinfo :\n\n- *GET* : méthode par défaut, l'access token est transmis dans le header `Authorization: Bearer <token>`\n- *POST* : l'access token est transmis dans le corps de la requête (`application/x-www-form-urlencoded`)",
+    "format_fr": "md"
+  },
+  "/userinfo/userinfo_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS de l'endpoint Userinfo",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS de l'endpoint Userinfo vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement lorsque le nom de domaine de l'IdP n'est pas encore résolvable publiquement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port` \n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/oidclogout/post_logout_redirect_uri": {
+    "header_fr": "Post Logout Redirect URI",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nURL vers laquelle l'utilisateur est redirigé par l'IdP après la déconnexion. Cette URL doit être pré-enregistrée auprès de l'IdP.\n\nSi ce paramètre est absent, l'IdP peut rediriger vers une page par défaut ou ne pas effectuer de redirection.",
+    "format_fr": "md"
+  },
+  "/oidclogout/end_session_endpoint": {
+    "header_fr": "End Session Endpoint",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URL de l'endpoint de déconnexion de l'IdP (End Session Endpoint, spécifié dans OpenID Connect Session Management). L'utilisateur y est redirigé afin de terminer sa session auprès de l'OpenID Provider.",
+    "format_fr": "md"
+  },
+  "/oidclogout/client_id": {
+    "header_fr": "Client ID",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nIdentifiant du client transmis à l'endpoint de déconnexion. Certains IdP l'exigent pour identifier l'application demandeuse et appliquer les politiques de déconnexion adéquates.",
+    "format_fr": "md"
+  },
+  "/oidclogout/end_session_endpoint_method": {
+    "header_fr": "Méthode HTTP de déconnexion",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nDéfinit la méthode HTTP utilisée pour appeler l'endpoint de déconnexion :\n\n- *GET* : redirection navigateur vers l'endpoint (méthode la plus courante)\n- *POST* : envoi des paramètres dans le corps d'une requête POST",
+    "format_fr": "md"
+  },
+  "/oidclogout/state": {
+    "header_fr": "State",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nValeur opaque générée par le client, transmise lors de la requête de déconnexion et retournée par l'IdP dans l'URL de redirection post-déconnexion. Permet au client de vérifier la cohérence de la réponse et de se protéger contre les attaques CSRF.",
+    "format_fr": "md"
+  },
+  "/oidclogout/id_token": {
+    "header_fr": "ID Token Hint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nJeton d'identité précédemment émis, transmis à l'endpoint de déconnexion en tant qu'indice (*hint*). L'IdP peut l'utiliser pour identifier l'utilisateur à déconnecter et appliquer la bonne politique de déconnexion, notamment en cas de sessions multiples.",
+    "format_fr": "md"
+  },
+  "/oidclogout/ui_locales": {
+    "header_fr": "UI Locales",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nIndique à l'IdP les langues préférées pour l'interface de déconnexion, sous forme d'une liste ordonnée de codes BCP47.\n\n- `fr` : français\n- `fr-FR en` : français (France) puis anglais en secours",
+    "format_fr": "md"
+  },
+  "/oidclogout/logout_hint": {
+    "header_fr": "Logout Hint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nIndice transmis à l'IdP pour identifier l'utilisateur à déconnecter (par exemple son adresse email ou son identifiant de session). Permet à l'IdP d'optimiser le processus de déconnexion sans avoir à analyser l'ID token.",
+    "format_fr": "md"
+  },
+  "/introspection/introspection_endpoint": {
+    "header_fr": "Introspection Endpoint",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URL de l'endpoint d'introspection (RFC 7662) auprès duquel le client ou le resource server vérifie la validité d'un jeton et récupère ses métadonnées (statut actif, sujet, scope, expiration…).",
+    "format_fr": "md"
+  },
+  "/introspection/access_token": {
+    "header_fr": "Jeton à introspecter",
+    "content_fr": "🔴**REQUIRED**🔴\n\nLe jeton OAuth 2.0 dont on souhaite vérifier la validité auprès du serveur d'autorisation. Il peut s'agir d'un access token ou d'un refresh token. Le serveur d'autorisation retourne un objet JSON indiquant notamment si le jeton est actif (`active: true/false`).",
+    "format_fr": "md"
+  },
+  "/introspection/introspection_api": {
+    "header_fr": "API d'introspection",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de sélectionner la variante d'API d'introspection à utiliser lorsque plusieurs sont disponibles. Certains serveurs d'autorisation proposent des endpoints d'introspection distincts selon le type de jeton ou le contexte d'utilisation.",
+    "format_fr": "md"
+  },
+  "/introspection/introspection_http_method": {
+    "header_fr": "Méthode HTTP d'introspection",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit la méthode HTTP utilisée pour appeler l'endpoint d'introspection (RFC 7662) :\n\n- *POST* : méthode recommandée par la RFC, les paramètres sont transmis dans le corps de la requête au format `application/x-www-form-urlencoded`\n- *GET* : certains serveurs acceptent les requêtes GET avec les paramètres en query string",
+    "format_fr": "md"
+  },
+  "/introspection/introspection_auth_method": {
+    "header_fr": "Méthode d'authentification",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit comment le client s'authentifie auprès de l'endpoint d'introspection. La RFC 7662 exige que l'endpoint soit protégé soit en authentification client [RFC6749] soit avec un jeton d'accès distinct [RFC6750]:\n\n- *client_secret_basic* : identifiant et secret encodés en Base64 dans le header `Authorization: Basic`\n- *client_secret_post* : identifiant et secret transmis dans le corps de la requête POST\n- *bearer_token* : un access token dédié est présenté dans le header `Authorization: Bearer`",
+    "format_fr": "md"
+  },
+  "/introspection/introspection_login": {
+    "header_fr": "Login d'introspection",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nIdentifiant (souvent Client ID mais peut être différent) utilisé pour s'authentifier auprès de l'endpoint d'introspection. Requis lorsque la méthode d'authentification est *client_secret_basic* ou *client_secret_post*.",
+    "format_fr": "md"
+  },
+  "/introspection/introspection_secret": {
+    "header_fr": "Secret d'introspection",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nSecret (souvent Client Secret mais peut être différent) associé au login d'introspection. Requis lorsque la méthode d'authentification est *client_secret_basic* ou *client_secret_post*.",
+    "format_fr": "md"
+  },
+  "/introspection/introspection_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS de l'endpoint d'introspection",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS de l'endpoint d'introspection vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port`\n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/revocation/revocation_endpoint": {
+    "header_fr": "Revocation Endpoint",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URL de l'endpoint de révocation (RFC 7009) auprès duquel le client invalide un jeton. Une fois révoqué, le jeton ne peut plus être utilisé.",
+    "format_fr": "md"
+  },
+  "/revocation/tokens": {
+    "header_fr": "Jetons disponibles",
+    "content_fr": "🔴**REQUIRED**🔴\n\nListe des jetons disponibles pouvant être soumis à la révocation. Il peut s'agir d'un access token ou d'un refresh token. Sélectionner le jeton à révoquer parmi ceux en cours de session.",
+    "format_fr": "md"
+  },
+  "/revocation/token_type_hint": {
+    "header_fr": "Token Type Hint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nIndice sur le type du jeton soumis à la révocation (RFC 7009). Permet au serveur d'optimiser la recherche du jeton :\n\n- `access_token` : le jeton est un access token\n- `refresh_token` : le jeton est un refresh token\n\nSi l'indice est incorrect, le serveur doit étendre sa recherche à tous les types supportés.",
+    "format_fr": "md"
+  },
+  "/revocation/revocation_auth_method": {
+    "header_fr": "Méthode d'authentification pour la révocation",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit comment le client s'authentifie auprès de l'endpoint de révocation (RFC 7009) :\n\n- *client_secret_basic* : identifiant et secret encodés en Base64 dans le header `Authorization: Basic`\n- *client_secret_post* : identifiant et secret transmis dans le corps de la requête POST\n- *none* : client public, aucune authentification requise",
+    "format_fr": "md"
+  },
+  "/revocation/client_id": {
+    "header_fr": "Client ID",
+    "content_fr": "🔴**REQUIRED**🔴\n\nIdentifiant unique du client transmis lors de la requête de révocation pour authentifier l'application auprès du serveur d'autorisation.",
+    "format_fr": "md"
+  },
+  "/revocation/client_secret": {
+    "header_fr": "Client Secret",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nSecret du client utilisé conjointement au *client_id* pour s'authentifier auprès de l'endpoint de révocation. Non requis pour les clients publics.",
+    "format_fr": "md"
+  },
+  "/revocation/revocation_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS de l'endpoint de révocation",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS de l'endpoint de révocation vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port` \n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/refresh/token_endpoint": {
+    "header_fr": "Token Endpoint",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URL de l'endpoint de jeton du serveur d'autorisation, appelé en back-channel pour renouveler les jetons à l'aide d'un refresh token (grant type `refresh_token`).",
+    "format_fr": "md"
+  },
+  "/refresh/refresh_tokens": {
+    "header_fr": "Refresh Tokens disponibles",
+    "content_fr": "🔴**REQUIRED**🔴\n\nListe des refresh tokens disponibles en session, parmi lesquels sélectionner celui à utiliser pour renouveler l'access token. Un refresh token est un jeton de longue durée de vie permettant d'obtenir un nouvel access token sans réauthentifier l'utilisateur.",
+    "format_fr": "md"
+  },
+  "/refresh/refresh_token": {
+    "header_fr": "Refresh Token",
+    "content_fr": "🔴**REQUIRED**🔴\n\nLe refresh token à présenter au token endpoint pour obtenir un nouvel access token (et éventuellement un nouveau refresh token). Ce jeton est obtenu lors de la cinématique d'authentification initiale si le scope `offline_access` a été demandé.",
+    "format_fr": "md"
+  },
+  "/refresh/grant_type": {
+    "header_fr": "Grant Type",
+    "content_fr": "🔴**REQUIRED**🔴\n\nLe type de grant utilisé pour le renouvellement de jeton. La valeur est fixe :\n\n- `refresh_token` : indique au serveur d'autorisation que la requête porte sur un renouvellement de jeton via un refresh token (RFC 6749, section 6)",
+    "format_fr": "md"
+  },
+  "/refresh/scope": {
+    "header_fr": "Scope",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de restreindre les droits du nouvel access token par rapport à ceux accordés initialement. Le scope demandé ne peut pas dépasser celui du refresh token d'origine. Si absent, le serveur d'autorisation accordera le même scope qu'initialement.",
+    "format_fr": "md"
+  },
+  "/refresh/client_ids": {
+    "header_fr": "Clients disponibles",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nListe des clients configurés dans ClientFedID, permettant de sélectionner celui dont les identifiants (*client_id* et *client_secret*) seront utilisés pour s'authentifier auprès du token endpoint lors du renouvellement.",
+    "format_fr": "md"
+  },
+  "/refresh/token_endpoint_auth_method": {
+    "header_fr": "Auth method",
+    "content_fr": "🔴**REQUIRED**🔴\n\nMéthode utilisée par le client pour s'authentifier auprès du token endpoint lors du renouvellement de jeton :\n\n- *client_secret_basic* : `client_id` et `client_secret` encodés en Base64 dans le header `Authorization`\n- *client_secret_post* : transmis dans le corps de la requête POST\n- *client_secret_jwt* : JWT signé avec le client_secret (HMAC)\n- *private_key_jwt* : JWT signé avec une clé privée\n- *none* : client public, pas d'authentification",
+    "format_fr": "md"
+  },
+  "/refresh/client_id": {
+    "header_fr": "Client ID",
+    "content_fr": "🔴**REQUIRED**🔴\n\nIdentifiant unique du client transmis lors de la requête de renouvellement de jeton, permettant au serveur d'autorisation d'identifier l'application.",
+    "format_fr": "md"
+  },
+  "/refresh/client_secret": {
+    "header_fr": "Client Secret",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nSecret du client utilisé pour s'authentifier auprès du token endpoint lors du renouvellement. Non requis pour les clients publics ou si la méthode *private_key_jwt* est utilisée.",
+    "format_fr": "md"
+  },
+  "/tokenexchange/token_endpoint": {
+    "header_fr": "Token Endpoint",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URL du token endpoint du serveur d'autorisation vers lequel est envoyée la requête d'échange de jeton (RFC 8693). La requête utilise le grant type `urn:ietf:params:oauth:grant-type:token-exchange` et s'effectue en back-channel (serveur à serveur).",
+    "format_fr": "md"
+  },
+  "/tokenexchange/grant_type": {
+    "header_fr": "Grant Type",
+    "content_fr": "🔴**REQUIRED**🔴\n\nLe type de grant utilisé pour l'échange de jeton. La valeur est fixe conformément à la RFC 8693 :\n\n- `urn:ietf:params:oauth:grant-type:token-exchange`\n\nCette valeur signale au serveur d'autorisation qu'il s'agit d'une opération d'échange de jeton (Security Token Service).",
+    "format_fr": "md"
+  },
+  "/tokenexchange/token_select": {
+    "header_fr": "Sélection du jeton source",
+    "content_fr": "🔴**REQUIRED**🔴\n\nPermet de sélectionner parmi les jetons disponibles en session celui qui sera utilisé comme *subject_token* dans la requête d'échange. Ce jeton représente l'identité de la partie pour le compte de laquelle le nouvel jeton est demandé.",
+    "format_fr": "md"
+  },
+  "/tokenexchange/subject_token": {
+    "header_fr": "Subject Token",
+    "content_fr": "🔴**REQUIRED**🔴\n\nJeton de sécurité représentant l'identité de la partie pour le compte de laquelle la requête est effectuée (RFC 8693). Il peut s'agir d'un access token, d'un ID token ou d'une assertion SAML. Le sujet de ce jeton sera généralement le sujet du jeton émis en réponse.",
+    "format_fr": "md"
+  },
+  "/tokenexchange/subject_token_type": {
+    "header_fr": "Subject Token Type",
+    "content_fr": "🔴**REQUIRED**🔴\n\nIdentifiant du type du *subject_token* (RFC 8693). Valeurs standardisées :\n\n- `urn:ietf:params:oauth:token-type:access_token` : access token OAuth 2.0\n- `urn:ietf:params:oauth:token-type:refresh_token` : refresh token OAuth 2.0\n- `urn:ietf:params:oauth:token-type:id_token` : ID token OpenID Connect\n- `urn:ietf:params:oauth:token-type:saml1` : assertion SAML 1.1\n- `urn:ietf:params:oauth:token-type:saml2` : assertion SAML 2.0\n- `urn:ietf:params:oauth:token-type:jwt` : JWT générique",
+    "format_fr": "md"
+  },
+  "/tokenexchange/requested_token_type": {
+    "header_fr": "Requested Token Type",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nIdentifiant du type de jeton souhaité en retour de l'échange (RFC 8693). Si absent, le type est laissé à la discrétion du serveur d'autorisation.\n\nValeurs standardisées :\n\n- `urn:ietf:params:oauth:token-type:access_token`\n- `urn:ietf:params:oauth:token-type:refresh_token`\n- `urn:ietf:params:oauth:token-type:id_token`\n- `urn:ietf:params:oauth:token-type:saml2`\n- `urn:ietf:params:oauth:token-type:jwt`",
+    "format_fr": "md"
+  },
+  "/tokenexchange/resource": {
+    "header_fr": "Resource",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nURI absolue indiquant le service ou la ressource cible pour lequel le jeton échangé sera utilisé (RFC 8693, RFC 8707). Permet au serveur d'autorisation d'appliquer une politique adaptée à la cible et de personnaliser le contenu ou le type du jeton émis.",
+    "format_fr": "md"
+  },
+  "/tokenexchange/audience": {
+    "header_fr": "Audience",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nNom logique du service cible pour lequel le jeton échangé sera utilisé (RFC 8693). Remplit un rôle similaire au paramètre *resource* mais sous forme d'identifiant logique (ex: client_id OAuth 2.0, entity ID SAML, issuer OIDC) plutôt qu'une URI de ressource.",
+    "format_fr": "md"
+  },
+  "/tokenexchange/scope": {
+    "header_fr": "Scope",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nListe de scopes demandés pour le jeton échangé, précisant les droits souhaités dans le contexte du service cible. Le scope accordé reste à la discrétion du serveur d'autorisation et ne peut pas dépasser les droits autorisés pour le *subject_token*.",
+    "format_fr": "md"
+  },
+  "/tokenexchange/actor_token": {
+    "header_fr": "Actor Token",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nJeton représentant l'identité de la partie agissante (*acting party*), utilisé dans les scénarios de délégation (RFC 8693). Typiquement, il s'agit du service intermédiaire autorisé à agir pour le compte du sujet identifié par le *subject_token*.\n\nLorsqu'un *actor_token* est fourni, le paramètre *actor_token_type* est obligatoire.",
+    "format_fr": "md"
+  },
+  "/tokenexchange/actor_token_type": {
+    "header_fr": "Actor Token Type",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nIdentifiant du type du *actor_token* (RFC 8693). Obligatoire si et seulement si le paramètre *actor_token* est présent dans la requête. Les valeurs possibles sont les mêmes que pour *subject_token_type* :\n\n- `urn:ietf:params:oauth:token-type:access_token`\n- `urn:ietf:params:oauth:token-type:jwt`\n- etc.",
+    "format_fr": "md"
+  },
+  "/tokenexchange/auth_method": {
+    "header_fr": "Méthode d'authentification",
+    "content_fr": "🔴**REQUIRED**🔴\n\nMéthode utilisée par le client pour s'authentifier auprès du token endpoint lors de la requête d'échange de jeton :\n\n- *client_secret_basic* : `client_id` et `client_secret` encodés en Base64 dans le header `Authorization`\n- *client_secret_post* : transmis dans le corps de la requête POST\n- *client_secret_jwt* : JWT signé avec le client_secret (HMAC)\n- *private_key_jwt* : JWT signé avec une clé privée\n- *none* : client public, pas d'authentification",
+    "format_fr": "md"
+  },
+  "/tokenexchange/client_id": {
+    "header_fr": "Client ID",
+    "content_fr": "🔴**REQUIRED**🔴\n\nIdentifiant unique du client transmis lors de la requête d'échange de jeton, permettant au serveur d'autorisation d'identifier et d'authentifier l'application cliente.",
+    "format_fr": "md"
+  },
+  "/tokenexchange/client_secret": {
+    "header_fr": "Client Secret",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nSecret du client utilisé pour s'authentifier auprès du token endpoint lors de l'échange de jeton. Non requis pour les clients publics ou si la méthode *private_key_jwt* est utilisée.",
+    "format_fr": "md"
+  },
+  "/samlauth/idp_entity_id": {
+    "header_fr": "IDP Entity ID",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'identifiant unique (*Entity ID*) de l'Identity Provider SAML. C'est une URI (souvent une URL HTTPS) qui identifie l'IdP de manière non ambiguë dans les métadonnées et dans les assertions SAML. Le SP vérifie que l'émetteur (*Issuer*) des assertions reçues correspond à cet identifiant.",
+    "format_fr": "md"
+  },
+  "/samlauth/idp_sso_url": {
+    "header_fr": "IDP SSO URL",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URL du service SSO de l'IdP (*Single Sign-On Service*) vers laquelle le SP redirige l'utilisateur pour initier l'authentification SAML. Correspond au *SingleSignOnService* dans les métadonnées de l'IdP.",
+    "format_fr": "md"
+  },
+  "/samlauth/idp_certificate": {
+    "header_fr": "Certificat de l'IDP",
+    "content_fr": "🔴**REQUIRED**🔴\n\nCertificat X.509 public de l'IdP, utilisé par le SP pour vérifier la signature des assertions SAML et des réponses reçues. Il est généralement disponible dans les métadonnées de l'IdP.\n\nFormat attendu : certificat PEM (Base64), sans les en-têtes `-----BEGIN CERTIFICATE-----` / `-----END CERTIFICATE-----`.",
+    "format_fr": "md"
+  },
+  "/samlauth/sp_entity_id": {
+    "header_fr": "SP Entity ID",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'identifiant unique (*Entity ID*) du Service Provider SAML. C'est une URI qui identifie le SP auprès de l'IdP. Elle doit correspondre exactement à la valeur enregistrée dans la configuration de l'IdP.",
+    "format_fr": "md"
+  },
+  "/samlauth/sp_acs_url": {
+    "header_fr": "SP ACS URL",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URL du service de traitement des assertions du SP (*Assertion Consumer Service*). C'est l'endpoint vers lequel l'IdP envoie la réponse SAML (assertion) après authentification de l'utilisateur. Elle doit être enregistrée auprès de l'IdP.",
+    "format_fr": "md"
+  },
+  "/samlauth/nameid_policy": {
+    "header_fr": "NameID Policy",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nDéfinit le format d'identifiant utilisateur (*NameID*) demandé au SP dans la requête d'authentification SAML (*AuthnRequest*). L'IdP tente de respecter ce format.\n\nFormats courants :\n\n- `urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress` : adresse email\n- `urn:oasis:names:tc:SAML:2.0:nameid-format:transient` : identifiant temporaire, non persistant\n- `urn:oasis:names:tc:SAML:2.0:nameid-format:persistent` : identifiant stable et opaque\n- `urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified` : format laissé à la discrétion de l'IdP",
+    "format_fr": "md"
+  },
+  "/samlauth/authentication_binding": {
+    "header_fr": "Authentication Binding",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit le binding SAML utilisé pour envoyer la requête d'authentification (*AuthnRequest*) à l'IdP :\n\n- *HTTP-Redirect* : la requête est encodée en Base64 et transmise dans l'URL de redirection (GET). C'est le binding le plus courant.\n- *HTTP-POST* : la requête est transmise dans le corps d'un formulaire HTML soumis par POST.",
+    "format_fr": "md"
+  },
+  "/samlauth/sign_auth_request": {
+    "header_fr": "Signer la requête d'authentification",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nIndique si le SP doit signer la requête d'authentification SAML (*AuthnRequest*) avec sa clé privée. La signature permet à l'IdP de vérifier l'authenticité et l'intégrité de la requête.\n\nCertains IdP exigent des requêtes signées. La clé privée et le certificat du SP doivent être renseignés si cette option est activée.",
+    "format_fr": "md"
+  },
+  "/samlauth/sp_private_key": {
+    "header_fr": "Clé privée du SP",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nClé privée du Service Provider, utilisée pour signer les requêtes SAML (*AuthnRequest*) si la signature est activée. Elle peut également être utilisée pour déchiffrer les assertions chiffrées reçues de l'IdP.\n\nFormat attendu : clé PEM (RSA ou EC), sans les en-têtes `-----BEGIN PRIVATE KEY-----` / `-----END PRIVATE KEY-----`.",
+    "format_fr": "md"
+  },
+  "/samlauth/sp_certificate": {
+    "header_fr": "Certificat du SP",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nCertificat X.509 public du Service Provider, communiqué à l'IdP pour qu'il puisse vérifier la signature des requêtes SAML ou chiffrer les assertions à destination du SP.\n\nFormat attendu : certificat PEM (Base64), sans les en-têtes `-----BEGIN CERTIFICATE-----` / `-----END CERTIFICATE-----`.",
+    "format_fr": "md"
+  },
+  "/samlauth/relay_state": {
+    "header_fr": "Relay State",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nValeur opaque transmise par le SP à l'IdP dans la requête d'authentification et retournée inchangée dans la réponse. Permet au SP de maintenir un contexte entre la requête et la réponse (ex: URL de destination après connexion). La valeur ne doit pas dépasser 80 octets selon la spécification SAML.",
+    "format_fr": "md"
+  },
+  "/samlauth/authentication_reques": {
+    "header_fr": "Authentication Request",
+    "content_fr": "La requête d'authentification SAML (*AuthnRequest*) générée par le SP et envoyée à l'IdP. Elle est encodée en Base64 (et compressée en Deflate pour le binding HTTP-Redirect). Ce champ affiche la requête telle qu'elle est transmise à l'IdP, permettant de vérifier son contenu et sa signature.",
+    "format_fr": "md"
+  },
+  "/samllogout/idp_slo_url": {
+    "header_fr": "IDP SLO URL",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URL du service de déconnexion unique de l'IdP (*Single Logout Service*). C'est l'endpoint vers lequel le SP envoie la requête de déconnexion SAML pour terminer la session auprès de l'IdP.",
+    "format_fr": "md"
+  },
+  "/samllogout/sp_entity_id": {
+    "header_fr": "SP Entity ID",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'identifiant unique du Service Provider, inclus dans la requête de déconnexion SAML pour que l'IdP identifie le SP émetteur. Doit correspondre à la valeur enregistrée auprès de l'IdP.",
+    "format_fr": "md"
+  },
+  "/samllogout/name_id": {
+    "header_fr": "NameID",
+    "content_fr": "🔴**REQUIRED**🔴\n\nIdentifiant de l'utilisateur à déconnecter, tel que retourné par l'IdP dans l'assertion SAML lors de l'authentification. Il est inclus dans la requête de déconnexion SAML (*LogoutRequest*) pour que l'IdP puisse identifier la session à terminer.",
+    "format_fr": "md"
+  },
+  "/samllogout/name_id_format": {
+    "header_fr": "NameID Format",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nFormat du *NameID* de l'utilisateur, transmis dans la requête de déconnexion pour aider l'IdP à interpréter la valeur du *NameID* :\n\n- `urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress`\n- `urn:oasis:names:tc:SAML:2.0:nameid-format:transient`\n- `urn:oasis:names:tc:SAML:2.0:nameid-format:persistent`\n- `urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified`",
+    "format_fr": "md"
+  },
+  "/samllogout/session_index": {
+    "header_fr": "Session Index",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nIdentifiant de la session SAML à terminer, tel que fourni par l'IdP dans l'assertion d'authentification (attribut `SessionIndex` de l'élément `AuthnStatement`). Permet à l'IdP d'identifier précisément la session concernée, notamment en cas de sessions multiples.",
+    "format_fr": "md"
+  },
+  "/samllogout/logout_binding": {
+    "header_fr": "Logout Binding",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit le binding SAML utilisé pour envoyer la requête de déconnexion (*LogoutRequest*) à l'IdP :\n\n- *HTTP-Redirect* : la requête est encodée en Base64 et transmise dans l'URL de redirection (GET)\n- *HTTP-POST* : la requête est transmise dans le corps d'un formulaire HTML soumis par POST",
+    "format_fr": "md"
+  },
+  "/samllogout/sign_logout_request": {
+    "header_fr": "Signer la requête de déconnexion",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nIndique si le SP doit signer la requête de déconnexion SAML (*LogoutRequest*) avec sa clé privée. La signature permet à l'IdP de vérifier l'authenticité de la requête.\n\nCertains IdP l'exigent. La clé privée et le certificat du SP doivent être renseignés si cette option est activée.",
+    "format_fr": "md"
+  },
+  "/samllogout/sp_private_key": {
+    "header_fr": "Clé privée du SP",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nClé privée du Service Provider utilisée pour signer la requête de déconnexion SAML si la signature est activée.\n\nFormat attendu : clé PEM (RSA ou EC), sans les en-têtes `-----BEGIN PRIVATE KEY-----` / `-----END PRIVATE KEY-----`.",
+    "format_fr": "md"
+  },
+  "/samllogout/sp_certificate": {
+    "header_fr": "Certificat du SP",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nCertificat X.509 public du Service Provider, communiqué à l'IdP pour qu'il puisse vérifier la signature de la requête de déconnexion.\n\nFormat attendu : certificat PEM (Base64), sans les en-têtes `-----BEGIN CERTIFICATE-----` / `-----END CERTIFICATE-----`.",
+    "format_fr": "md"
+  },
+  "/samllogout/relay_state": {
+    "header_fr": "Relay State",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nValeur opaque transmise par le SP dans la requête de déconnexion et retournée inchangée par l'IdP. Permet au SP de maintenir un contexte lors du flux de déconnexion (ex: URL de redirection finale).",
+    "format_fr": "md"
+  },
+  "/samllogout/logout_request": {
+    "header_fr": "Logout Request",
+    "content_fr": "La requête de déconnexion SAML (*LogoutRequest*) générée par le SP et transmise à l'IdP. Elle est encodée en Base64 (et compressée en Deflate pour le binding HTTP-Redirect). Ce champ affiche la requête telle qu'elle est transmise, permettant de vérifier son contenu et sa signature.",
+    "format_fr": "md"
+  },
+  "/samltoat/grant_type": {
+    "header_fr": "Grant Type",
+    "content_fr": "🔴**REQUIRED**🔴\n\nLe type de grant utilisé pour échanger une assertion SAML contre un access token OAuth 2.0 (SAML Bearer Assertion, RFC 7522). La valeur est fixe :\n\n- `urn:ietf:params:oauth:grant-type:saml2-bearer`\n\nCe grant type permet à un client disposant d'une assertion SAML 2.0 d'obtenir un access token sans réauthentification de l'utilisateur.",
+    "format_fr": "md"
+  },
+  "/samltoat/known_assertions": {
+    "header_fr": "Assertions SAML disponibles",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nListe des assertions SAML disponibles en session, parmi lesquelles sélectionner celle à utiliser pour l'échange contre un access token OAuth 2.0.",
+    "format_fr": "md"
+  },
+  "/samltoat/assertion": {
+    "header_fr": "Assertion SAML",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'assertion SAML 2.0 à présenter au token endpoint pour obtenir un access token OAuth 2.0 (RFC 7522). Elle doit être encodée en Base64 URL. L'assertion doit être valide, non expirée, et signée par l'IdP.",
+    "format_fr": "md"
+  },
+  "/samltoat/app_id": {
+    "header_fr": "Application ID",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nIdentifiant de l'application cible pour laquelle l'access token est demandé. Utilisé par certains serveurs d'autorisation pour déterminer les droits à accorder au jeton émis en échange de l'assertion SAML.",
+    "format_fr": "md"
+  },
+  "/samltoat/token_endpoint": {
+    "header_fr": "Token Endpoint",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URL du token endpoint du serveur d'autorisation vers lequel est envoyée la requête d'échange de l'assertion SAML contre un access token OAuth 2.0 (RFC 7522). La communication s'effectue en back-channel.",
+    "format_fr": "md"
+  },
+  "/samltoat/client_id": {
+    "header_fr": "Client ID",
+    "content_fr": "🔴**REQUIRED**🔴\n\nIdentifiant unique du client transmis lors de la requête d'échange SAML-to-AccessToken, permettant au serveur d'autorisation d'identifier l'application cliente.",
+    "format_fr": "md"
+  },
+  "/samltoat/client_secret": {
+    "header_fr": "Client Secret",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nSecret du client utilisé pour s'authentifier auprès du token endpoint lors de l'échange SAML-to-AccessToken. Non requis pour les clients publics.",
+    "format_fr": "md"
+  },
+  "/samltoat/scope": {
+    "header_fr": "Scope",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nListe des scopes demandés pour l'access token obtenu en échange de l'assertion SAML. Le scope accordé reste à la discrétion du serveur d'autorisation et est conditionné par les droits associés à l'assertion SAML présentée.",
+    "format_fr": "md"
+  },
+  "/samltoat/auth_method": {
+    "header_fr": "Méthode d'authentification",
+    "content_fr": "🔴**REQUIRED**🔴\n\nMéthode utilisée par le client pour s'authentifier auprès du token endpoint lors de l'échange SAML-to-AccessToken :\n\n- *client_secret_basic* : `client_id` et `client_secret` encodés en Base64 dans le header `Authorization`\n- *client_secret_post* : transmis dans le corps de la requête POST\n- *none* : client public, pas d'authentification",
+    "format_fr": "md"
+  },
+  "/samladmin/sp_entity_id": {
+    "header_fr": "SP Entity ID",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'identifiant unique (*Entity ID*) du Service Provider SAML dans ClientFedID. C'est une URI qui identifie le SP auprès de l'IdP. Elle doit être enregistrée dans la configuration de l'IdP et reportée dans les métadonnées du SP.",
+    "format_fr": "md"
+  },
+  "/samladmin/sp_acs_url": {
+    "header_fr": "SP ACS URL",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URL de l'*Assertion Consumer Service* du SP. C'est l'endpoint vers lequel l'IdP envoie la réponse SAML après authentification. Elle doit être enregistrée auprès de l'IdP.\n\nLa valeur proposée par défaut est déduite par ClientFedID et doit être reportée dans la configuration de l'IdP.",
+    "format_fr": "md"
+  },
+  "/samladmin/sp_slo_url": {
+    "header_fr": "SP SLO URL",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nL'URL du *Single Logout Service* du SP. C'est l'endpoint vers lequel l'IdP envoie la requête ou la réponse de déconnexion SAML. Elle doit être enregistrée auprès de l'IdP si la déconnexion SAML initiée par l'IdP est souhaitée.",
+    "format_fr": "md"
+  },
+  "/samladmin/sp_key_configuration": {
+    "header_fr": "Configuration des clés du SP",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nDéfinit la méthode de configuration des clés cryptographiques du Service Provider :\n\n- *Aucune* : le SP n'utilise pas de clé (pas de signature ni de chiffrement)\n- *Clé locale* : la clé privée et le certificat sont saisis directement dans le formulaire\n- *Keystore* : les clés sont issues d'un keystore (fichier PKCS#12 ou JKS)",
+    "format_fr": "md"
+  },
+  "/samladmin/sp_private_key": {
+    "header_fr": "Clé privée du SP",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nClé privée du Service Provider utilisée pour signer les requêtes SAML (*AuthnRequest*, *LogoutRequest*) et/ou déchiffrer les assertions chiffrées reçues de l'IdP.\n\nFormat attendu : clé PEM (RSA ou EC), sans les en-têtes `-----BEGIN PRIVATE KEY-----` / `-----END PRIVATE KEY-----`.",
+    "format_fr": "md"
+  },
+  "/samladmin/sp_certificate": {
+    "header_fr": "Certificat du SP",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nCertificat X.509 public du Service Provider, à communiquer à l'IdP pour qu'il puisse vérifier la signature des requêtes SAML ou chiffrer les assertions à destination du SP. Il doit être inclus dans les métadonnées du SP.\n\nFormat attendu : certificat PEM (Base64), sans les en-têtes `-----BEGIN CERTIFICATE-----` / `-----END CERTIFICATE-----`.",
+    "format_fr": "md"
+  },
+  "/samladmin/nameid_policy": {
+    "header_fr": "NameID Policy",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nDéfinit le format de *NameID* demandé au SP dans les requêtes d'authentification SAML. Formats courants :\n\n- `urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress` : adresse email\n- `urn:oasis:names:tc:SAML:2.0:nameid-format:transient` : identifiant temporaire\n- `urn:oasis:names:tc:SAML:2.0:nameid-format:persistent` : identifiant stable et opaque\n- `urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified` : format laissé à l'IdP",
+    "format_fr": "md"
+  },
+  "/samladmin/authentication_binding": {
+    "header_fr": "Authentication Binding",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit le binding SAML utilisé par défaut pour envoyer les requêtes d'authentification (*AuthnRequest*) à l'IdP :\n\n- *HTTP-Redirect* : la requête est encodée en Base64 et transmise dans l'URL de redirection (recommandé)\n- *HTTP-POST* : la requête est transmise dans le corps d'un formulaire HTML",
+    "format_fr": "md"
+  },
+  "/samladmin/sign_auth_request": {
+    "header_fr": "Signer les requêtes d'authentification",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nIndique si le SP doit signer les requêtes d'authentification SAML (*AuthnRequest*) avec sa clé privée. La signature garantit l'authenticité et l'intégrité de la requête.\n\nCertains IdP exigent des requêtes signées. La clé privée et le certificat du SP doivent être configurés si cette option est activée.",
+    "format_fr": "md"
+  },
+  "/samladmin/logout_binding": {
+    "header_fr": "Logout Binding",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nDéfinit le binding SAML utilisé par défaut pour envoyer les requêtes de déconnexion (*LogoutRequest*) à l'IdP :\n\n- *HTTP-Redirect* : la requête est encodée en Base64 et transmise dans l'URL de redirection\n- *HTTP-POST* : la requête est transmise dans le corps d'un formulaire HTML",
+    "format_fr": "md"
+  },
+  "/samladmin/sign_logout_request": {
+    "header_fr": "Signer les requêtes de déconnexion",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nIndique si le SP doit signer les requêtes de déconnexion SAML (*LogoutRequest*) avec sa clé privée. La signature garantit l'authenticité de la requête auprès de l'IdP.\n\nCertains IdP l'exigent. La clé privée et le certificat du SP doivent être configurés si cette option est activée.",
+    "format_fr": "md"
+  },
+  "/idpadmin/name": {
+    "header_fr": "IDP Name",
+    "content_fr": "Nom arbitraire attribué à un IDP dans ClientFedID. Utilisé uniquement pour identifier la configuration dans l'interface.",
+    "format_fr": "md"
+  },
+  "/samladmin/idp_name": {
+    "header_fr": "IDP Name",
+    "format_fr": "md",
+    "content_fr": "Nom arbitraire attribué à un IDP dans ClientFedID. Utilisé uniquement pour identifier la configuration dans l'interface. Change le nom de l'IDP si le client SAML est déjà configuré"
+  },
+  "/oidcadmin/idp_name": {
+    "header_fr": "IDP Name",
+    "content_fr": "Nom arbitraire attribué à un IDP dans ClientFedID. Utilisé uniquement pour identifier la configuration dans l'interface. Change le nom de l'IDP si le client OIDC est déjà configuré",
+    "format_fr": "md"
+  },
+  "/oauth2admin/idp_name": {
+    "header_fr": "IDP Name",
+    "content_fr": "Nom arbitraire attribué à un IDP dans ClientFedID. Utilisé uniquement pour identifier la configuration dans l'interface. Change le nom de l'IDP si le client OAuth2 est déjà configuré",
+    "format_fr": "md"
+  },
+  "/casadmin/idp_name": {
+    "header_fr": "IDP Name",
+    "content_fr": "Nom arbitraire attribué à un IDP dans ClientFedID. Utilisé uniquement pour identifier la configuration dans l'interface. Change le nom de l'IDP si le client CAS est déjà configuré",
+    "format_fr": "md"
+  },
+  "/oauth2auth/introspection_http_method": {
+    "header_fr": "Méthode HTTP d'introspection",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit la méthode HTTP utilisée pour appeler l'endpoint d'introspection (RFC 7662) :\n\n- *POST* : méthode recommandée par la RFC, les paramètres sont transmis dans le corps de la requête au format `application/x-www-form-urlencoded`\n- *GET* : certains serveurs d'autorisation acceptent les requêtes GET avec les paramètres en query string",
+    "format_fr": "md"
+  },
+  "/oauth2auth/introspection_auth_method": {
+    "header_fr": "Méthode d'authentification pour l'introspection",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit comment le client s'authentifie auprès de l'endpoint d'introspection. La RFC 7662 exige que l'endpoint soit protégé :\n\n- *client_secret_basic* : identifiant et secret encodés en Base64 dans le header `Authorization: Basic`\n- *client_secret_post* : identifiant et secret transmis dans le corps de la requête POST\n- *bearer_token* : un access token dédié est présenté dans le header `Authorization: Bearer`",
+    "format_fr": "md"
+  },
+  "/oauth2auth/oauth_flow": {
+    "header_fr": "OAuth Flow",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit le type de flux OAuth 2.0 utilisé lors de cette cinématique d'authentification :\n\n- *Authorization Code* : flux recommandé, le code d'autorisation est échangé en back-channel contre des jetons\n- *Client Credentials* : flux machine-to-machine, aucun utilisateur impliqué, le client s'authentifie directement\n- *Resource Owner Password Credentials* : flux déprécié, les identifiants utilisateur sont transmis directement au client (déconseillé)\n- *Implicit* : flux déprécié, les jetons sont retournés directement dans l'URL de redirection",
+    "format_fr": "md"
+  },
+  "/oauth2auth/code_challenge_method": {
+    "header_fr": "Méthode PKCE",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nRequis si OAuthFlow est Authorization Code with PKCE\n\n*Proof Key for Code Exchange* (PKCE, RFC 7636) protège l'échange du code d'autorisation contre son interception. Méthodes supportées :\n\n- *S256* : le *code_challenge* est le hash SHA-256 du *code_verifier*, encodé en Base64 URL (recommandé)\n- *plain* : le *code_challenge* est identique au *code_verifier* (déconseillé)",
+    "format_fr": "md"
+  },
+  "/oauth2auth/code_challenge": {
+    "header_fr": "Code Challenge",
+    "content_fr": "Valeur dérivée du *code_verifier* selon la méthode PKCE sélectionnée, transmise à l'endpoint d'autorisation dans la requête initiale. Le serveur d'autorisation la conserve pour vérifier ultérieurement le *code_verifier* présenté lors de l'échange du code.\n\n- Méthode *S256* : `BASE64URL(SHA256(code_verifier))`\n- Méthode *plain* : identique au *code_verifier*",
+    "format_fr": "md"
+  },
+  "/oauth2auth/code_verifier": {
+    "header_fr": "Code Verifier",
+    "content_fr": "Valeur aléatoire à haute entropie générée par le client au début de la cinématique PKCE (RFC 7636). Elle est conservée par le client et présentée lors de l'échange du code d'autorisation contre les jetons, permettant au serveur de vérifier qu'il s'agit bien du client qui a initié la requête.\n\nLongueur recommandée : entre 43 et 128 caractères, composé de caractères non réservés (`[A-Z] [a-z] [0-9] - . _ ~`).",
+    "format_fr": "md"
+  },
+  "/oauth2auth/token_endpoint_auth_method": {
+    "header_fr": "Auth method",
+    "content_fr": "🔴**REQUIRED**🔴\n\nMéthode utilisée par le client pour s'authentifier auprès du token endpoint lors de l'échange du code d'autorisation contre les jetons :\n\n- *client_secret_basic* : `client_id` et `client_secret` encodés en Base64 dans le header `Authorization`\n- *client_secret_post* : transmis dans le corps de la requête POST\n- *client_secret_jwt* : JWT signé avec le client_secret (HMAC)\n- *private_key_jwt* : JWT signé avec une clé privée RSA ou EC\n- *none* : client public, pas d'authentification",
+    "format_fr": "md"
+  },
+  "/oidcadmin/userinfo_method": {
+    "header_fr": "Méthode d'appel Userinfo",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nDéfinit la méthode HTTP utilisée pour interroger l'endpoint Userinfo après obtention des jetons :\n\n- *GET* : l'access token est transmis dans le header `Authorization: Bearer <token>` (méthode la plus courante)\n- *POST* : l'access token est transmis dans le corps de la requête au format `application/x-www-form-urlencoded`",
+    "format_fr": "md"
+  },
+  "/oidcadmin/end_session_endpoint_method": {
+    "header_fr": "Méthode HTTP de déconnexion",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nDéfinit la méthode HTTP utilisée par défaut pour appeler l'endpoint de déconnexion (*End Session Endpoint*) :\n\n- *GET* : redirection navigateur vers l'endpoint avec les paramètres en query string (méthode la plus courante)\n- *POST* : envoi des paramètres dans le corps d'une requête POST",
+    "format_fr": "md"
+  },
+  "/samladmin/upload_idp_metadata": {
+    "header_fr": "Importer les métadonnées de l'IDP",
+    "content_fr": "Permet d'importer automatiquement la configuration de l'IdP à partir de son fichier de métadonnées SAML (XML), aussi appelé SAML Descriptor File. Les métadonnées contiennent l'ensemble des informations nécessaires à la configuration du SP : *Entity ID*, *SSO URL*, *SLO URL*, certificat(s) de signature.\n\nLe fichier doit être fourni localement. Son import évite la saisie manuelle et réduit les risques d'erreur de configuration.\n\nEmplacements Pour différents IDP :\n\n- Keycloak : https://**mykeycloak.com**/realms/**myrealm**/protocol/saml/descriptor\n- Entra ID (indépendant du client) : https://login.microsoftonline.com/common/FederationMetadata/2007-06/FederationMetadata.xml\n- Entra ID (dépendant du client) : https://login.microsoftonline.com/**TenantDomainName**/FederationMetadata/2007-06/FederationMetadata.xml\n- [Guide Okta](https://support.okta.com/help/s/article/how-to-download-okta-identity-provider-metadata-and-saml-signing-certificates)\n- [Guide PingID](https://support.pingidentity.com/s/article/Export-Metadata-for-Service-Provider-Configuration)",
+    "format_fr": "md"
+  },
+  "/samladmin/idp_entity_id": {
+    "header_fr": "IDP Entity ID",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'identifiant unique (*Entity ID*) de l'Identity Provider SAML. C'est une URI (souvent une URL HTTPS) qui identifie l'IdP de manière non ambiguë dans les métadonnées et dans les assertions SAML. Le SP vérifie que l'émetteur (*Issuer*) des assertions reçues correspond à cet identifiant.",
+    "format_fr": "md"
+  },
+  "/samladmin/idp_sso_url": {
+    "header_fr": "IDP SSO URL",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URL du service SSO de l'IdP (*Single Sign-On Service*) vers laquelle le SP redirige l'utilisateur pour initier l'authentification SAML. Correspond au *SingleSignOnService* dans les métadonnées de l'IdP.",
+    "format_fr": "md"
+  },
+  "/samladmin/idp_slo_url": {
+    "header_fr": "IDP SLO URL",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nL'URL du service de déconnexion de l'IdP (*Single Logout Service*). C'est l'endpoint vers lequel le SP envoie la requête de déconnexion SAML pour terminer la session auprès de l'IdP. Correspond au *SingleLogoutService* dans les métadonnées de l'IdP.",
+    "format_fr": "md"
+  },
+  "/samladmin/idp_certificate": {
+    "header_fr": "Certificat de l'IDP",
+    "content_fr": "🔴**REQUIRED**🔴\n\nCertificat X.509 public de l'IdP, utilisé par le SP pour vérifier la signature des assertions SAML et des réponses reçues. Il est généralement disponible dans les métadonnées de l'IdP.\n\nFormat attendu : certificat PEM (Base64), sans les en-têtes `-----BEGIN CERTIFICATE-----` / `-----END CERTIFICATE-----`.",
+    "format_fr": "md"
+  },
+  "/samladmin/download_sp_metadata": {
+    "header_fr": "Télécharger les métadonnées du SP",
+    "content_fr": "Permet de télécharger le fichier de métadonnées SAML du Service Provider au format XML. Ce fichier contient l'ensemble des informations nécessaires à la configuration du SP auprès de l'IdP : *Entity ID*, *ACS URL*, *SLO URL*, certificat(s) public(s).\n\nIl est recommandé de fournir ce fichier à l'administrateur de l'IdP pour enregistrer le SP.",
+    "format_fr": "md"
+  },
+  "/samladmin/download_sp_cfi_certificate": {
+    "header_fr": "Télécharger le certificat CFI du SP",
+    "content_fr": "Permet de télécharger le certificat X.509 public du SP généré par ClientFedID. Ce certificat peut être fourni à l'IdP pour lui permettre de vérifier la signature des requêtes SAML émises par le SP, ou pour chiffrer les assertions à destination du SP.",
+    "format_fr": "md"
+  },
+  "/samladmin/generate_sp_keys": {
+    "header_fr": "Générer les clés du SP",
+    "content_fr": "Permet de générer une paire de clés cryptographiques (clé privée + certificat auto-signé) pour le Service Provider directement depuis ClientFedID. Les clés générées sont utilisées pour signer les requêtes SAML (*AuthnRequest*, *LogoutRequest*) et/ou déchiffrer les assertions chiffrées reçues de l'IdP.\n\nCette action remplace les clés existantes du SP. Le nouveau certificat devra être communiqué à l'IdP.",
+    "format_fr": "md"
+  },
+  "/samladmin/download_sp_specific_certificate": {
+    "header_fr": "Télécharger le certificat spécifique du SP",
+    "content_fr": "Permet de télécharger le certificat X.509 public associé à la configuration spécifique de ce SP (distinct du certificat global CFI). Ce certificat peut être fourni à l'IdP pour la vérification de signature ou le chiffrement des assertions destinées à ce SP particulier.",
+    "format_fr": "md"
+  },
+  "/refresh/refresh_response": {
+    "header_fr": "Réponse du Token Endpoint",
+    "content_fr": "Réponse JSON retournée par le token endpoint après un renouvellement de jeton réussi (RFC 6749, section 6).\n\nChamps retournés :\n\n- `access_token` : le nouvel access token\n- `token_type` : type du jeton, généralement `Bearer`\n- `expires_in` : durée de validité de l'access token en secondes\n- `refresh_token` : nouveau refresh token (optionnel, certains serveurs émettent un nouveau refresh token à chaque renouvellement, d'autres conservent l'ancien)\n- `scope` : scope accordé (omis si identique à celui demandé)\n\nEn cas d'erreur, le serveur retourne un objet JSON avec un champ `error` (ex: `invalid_grant` si le refresh token est expiré ou révoqué) et un champ optionnel `error_description`.",
+    "format_fr": "md"
+  },
+  "/introspection/introspection_response": {
+    "header_fr": "Réponse de l'endpoint d'introspection",
+    "content_fr": "Réponse JSON retournée par l'endpoint d'introspection (RFC 7662, section 2.2).\n\nChamp obligatoire :\n\n- `active` : booléen indiquant si le jeton est actuellement valide (`true`) ou non (`false`). Un jeton inactif peut être expiré, révoqué, ou inconnu du serveur.\n\nChamps optionnels (présents uniquement si `active` est `true`) :\n\n- `scope` : liste des scopes associés au jeton\n- `client_id` : identifiant du client ayant demandé le jeton\n- `username` : identifiant lisible du propriétaire de la ressource\n- `token_type` : type du jeton (ex: `Bearer`)\n- `exp` : date d'expiration (Unix timestamp)\n- `iat` : date d'émission (Unix timestamp)\n- `nbf` : date de début de validité (Unix timestamp)\n- `sub` : sujet du jeton (identifiant de l'utilisateur)\n- `aud` : audience(s) du jeton\n- `iss` : émetteur du jeton\n- `jti` : identifiant unique du jeton\n\nSi le jeton est invalide ou inconnu, le serveur retourne simplement `{\"active\": false}` sans autre information, afin de ne pas divulguer de détails.",
+    "format_fr": "md"
+  },
+  "/revocation/revocation_response": {
+    "header_fr": "Réponse de l'endpoint de révocation",
+    "content_fr": "Réponse retournée par l'endpoint de révocation (RFC 7009, section 2.2).\n\nEn cas de **succès**, le serveur retourne une réponse HTTP `200 OK` avec un corps vide. La révocation est considérée comme réussie même si le jeton était déjà expiré ou inconnu du serveur, ce comportement est intentionnel afin de ne pas divulguer d'informations sur l'existence du jeton.\n\nEn cas d'**erreur**, le serveur retourne un objet JSON avec :\n\n- `error` : code d'erreur (ex: `unsupported_token_type` si le type de jeton n'est pas pris en charge)\n- `error_description` : description optionnelle de l'erreur\n\nLes erreurs d'authentification du client (client_id / client_secret invalides) sont signalées par un HTTP `401 Unauthorized`.",
+    "format_fr": "md"
+  },
+  "/tokenexchange/token_exchange_response": {
+    "header_fr": "Réponse de l'échange de jeton",
+    "content_fr": "Réponse JSON retournée par le token endpoint après un échange de jeton réussi (RFC 8693, section 2.2).\n\nChamps retournés :\n\n- `access_token` : le jeton de sécurité émis en réponse à l'échange (malgré son nom, il peut s'agir de tout type de jeton selon le `issued_token_type`)\n- `issued_token_type` : identifiant du type du jeton émis. Valeurs standardisées :\n  - `urn:ietf:params:oauth:token-type:access_token`\n  - `urn:ietf:params:oauth:token-type:refresh_token`\n  - `urn:ietf:params:oauth:token-type:id_token`\n  - `urn:ietf:params:oauth:token-type:saml2`\n  - `urn:ietf:params:oauth:token-type:jwt`\n- `token_type` : type du jeton au sens OAuth 2.0, vaut `Bearer` pour un access token, ou `N_A` pour les autres types\n- `expires_in` : durée de validité du jeton émis en secondes (optionnel)\n- `scope` : scope accordé au jeton émis (optionnel, omis si identique à celui demandé)\n- `refresh_token` : refresh token associé, si applicable (optionnel)\n\nEn cas d'erreur, le serveur retourne un objet JSON avec un champ `error` (ex: `invalid_request`, `invalid_grant`, `unauthorized_client`) et un champ optionnel `error_description`.",
     "format_fr": "md"
   }
 }
