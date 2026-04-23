@@ -22,7 +22,7 @@
         <span style="cursor: pointer;" onclick="closeHelpWindow()">&#x2716;</span>
       </div>
     </div>
-    <div id="helpContent" class="helpContent dragContent" style="display: block;">
+    <div id="helpContent" class="helpContent dragContent" style="display: block;" onmousedown="event.stopPropagation()">
     </div>
     <div id="helpContentEdit" class="dragContent" style="display: none;">
       <div><textarea id="helpContentInput" style="width: 100%; height: 320px" onmousedown="event.stopPropagation()" ></textarea></div>
