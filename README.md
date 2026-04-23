@@ -33,7 +33,7 @@ The client is compatible with
 
 ### SAML
 
-The client is compatible with the essential parts of SAML V2.0 Specifications (http://saml.xml.org/saml-specifications)
+The client is compatible with the essential parts of SAML V2.0 Specifications (https://saml.xml.org/saml-specifications.html)
 
 and its use with OAuth 2 :
 - RFC 7522 Security Assertion Markup Language (SAML) 2.0 Profile

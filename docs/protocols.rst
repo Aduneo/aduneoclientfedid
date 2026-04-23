@@ -21,6 +21,6 @@ The client is compatible with:
 SAML
 ----
 
-The client is compatible with the essential parts of `SAML V2.0 Specifications <http://saml.xml.org/saml-specifications>`_ and its use with OAuth 2: 
+The client is compatible with the essential parts of `SAML V2.0 Specifications <https://saml.xml.org/saml-specifications.html>`_ and its use with OAuth 2: 
 
 * `RFC 7522 Security Assertion Markup Language (SAML) 2.0 Profile for OAuth 2.0 Client Authentication and Authorization Grants <https://www.rfc-editor.org/rfc/rfc7522>`_
