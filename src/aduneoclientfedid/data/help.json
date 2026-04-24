@@ -241,7 +241,7 @@
   },
   "/oidcauth_callback/id_token_claims_set": {
     "header_fr": "ID Token claims set",
-    "content_fr": "Le payload du jeton d'identité est un objet JSON appelé *claims set* contenant des assertions sur l'utilisateur et l'authentification.\n\nClaims obligatoires : `iss` (émetteur), `sub` (identifiant utilisateur), `aud` (destinataire), `exp` (expiration), `iat` (date d'émission).\n\nClaims optionnels : `nonce`, `auth_time`, `acr`, `amr`, `azp`…",
+    "content_fr": "Le payload du jeton d'identité est un objet JSON appelé *claims set* contenant des assertions sur l'utilisateur et l'authentification.\n\nClaims obligatoires : \n\n- `iss` (émetteur)\n- `sub` (identifiant utilisateur)\n- `aud` (destinataire)\n- `exp` (expiration)\n- `iat` (date d'émission).\n\nClaims optionnels : `nonce`, `auth_time`, `acr`, `amr`, `azp`…",
     "format_fr": "md"
   },
   "/oidcauth_callback/id_token_sub": {
@@ -911,7 +911,7 @@
   },
   "/samlauth/relay_state": {
     "header_fr": "Relay State",
-    "content_fr": "🟢**OPTIONAL**🟢\n\nValeur opaque transmise par le SP à l'IdP dans la requête d'authentification et retournée inchangée dans la réponse. Permet au SP de maintenir un contexte entre la requête et la réponse (ex: URL de destination après connexion). La valeur ne doit pas dépasser 80 octets selon la spécification SAML.",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nValeur opaque transmise par le SP à l'IdP dans la requête d'authentification et retournée inchangée dans la réponse. La valeur ne doit pas dépasser 80 octets selon la spécification SAML.\n\nIl existe également une autre utilisation, devenue une norme de facto, du Relay State lors d'une connexion initiée par l'IDP. Dans ce cas, aucune requête n'est envoyée par le SP ; il n'y a donc aucun état à renvoyer. À la place, le Relay State est utilisé par l'IDP pour indiquer au SP vers quelle URL celui-ci doit rediriger l'utilisateur une fois la connexion établie. Dans la norme (Bindings), il est indiqué que Relay State « MAY include data to be interpreted by the recipient based on the use of a profile or prior agreement between the parties »",
     "format_fr": "md"
   },
   "/samlauth/authentication_reques": {
@@ -1207,6 +1207,181 @@
   "/tokenexchange/token_exchange_response": {
     "header_fr": "Réponse de l'échange de jeton",
     "content_fr": "Réponse JSON retournée par le token endpoint après un échange de jeton réussi (RFC 8693, section 2.2).\n\nChamps retournés :\n\n- `access_token` : le jeton de sécurité émis en réponse à l'échange (malgré son nom, il peut s'agir de tout type de jeton selon le `issued_token_type`)\n- `issued_token_type` : identifiant du type du jeton émis. Valeurs standardisées :\n  - `urn:ietf:params:oauth:token-type:access_token`\n  - `urn:ietf:params:oauth:token-type:refresh_token`\n  - `urn:ietf:params:oauth:token-type:id_token`\n  - `urn:ietf:params:oauth:token-type:saml2`\n  - `urn:ietf:params:oauth:token-type:jwt`\n- `token_type` : type du jeton au sens OAuth 2.0, vaut `Bearer` pour un access token, ou `N_A` pour les autres types\n- `expires_in` : durée de validité du jeton émis en secondes (optionnel)\n- `scope` : scope accordé au jeton émis (optionnel, omis si identique à celui demandé)\n- `refresh_token` : refresh token associé, si applicable (optionnel)\n\nEn cas d'erreur, le serveur retourne un objet JSON avec un champ `error` (ex: `invalid_request`, `invalid_grant`, `unauthorized_client`) et un champ optionnel `error_description`.",
+    "format_fr": "md"
+  },
+  "/oidcauth_callback/signature_algorithm": {
+    "header_fr": "Algorithme de signature",
+    "content_fr": "Algorithme cryptographique utilisé pour signer le jeton d'identité (ID token), tel qu'indiqué dans le champ `alg` de son en-tête.\n\nAlgorithmes asymétriques (clé publique/privée) :\n\n- `RS256`, `RS384`, `RS512` : RSA   SHA-256/384/512 (**les plus courants**)\n- `ES256`, `ES384`, `ES512` : ECDSA sur courbes P-256/P-384/P-521\n- `PS256`, `PS384`, `PS512` : RSA-PSS   SHA-256/384/512\n\nAlgorithmes symétriques (secret partagé) :\n\n- `HS256`, `HS384`, `HS512` : HMAC   SHA-256/384/512 (déconseillés pour les ID tokens)\n\nLa spécification OpenID Connect Core impose que `RS256` soit supporté par tout OpenID Provider. L'algorithme `none` (jeton non signé) est interdit en production.",
+    "format_fr": "md"
+  },
+  "/oidcauth_callback/op_access_token": {
+    "header_fr": "OpenID Provider Access Token",
+    "content_fr": "L'access token retourné par l'OpenID Provider lors de l'appel au token endpoint, en même temps que l'ID token.\n\nIl permet au client d'accéder aux API protégées de l'OP, notamment l'endpoint *Userinfo*. Sa durée de vie est généralement courte.\n\nLorsque l'access token est un JWT, son contenu peut être inspecté. S'il est opaque (chaîne non décodable), seul le serveur d'autorisation peut en vérifier la validité, via l'endpoint d'introspection.",
+    "format_fr": "md"
+  },
+  "/oidcauth_callback/op_refresh_token": {
+    "header_fr": "OpenID Provider Refresh Token",
+    "content_fr": "Le refresh token retourné par l'OpenID Provider, si le scope `offline_access` avait été demandé dans la requête d'authentification.\n\nIl permet d'obtenir un nouvel access token (et éventuellement un nouvel ID token) sans réauthentifier l'utilisateur, en appelant directement le token endpoint (RFC 6749, section 6).\n\nSa durée de vie est longue. Il doit être conservé de manière sécurisée côté serveur et ne doit jamais transiter par le navigateur.",
+    "format_fr": "md"
+  },
+  "/oauth2auth_callback/idp_state": {
+    "header_fr": "State retourné par le serveur d'autorisation",
+    "content_fr": "Le paramètre *state* est une valeur opaque transmise par le client dans la requête d'autorisation. Le serveur d'autorisation le retourne tel quel dans l'URL de callback.\n\nLe client vérifie que la valeur retournée correspond exactement à celle qu'il a générée, ce qui lui permet de s'assurer que la réponse correspond bien à sa demande initiale et de se protéger contre les attaques CSRF (RFC 6749, section 10.12).",
+    "format_fr": "md"
+  },
+  "/oauth2auth_callback/token_endpoint": {
+    "header_fr": "Token Endpoint",
+    "content_fr": "L'URL du token endpoint du serveur d'autorisation appelée en back-channel par le client pour échanger le code d'autorisation contre les jetons (access token, refresh token).\n\nCette communication s'effectue directement de serveur à serveur, sans passer par le navigateur, ce qui évite que les jetons soient exposés dans l'URL ou dans l'historique du navigateur (RFC 6749, section 4.1.3).",
+    "format_fr": "md"
+  },
+  "/oauth2auth_callback/token_request_data": {
+    "header_fr": "Données de la requête au Token Endpoint",
+    "content_fr": "Paramètres transmis par le client au token endpoint lors de l'échange du code d'autorisation. La requête est envoyée en POST au format `application/x-www-form-urlencoded` et contient notamment :\n\n- `grant_type` : `authorization_code`\n- `code` : le code d'autorisation reçu dans l'URL de callback\n- `redirect_uri` : doit correspondre exactement à celle utilisée dans la requête d'autorisation\n- `client_id` : identifiant du client\n- `code_verifier` : valeur PKCE, si PKCE est utilisé\n\nLes identifiants du client (`client_id` / `client_secret`) sont transmis soit dans ce corps, soit dans le header `Authorization` selon la méthode d'authentification choisie.",
+    "format_fr": "md"
+  },
+  "/oauth2auth_callback/as_raw_response": {
+    "header_fr": "Réponse brute du serveur d'autorisation",
+    "content_fr": "Réponse JSON brute retournée par le token endpoint du serveur d'autorisation. En cas de succès, elle contient les jetons émis. En cas d'erreur, elle contient un objet JSON avec les champs `error` et `error_description`.\n\nChamps habituellement présents en cas de succès :\n\n- `access_token` : le jeton d'accès\n- `token_type` : type du jeton (généralement `Bearer`)\n- `expires_in` : durée de validité en secondes\n- `refresh_token` : jeton de rafraîchissement (si accordé)\n- `scope` : scope effectivement accordé\n\nCet affichage permet de vérifier le contenu exact de la réponse pour faciliter le diagnostic.",
+    "format_fr": "md"
+  },
+  "/oauth2auth_callback/access_token": {
+    "header_fr": "Access Token",
+    "content_fr": "L'access token retourné par le serveur d'autorisation. Il représente l'autorisation accordée par le propriétaire de la ressource et est présenté en *Bearer token* dans le header `Authorization` lors des appels aux API protégées (RFC 6750).\n\nSa durée de vie est généralement courte. Lorsqu'il est au format JWT, son contenu peut être inspecté directement. S'il est opaque, seul le serveur d'autorisation peut en vérifier la validité via l'endpoint d'introspection.",
+    "format_fr": "md"
+  },
+  "/oauth2auth_callback/refresh_token": {
+    "header_fr": "Refresh Token",
+    "content_fr": "Le refresh token retourné par le serveur d'autorisation, si le scope `offline_access` avait été demandé ou si la politique du serveur l'autorise.\n\nIl permet d'obtenir un nouvel access token sans réauthentifier l'utilisateur, en appelant directement le token endpoint (RFC 6749, section 6). Sa durée de vie est longue et il doit être conservé de manière sécurisée, côté serveur uniquement.",
+    "format_fr": "md"
+  },
+  "/oauth2auth_callback/access_token_header": {
+    "header_fr": "En-tête de l'access token JWT",
+    "content_fr": "Lorsque l'access token est un JWT, son en-tête (décodé depuis le Base64 URL) contient des métadonnées sur la signature :\n\n- `typ` : type du jeton , `at+JWT` pour un access token JWT (RFC 9068) ou `JWT`\n- `alg` : algorithme de signature utilisé (ex: `RS256`, `ES256`)\n- `kid` : identifiant de la clé (*Key ID*) ayant signé le jeton, permettant de sélectionner la bonne clé dans le JWKS",
+    "format_fr": "md"
+  },
+  "/oauth2auth_callback/access_token_payload": {
+    "header_fr": "Payload de l'access token JWT",
+    "content_fr": "Contenu du payload de l'access token JWT (décodé depuis le Base64 URL). Conformément à la RFC 9068, les claims habituellement présents sont :\n\n- `iss` : émetteur du jeton\n- `sub` : sujet (identifiant de l'utilisateur ou du client)\n- `aud` : audience(s) , identifiant(s) du ou des resource servers destinataires\n- `iat` : date d'émission (Unix timestamp)\n- `exp` : date d'expiration (Unix timestamp)\n- `jti` : identifiant unique du jeton\n- `scope` : droits accordés\n- `client_id` : identifiant du client ayant demandé le jeton\n\nD'autres claims spécifiques au serveur d'autorisation ou à l'application peuvent également être présents.",
+    "format_fr": "md"
+  },
+  "/oauth2auth_callback/jwks_endpoint": {
+    "header_fr": "JWKS Endpoint",
+    "content_fr": "L'URL publiée par le serveur d'autorisation où le client récupère la liste des clés publiques (*JSON Web Key Set*) nécessaires à la vérification de signature de l'access token JWT.\n\nLe client sélectionne dans ce keyset la clé dont l'identifiant (`kid`) correspond à celui indiqué dans l'en-tête du jeton.",
+    "format_fr": "md"
+  },
+  "/oauth2auth_callback/keyset": {
+    "header_fr": "Keyset",
+    "content_fr": "Représentation brute du *JSON Web Key Set* (JWKS) retourné par le serveur d'autorisation. Il contient la liste de toutes les clés publiques actives, chacune identifiée par son `kid`.\n\nLe serveur d'autorisation peut publier plusieurs clés simultanément pour permettre la rotation des clés sans interruption de service. Seule la clé dont le `kid` correspond à celui de l'en-tête du jeton est utilisée pour la vérification.",
+    "format_fr": "md"
+  },
+  "/oauth2auth_callback/retrieved_keys": {
+    "header_fr": "Clés récupérées auprès du serveur",
+    "content_fr": "Affichage des clés publiques extraites du JWKS, présentées individuellement et indexées par leur identifiant (`kid`). Chaque clé est au format JWK et contient :\n\n- `kty` : type de clé (`RSA`, `EC`…)\n- `alg` : algorithme associé (ex: `RS256`, `ES256`)\n- `use` : usage de la clé (`sig` pour signature, `enc` pour chiffrement)\n- `kid` : identifiant de la clé\n- Les paramètres cryptographiques propres au type de clé (`n`, `e` pour RSA ; `x`, `y`, `crv` pour EC)",
+    "format_fr": "md"
+  },
+  "/oauth2auth_callback/signature_jwk": {
+    "header_fr": "Clé de vérification de signature",
+    "content_fr": "Clé publique sélectionnée pour la vérification de signature de l'access token JWT. Elle a été obtenue soit par récupération automatique depuis l'endpoint JWKS (via le `kid` de l'en-tête du jeton), soit fournie directement dans la configuration locale.\n\nLa vérification de la signature garantit que le jeton a bien été émis par le serveur d'autorisation attendu et qu'il n'a pas été altéré en transit.",
+    "format_fr": "md"
+  },
+  "/oauth2auth_callback/refresh_token_header": {
+    "header_fr": "En-tête du refresh token JWT",
+    "content_fr": "Lorsque le refresh token est au format JWT, son en-tête (décodé depuis le Base64 URL) contient des métadonnées sur la signature :\n\n- `typ` : type du jeton\n- `alg` : algorithme de signature utilisé (ex: `RS256`, `ES256`)\n- `kid` : identifiant de la clé ayant signé le jeton\n\nNote : les refresh tokens sont souvent opaques (non JWT). Dans ce cas, leur contenu n'est pas décodable et seul le serveur d'autorisation peut en vérifier la validité.",
+    "format_fr": "md"
+  },
+  "/oauth2auth_callback/refresh_token_payload": {
+    "header_fr": "Payload du refresh token JWT",
+    "content_fr": "Contenu du payload du refresh token JWT (décodé depuis le Base64 URL), lorsque le refresh token est au format JWT.\n\nClaims habituellement présents :\n\n- `iss` : émetteur du jeton\n- `sub` : sujet (identifiant de l'utilisateur)\n- `aud` : audience\n- `iat` : date d'émission (Unix timestamp)\n- `exp` : date d'expiration (Unix timestamp)\n- `jti` : identifiant unique du jeton\n- `scope` : droits associés\n\nLes refresh tokens JWT sont moins courants que les refresh tokens opaques. Leur contenu varie selon l'implémentation du serveur d'autorisation.",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/idp_relay_state": {
+    "header_fr": "Relay State retourné par l'IdP",
+    "content_fr": "Valeur opaque transmise par le SP dans la requête d'authentification SAML et retournée inchangée par l'IdP dans la réponse POST vers l'ACS.\n\nLe SP vérifie que cette valeur correspond bien à celle qu'il a envoyée, ce qui lui permet de retrouver le contexte de la requête initiale (ex: URL de destination après connexion) et de se protéger contre certaines attaques par injection de réponse SAML.\n\nIl existe également une autre utilisation, devenue une norme de facto, du Relay State lors d'une connexion initiée par l'IDP. Dans ce cas, aucune requête n'est envoyée par le SP ; il n'y a donc aucun état à renvoyer. À la place, le Relay State est utilisé par l'IDP pour indiquer au SP vers quelle URL celui-ci doit rediriger l'utilisateur une fois la connexion établie. Dans la norme (Bindings), il est indiqué que Relay State « MAY include data to be interpreted by the recipient based on the use of a profile or prior agreement between the parties ».",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/idp_raw_response": {
+    "header_fr": "Réponse brute de l'IdP",
+    "content_fr": "Valeur brute du paramètre `SAMLResponse` reçu de l'IdP dans le corps de la requête POST vers l'ACS (*Assertion Consumer Service*).\n\nIl s'agit d'une réponse SAML encodée en Base64. Avant tout traitement, le SP doit décoder cette valeur pour obtenir le document XML de la réponse SAML. Cet affichage permet de vérifier la valeur exacte transmise par l'IdP pour faciliter le diagnostic.",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/xml_response": {
+    "header_fr": "Réponse SAML décodée (XML)",
+    "content_fr": "Document XML obtenu après décodage Base64 du paramètre `SAMLResponse`. Il contient l'élément `samlp:Response` dont la structure est définie par la spécification SAML 2.0.\n\nLa réponse SAML comprend notamment :\n\n- Les attributs `ID`, `InResponseTo`, `IssueInstant`, `Destination`\n- L'élément `<saml:Issuer>` identifiant l'IdP émetteur\n- L'élément `<samlp:Status>` indiquant le résultat de l'authentification\n- Un ou plusieurs éléments `<saml:Assertion>` contenant les informations sur l'utilisateur directement lisibles si l'assertion n'est pas chiffrée.\n\nLa réponse peut être signée au niveau de l'élément `<Response>`, au niveau de l'assertion, ou aux deux niveaux.",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/status_code": {
+    "header_fr": "Code de statut SAML",
+    "content_fr": "Code de statut retourné par l'IdP dans l'élément `<samlp:StatusCode>` de la réponse SAML, indiquant le résultat du traitement de la requête d'authentification.\n\nValeurs principales :\n\n- `urn:oasis:names:tc:SAML:2.0:status:Success` : authentification réussie\n- `urn:oasis:names:tc:SAML:2.0:status:Requester` : erreur imputable au SP (requête malformée, paramètre invalide…)\n- `urn:oasis:names:tc:SAML:2.0:status:Responder` : erreur côté IdP\n- `urn:oasis:names:tc:SAML:2.0:status:AuthnFailed` : échec de l'authentification de l'utilisateur\n- `urn:oasis:names:tc:SAML:2.0:status:NoAuthnContext` : le contexte d'authentification demandé n'est pas supporté\n- `urn:oasis:names:tc:SAML:2.0:status:RequestDenied` : l'IdP a refusé de traiter la requête\n\nLe traitement de la réponse SAML ne doit se poursuivre que si le code de statut est `Success`.",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/issuer_verification": {
+    "header_fr": "Vérification de l'émetteur (Issuer)",
+    "content_fr": "Le SP vérifie que la valeur de l'élément `<saml:Issuer>` de la réponse SAML correspond exactement à l'*Entity ID* de l'IdP avec lequel il est configuré.\n\nCette vérification garantit que la réponse a bien été émise par l'IdP attendu et non par un tiers malveillant tentant d'injecter une réponse SAML frauduleuse. La comparaison est sensible à la casse et doit être exacte.",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/response_signature_verification": {
+    "header_fr": "Vérification de la signature de la réponse",
+    "content_fr": "Vérification de la signature numérique apposée sur l'élément `<samlp:Response>` dans son ensemble, à l'aide du certificat public de l'IdP.\n\nLa signature de la réponse garantit l'authenticité et l'intégrité de l'ensemble du message SAML. Elle est distincte de la signature de l'assertion : une réponse peut être signée sans que l'assertion le soit, et inversement. La spécification SAML 2.0 recommande de signer au moins l'un des deux éléments.\n\nSi la vérification échoue (signature invalide, certificat non reconnu, contenu altéré), la réponse doit être rejetée.",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/assertion_decryption": {
+    "header_fr": "Déchiffrement de l'assertion",
+    "content_fr": "Lorsque l'IdP chiffre l'assertion SAML, la réponse contient un élément `<saml:EncryptedAssertion>` à la place de l'élément `<saml:Assertion>` en clair. Le SP doit déchiffrer cet élément à l'aide de sa clé privée pour accéder au contenu de l'assertion.\n\nLe chiffrement utilise généralement un mécanisme hybride :\n\n- Une clé symétrique aléatoire (ex: AES-256) chiffre le contenu de l'assertion\n- Cette clé symétrique est elle-même chiffrée avec la clé publique RSA du SP (clé de chiffrement issue de son certificat)\n\nLe chiffrement des assertions protège les informations sur l'utilisateur contre toute interception durant leur transit par le navigateur.",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/assertion": {
+    "header_fr": "Assertion SAML",
+    "content_fr": "L'élément `<saml:Assertion>` est le cœur de la réponse SAML. C'est un document XML signé par l'IdP qui atteste de l'identité de l'utilisateur authentifié et des conditions dans lesquelles cette authentification a eu lieu.\n\nUne assertion SAML 2.0 contient trois types d'éléments :\n\n- `<saml:AuthnStatement>` : décrit l'événement d'authentification (instant, méthode, durée de session)\n- `<saml:AttributeStatement>` : contient les attributs de l'utilisateur (nom, email, rôles…)\n- `<saml:AuthzDecisionStatement>` : décision d'autorisation (rarement utilisé)\n\nL'assertion inclut également les conditions de validité (`<saml:Conditions>`), le sujet (`<saml:Subject>`) et l'émetteur (`<saml:Issuer>`).",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/notbefore_verification": {
+    "header_fr": "Vérification NotBefore",
+    "content_fr": "Vérification de la contrainte temporelle `NotBefore` définie dans l'élément `<saml:Conditions>` de l'assertion.\n\nCette valeur indique la date et l'heure à partir desquelles l'assertion est valide. Le SP doit vérifier que l'heure courante est postérieure (ou égale) à cette valeur. Si l'assertion est présentée avant cette date, elle doit être rejetée.\n\nUne légère tolérance sur le décalage d'horloge (*clock skew*) entre le SP et l'IdP est généralement admise (typiquement quelques secondes à quelques minutes).",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/notonorafter_verification": {
+    "header_fr": "Vérification NotOnOrAfter (Conditions)",
+    "content_fr": "Vérification de la contrainte temporelle `NotOnOrAfter` définie dans l'élément `<saml:Conditions>` de l'assertion.\n\nCette valeur indique la date et l'heure à partir desquelles l'assertion expire et ne doit plus être acceptée. Le SP doit vérifier que l'heure courante est strictement antérieure à cette valeur. Une assertion expirée doit être rejetée.\n\nCette vérification, combinée à celle du `NotBefore`, définit la fenêtre de validité de l'assertion. Une durée de validité courte (quelques minutes) est recommandée pour limiter les risques de rejeu.",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/audience_verification": {
+    "header_fr": "Vérification de l'audience",
+    "content_fr": "Vérification que l'élément `<saml:AudienceRestriction>` de l'assertion contient l'*Entity ID* du SP destinataire.\n\nL'élément `<saml:Audience>` liste les entités pour lesquelles l'assertion a été émise. Le SP doit vérifier que son propre *Entity ID* figure dans cette liste. Cette vérification garantit que l'assertion a bien été émise à l'intention de ce SP et ne peut pas être réutilisée par un autre SP (attaque par substitution d'audience).",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/assertion_signature_verification": {
+    "header_fr": "Vérification de la signature de l'assertion",
+    "content_fr": "Vérification de la signature numérique apposée directement sur l'élément `<saml:Assertion>`, à l'aide du certificat public de l'IdP.\n\nLa signature de l'assertion garantit l'authenticité et l'intégrité des informations sur l'utilisateur qu'elle contient (identité, attributs, conditions). Elle est distincte de la signature de la réponse SAML englobante.\n\nLa spécification SAML 2.0 recommande que les assertions soient systématiquement signées. Si ni la réponse ni l'assertion ne sont signées, la réponse doit être rejetée.",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/name_id": {
+    "header_fr": "NameID",
+    "content_fr": "Valeur de l'identifiant de l'utilisateur authentifié, contenue dans l'élément `<saml:NameID>` du sujet (`<saml:Subject>`) de l'assertion.\n\nLe *NameID* est l'identifiant principal de l'utilisateur tel que défini par l'IdP. Sa valeur et son format dépendent de la politique de l'IdP et du *NameID Policy* demandé par le SP. Il peut s'agir d'une adresse email, d'un identifiant opaque persistant, d'un identifiant temporaire, etc.\n\nLe SP doit conserver le *NameID* pour l'utiliser lors de la déconnexion SAML (*LogoutRequest*).",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/name_id_format": {
+    "header_fr": "Format du NameID",
+    "content_fr": "Format de l'identifiant utilisateur (*NameID*), indiqué dans l'attribut `Format` de l'élément `<saml:NameID>`.\n\nFormats courants :\n\n- `urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress` : adresse email de l'utilisateur\n- `urn:oasis:names:tc:SAML:2.0:nameid-format:persistent` : identifiant opaque, stable dans le temps et propre à la paire IdP/SP\n- `urn:oasis:names:tc:SAML:2.0:nameid-format:transient` : identifiant temporaire, différent à chaque authentification\n- `urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified` : format non spécifié, laissé à la discrétion de l'IdP\n- `urn:oasis:names:tc:SAML:2.0:nameid-format:entity` : identifiant d'une entité SAML (utilisé pour les services, pas les utilisateurs)",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/inresponseto_verification": {
+    "header_fr": "Vérification InResponseTo",
+    "content_fr": "Vérification que l'attribut `InResponseTo` de la réponse SAML correspond bien à l'identifiant (`ID`) de la requête d'authentification (*AuthnRequest*) envoyée par le SP.\n\nCette vérification est essentielle pour se protéger contre les attaques par injection de réponse SAML non sollicitée (*unsolicited response*). Le SP doit conserver l'identifiant de chaque requête en cours et le comparer à la valeur `InResponseTo` reçue.\n\nSi la valeur est absente ou ne correspond à aucune requête en attente, la réponse doit être rejetée.",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/subject_recipient_verification": {
+    "header_fr": "Vérification du destinataire du sujet (Recipient)",
+    "content_fr": "Vérification que l'attribut `Recipient` de l'élément `<saml:SubjectConfirmationData>` correspond à l'URL de l'ACS (*Assertion Consumer Service*) du SP.\n\nCette valeur indique l'URL exacte vers laquelle l'assertion est destinée à être présentée. Le SP doit vérifier qu'elle correspond à son propre endpoint ACS. Cette vérification protège contre la réutilisation d'une assertion valide sur un ACS différent de celui pour lequel elle a été émise.",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/subject_notonorafter_verification": {
+    "header_fr": "Vérification NotOnOrAfter du sujet",
+    "content_fr": "Vérification de la contrainte temporelle `NotOnOrAfter` définie dans l'élément `<saml:SubjectConfirmationData>` du sujet de l'assertion.\n\nDistincte du `NotOnOrAfter` des `<saml:Conditions>`, cette valeur limite la durée pendant laquelle la confirmation du sujet est valide , c'est-à-dire la fenêtre de temps durant laquelle l'assertion peut être présentée à l'ACS. Elle est généralement très courte (quelques minutes) pour réduire le risque de rejeu.\n\nSi l'heure courante est égale ou postérieure à cette valeur, l'assertion doit être rejetée.",
+    "format_fr": "md"
+  },
+  "/samlauth_callback/session_index": {
+    "header_fr": "Session Index",
+    "content_fr": "Valeur de l'attribut `SessionIndex` contenu dans l'élément `<saml:AuthnStatement>` de l'assertion. Il identifie de manière unique la session établie entre l'utilisateur et l'IdP lors de cette authentification.\n\nLe SP doit conserver cette valeur car elle est requise lors de la déconnexion SAML (*LogoutRequest*) pour permettre à l'IdP d'identifier et de terminer la session concernée, notamment en cas de sessions multiples pour un même utilisateur.\n\nL'élément `<saml:AuthnStatement>` contient également l'`AuthnInstant` (instant d'authentification) et, optionnellement, la `SessionNotOnOrAfter` (date d'expiration de la session SSO côté IdP).",
     "format_fr": "md"
   }
 }
