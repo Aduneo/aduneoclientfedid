@@ -119,7 +119,7 @@ class OAuth2Introspection(FlowHandler):
           return
       
       if 'introspection_endpoint' not in oauth2_idp_params: 
-        raise AduneoError(self.log_error('Theoretically impossible to reach : no introspection endpoint scheme in either OIDC or OAuth idp_params'))
+        self.add_html('<h4>Introspection endpoint not found in either OIDC or OAuth idp_params, Configure OAuth API preferably</h4>')
       
       # API réalisant l'introspection
       idp_id = self.context.idp_id

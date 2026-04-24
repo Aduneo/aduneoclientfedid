@@ -67,7 +67,7 @@ class OAuth2TokenExchange(FlowHandler):
 
       # Cas par défaut : on prend les paramètres OAuth2 si ils existent
       if 'token_endpoint' in oauth2_idp_params:
-        self.log_info("Using OAUTH IDP parameters for revocation endpoint")
+        self.log_info("Using OAUTH IDP parameters for token endpoint")
       # Si la clé n'est pas présente, on prend les paramètres OIDC (cas refresh AuthN)
       elif 'token_endpoint' in idp_params.get('oidc', {}):
         oauth2_idp_params = idp_params['oidc']
@@ -114,7 +114,7 @@ class OAuth2TokenExchange(FlowHandler):
           return
       
       if 'token_endpoint' not in oauth2_idp_params: 
-        raise AduneoError(self.log_error('Theoretically impossible to reach : no token endpoint scheme in either OIDC or OAuth idp_params'))
+        self.add_html('<h4>No token endpoint scheme in either OIDC or OAuth idp_params</h4>')
 
       self.log_info(('  ' * 1)+'IdP: '+idp_params['name'])
 

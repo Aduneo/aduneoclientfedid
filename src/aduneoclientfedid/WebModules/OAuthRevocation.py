@@ -117,7 +117,7 @@ class OAuth2Revocation(FlowHandler):
           return
       
       if 'revocation_endpoint' not in oauth2_idp_params: 
-        raise AduneoError(self.log_error('Theoretically impossible to reach : no revocation endpoint scheme in either OIDC or OAuth idp_params'))
+        self.add_html('<h4>No revocation endpoint in either OIDC or OAuth idp_params, configure OAuth revocation endpoint preferably</h4>')
       
       try : 
         app_params = self.context.last_app_params_of('oauth2')

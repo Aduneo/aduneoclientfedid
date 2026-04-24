@@ -732,7 +732,7 @@ class OAuthClientLogin(FlowHandler):
         oauth2_idp_params = idp_params['oidc']
         self.log_info("Using OIDC IDP parameters as substitute for displaying properly")
     else : 
-      raise AduneoError(self.log_error('Theoretically impossible to reach : no signature scheme in either OIDC or OAuth idp_params'))
+      raise AduneoError(self.log_error('No signature scheme in either OIDC or OAuth idp_params'))
 
     # oauth2_idp_params = idp_params.get('oauth2')
     # if not oauth2_idp_params:

@@ -109,8 +109,8 @@ class OIDCClientLogout(FlowHandler):
           self.send_page()
           return
       
-      if 'end_session_endpoint' not in oidc_idp_params: 
-        raise AduneoError(self.log_error('Theoretically impossible to reach : no end_session_endpoint in idp_params'))
+        if 'end_session_endpoint' not in oidc_idp_params:
+          self.add_html('<h4>End session endpoint not found in either OIDC or OAuth idp_params, Configure it in OP configuration or use discovery URI</h4>')
       #oidc_idp_params = idp_params.get('oidc')
       #if not oidc_idp_params:
       #  raise AduneoError(f"OIDC IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
@@ -260,7 +260,7 @@ class OIDCClientLogout(FlowHandler):
 
       # Mise à jour dans le contexte des paramètres liés à l'IdP
       idp_params = self.context.idp_params
-      oidc_idp_params = idp_params['oidc']
+      oidc_idp_params = idp_params.get('oidc', {})
       for item in ['end_session_endpoint']:
         oidc_idp_params[item] = self.post_form.get(item, '').strip()
 

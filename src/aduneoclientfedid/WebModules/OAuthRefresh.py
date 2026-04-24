@@ -78,7 +78,7 @@ class OAuth2Refresh(FlowHandler):
 
       # Cas par défaut : on prend les paramètres OAuth2 si ils existent
       if 'token_endpoint' in oauth2_idp_params:
-        self.log_info("Using OAUTH IDP parameters for revocation endpoint")
+        self.log_info("Using OAUTH IDP parameters for token endpoint")
       # Si la clé n'est pas présente, on prend les paramètres OIDC (cas refresh AuthN)
       elif 'token_endpoint' in idp_params.get('oidc', {}):
         oauth2_idp_params = idp_params['oidc']
@@ -125,7 +125,7 @@ class OAuth2Refresh(FlowHandler):
           return
       
       if 'token_endpoint' not in oauth2_idp_params: 
-        raise AduneoError(self.log_error('Theoretically impossible to reach : no token endpoint scheme in either OIDC or OAuth idp_params'))
+        raise AduneoError(self.log_error('No token endpoint scheme in either OIDC or OAuth idp_params'))
 
       # Jetons de rafraîchissement et clients associés
       refresh_tokens = {'__input__': 'Direct Input'}    # clé : RT, valeur : nom d'affichage

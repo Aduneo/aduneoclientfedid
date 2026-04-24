@@ -116,7 +116,7 @@ class OIDCUserinfo(FlowHandler):
           return
       
       if 'userinfo_endpoint' not in oidc_idp_params: 
-        raise AduneoError(self.log_error('Theoretically impossible to reach : no userinfo_endpoint in idp_params'))
+        self.add_html('<h4>No userinfo endpoint scheme in either OIDC or OAuth idp_params</h4>')
       
       # app_params = self.context.last_app_params
 
