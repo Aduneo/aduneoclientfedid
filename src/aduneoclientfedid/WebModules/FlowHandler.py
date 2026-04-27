@@ -329,6 +329,7 @@ class FlowHandler(BaseHandler):
         }.get(self.context['flow_type'])
 
       self.add_html('<div id="'+html.escape(dom_id)+'">')
+      self.add_html('<span><a href="/"><img style="height: 30px; vertical-align: middle"; src="/images/home.png"></a></span>')
       if retry_url:
         self.add_html('<span><a href="'+retry_url+'?contextid='+urllib.parse.quote_plus(context_id)+'&idpid='+urllib.parse.quote_plus(self.context.idp_id)+'&appid='+urllib.parse.quote_plus(self.context.app_id)+'" class="middlebutton">Retry original flow</a></span>')
       self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/newauth?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">New auth</span>')
