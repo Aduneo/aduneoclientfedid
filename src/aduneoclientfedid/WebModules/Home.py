@@ -38,22 +38,14 @@ class Home(BaseHandler):
 
     idps = self.conf['idps']
 
+    self.add_html("""<link rel="stylesheet" href="/css/home.css">""")
+
     self.add_html("<div>")
-    self.add_middle_button("Add OIDC Client", "/client/oidc/admin/modifyclient")
-    self.add_middle_menu("Add OAuth 2 Client", {
-      "Confidential OAuth 2.1 client": "/client/oauth2/admin/modifyclient?clienttype=confidential_21",
-      "Public OAuth 2.1 client": "/client/oauth2/admin/modifyclient?clienttype=public_21",
-      "Confidential OAuth 2.0 client": "/client/oauth2/admin/modifyclient?clienttype=confidential_20",
-      "Public OAuth 2.0 client": "/client/oauth2/admin/modifyclient?clienttype=public_20"
-      })
-    if self.hreq.saml_prerequisite:
-      self.add_html("""
-        <span><a href="/client/saml/admin/modifyclient" class="middlebutton">Add SAML SP</a></span>
-      """)
-    self.add_html("""
-        <span><a href="/client/cas/admin/modifyclient" class="middlebutton">Add CAS Client</a></span>
-      </div>
-    """)
+    
+    self.dropdown_menu('oidc', 'Add OIDC Client', idps, 'oidcButton1', 'oidcMenu1')
+    self.dropdown_menu('oauth2', 'Add OAuth2 Client', idps, 'oauth2Button1', 'oauth2Menu1')
+    self.dropdown_menu('saml', 'Add SAML Client', idps, 'samlButton1', 'samlMenu1')
+    self.dropdown_menu('cas', 'Add CAS Client', idps, 'casButton1', 'casMenu1')
 
     for idp_id in sorted(idps.keys()):
       
@@ -72,8 +64,20 @@ class Home(BaseHandler):
               <div>
                 <span><a href="/client/idp/admin/display?idpid={idp_id}" class="smallbutton">Display IdP Parameters</a></span>
                 <span><a href="/client/idp/admin/modify?idpid={idp_id}" class="smallbutton">Modify IdP Parameters</a></span>
+                <span onclick="this.querySelector('.confirm').style.display='inline'; this.querySelector('.initial').style.display='none';">
+                  <span class="initial">
+                    <span class="smallbutton">
+                    Remove IdP
+                    </span>
+                  </span>
+                  <span class="confirm" style="display:none;">
+                    Confirm removal?
+                      <a href="/client/idp/admin/remove?idpid={idp_id}" class="smallButton">Yes</a>
+                      <a href="/" class="smallButton">No</a>
+                  </span>
+                </span>
               </div>
-              <div>
+          <div>
         """.format(
           section_id = uuid.uuid4(),
           title = html.escape(idp.get('name', 'IDP')),
@@ -85,84 +89,16 @@ class Home(BaseHandler):
       )
 
       # clients (OP) OpenID Connect
-      if idp.get('oidc_clients'):
-        
-        self.add_html("""<div style="font-size: 14px">OIDC OP (clients)</div>""")          
-        for client_id in sorted(idp['oidc_clients'].keys()):
-          
-          client = idp['oidc_clients'][client_id]
-          self.add_html("""
-            <div style="font-size: 14px; margin-left: 20px;">
-              <span>{name}</span>
-              <span><a href="/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
-              <span><a href="/client/oidc/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
-            </div>
-            """.format(
-              name = html.escape(client.get('name', 'Client')),
-              idp_id = urllib.parse.quote_plus(idp_id),
-              app_id = urllib.parse.quote_plus(client_id),
-            )
-          )
+      self.oidc_client_idp_menu(idp, idp_id)
 
       # clients OAuth 2
-      if idp.get('oauth2_clients'):
-        
-        self.add_html("""<div style="font-size: 14px">OAuth 2 Clients</div>""")          
-        for client_id in sorted(idp['oauth2_clients'].keys()):
-          
-          client = idp['oauth2_clients'][client_id]
-          self.add_html("""
-            <div style="font-size: 14px; margin-left: 20px;">
-              <span>{name}</span>
-              <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
-              <span><a href="/client/oauth2/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
-            </div>
-            """.format(
-              name = html.escape(client.get('name', 'Client')),
-              idp_id = urllib.parse.quote_plus(idp_id),
-              app_id = urllib.parse.quote_plus(client_id),
-            )
-          )
+      self.oauth2_client_idp_menu(idp, idp_id)
 
       # SP SAML
-      if self.hreq.saml_prerequisite and idp.get('saml_clients'):
-        
-        self.add_html("""<div style="font-size: 14px">SAML SP</div>""")          
-        for app_id in sorted(idp['saml_clients'].keys()):
-          
-          app_params = idp['saml_clients'][app_id]
-          self.add_html("""
-            <div style="font-size: 14px; margin-left: 20px;">
-              <span>{name}</span>
-              <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
-              <span><a href="/client/saml/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
-            </div>
-            """.format(
-              name = html.escape(app_params.get('name', 'SP')),
-              idp_id = urllib.parse.quote_plus(idp_id),
-              app_id = urllib.parse.quote_plus(app_id),
-            )
-          )
+      self.saml_client_idp_menu(idp, idp_id)
 
       # clients CAS
-      if idp.get('cas_clients'):
-        
-        self.add_html("""<div style="font-size: 14px">CAS Clients</div>""")          
-        for client_id in sorted(idp['cas_clients'].keys()):
-          
-          client = idp['cas_clients'][client_id]
-          self.add_html("""
-            <div style="font-size: 14px; margin-left: 20px;">
-              <span>{name}</span>
-              <span><a href="/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
-              <span><a href="/client/cas/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
-            </div>
-            """.format(
-              name = html.escape(client.get('name', 'Client')),
-              idp_id = urllib.parse.quote_plus(idp_id),
-              app_id = urllib.parse.quote_plus(client_id),
-            )
-          )
+      self.cas_client_idp_menu(idp, idp_id)
 
       self.add_html("""
               </div>
@@ -170,4 +106,216 @@ class Home(BaseHandler):
           </span>
         </div>
         """)
+      
+  def oidc_client_button(self):
+    self.add_middle_button("Add OIDC Client", "/client/oidc/admin/modifyclient")
 
+  def oauth2_client_button(self):
+    self.add_middle_menu("Add OAuth 2 Client", {
+      "Confidential OAuth 2.1 client": "/client/oauth2/admin/modifyclient?clienttype=confidential_21",
+      "Public OAuth 2.1 client": "/client/oauth2/admin/modifyclient?clienttype=public_21",
+      "Confidential OAuth 2.0 client": "/client/oauth2/admin/modifyclient?clienttype=confidential_20",
+      "Public OAuth 2.0 client": "/client/oauth2/admin/modifyclient?clienttype=public_20"
+      }
+    )
+  
+  def saml_client_button(self):
+    if self.hreq.saml_prerequisite:
+      self.add_middle_button("Add SAML SP", "/client/saml/admin/modifyclient")
+
+  def cas_client_button(self):
+    self.add_middle_button("Add CAS Client", "/client/cas/admin/modifyclient")
+  
+  def oidc_client_idp_menu(self, idp, idp_id) :
+    if idp.get('oidc_clients'):
+      self.add_html("""<div style="font-size: 14px">OIDC OP (clients)</div>""")
+
+      for client_id in sorted(idp['oidc_clients'].keys()):
+        client = idp['oidc_clients'][client_id]
+        self.add_html("""
+          <div style="font-size: 14px; margin-left: 20px;">
+            <span>{name}</span>
+            <span><a href="/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+            <span><a href="/client/oidc/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
+          </div>
+          """.format(
+            name = html.escape(client.get('name', 'Client')),
+            idp_id = urllib.parse.quote_plus(idp_id),
+            app_id = urllib.parse.quote_plus(client_id),
+          )
+        )
+  
+  def oauth2_client_idp_menu(self, idp, idp_id) :
+    if idp.get('oauth2_clients'):
+      self.add_html("""<div style="font-size: 14px">OAuth 2 Clients</div>""")          
+      
+      for client_id in sorted(idp['oauth2_clients'].keys()):
+        client = idp['oauth2_clients'][client_id]
+        self.add_html("""
+          <div style="font-size: 14px; margin-left: 20px;">
+            <span>{name}</span>
+            <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+            <span><a href="/client/oauth2/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
+          </div>
+          """.format(
+            name = html.escape(client.get('name', 'Client')),
+            idp_id = urllib.parse.quote_plus(idp_id),
+            app_id = urllib.parse.quote_plus(client_id),
+          )
+        )
+  
+  def saml_client_idp_menu(self, idp, idp_id) :
+    if self.hreq.saml_prerequisite and idp.get('saml_clients'):
+      self.add_html("""<div style="font-size: 14px">SAML SP</div>""")          
+      
+      for client_id in sorted(idp['saml_clients'].keys()):
+        client = idp['saml_clients'][client_id]
+        self.add_html("""
+          <div style="font-size: 14px; margin-left: 20px;">
+            <span>{name}</span>
+            <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+            <span><a href="/client/saml/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
+          </div>
+          """.format(
+            name = html.escape(client.get('name', 'SP')),
+            idp_id = urllib.parse.quote_plus(idp_id),
+            app_id = urllib.parse.quote_plus(client_id),
+          )
+        )
+  
+  def cas_client_idp_menu(self, idp, idp_id) :
+    if idp.get('cas_clients'):
+      self.add_html("""<div style="font-size: 14px">CAS Clients</div>""")  
+
+      for client_id in sorted(idp['cas_clients'].keys()):
+        client = idp['cas_clients'][client_id]
+        self.add_html("""
+          <div style="font-size: 14px; margin-left: 20px;">
+            <span>{name}</span>
+            <span><a href="/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+            <span><a href="/client/cas/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
+          </div>
+          """.format(
+            name = html.escape(client.get('name', 'Client')),
+            idp_id = urllib.parse.quote_plus(idp_id),
+            app_id = urllib.parse.quote_plus(client_id),
+          )
+        )
+  
+  def dropdown_menu(self, button_type, button_label, idps, button_id, menu_id):
+    # START BUTTON
+    self.start_dropdown(button_label, button_id, menu_id)
+
+    if button_type != 'oauth2':
+      self.new_idp_dropdown(button_type)
+      self.existing_idp_dropdown(button_type, idps)
+    else :
+      self.new_idp_dropdown_complex()
+      self.existing_idp_dropdown_complex(idps)
+
+    # END BUTTON
+    self.end_dropdown(button_id, menu_id)
+  
+  def start_dropdown(self, button_label, button_ID, menu_ID) :
+    self.add_html("""
+      <div class="dd-root" id="{button_id}">
+        <div class="dd-btn">
+          {button_label}
+        </div>
+    <div class="menu" id="{menu_id}">
+    """.format(
+      button_id = button_ID,
+      button_label = button_label,
+      menu_id = menu_ID)
+    )
+  
+  def new_idp_dropdown(self, client_type) :
+    end_link = "/client/" + client_type + "/admin/modifyclient"
+
+    self.add_html("""
+    <a class="end-link" href="{end_link}">
+      <div class="menu-item">
+      With new IdP
+      </div>
+    </a>
+    """.format(end_link= end_link))
+  
+  # Only for OAuth
+  def new_idp_dropdown_complex(self) :
+
+    self.add_html("""
+    <div class="menu-item">
+        New IdP
+        <div class="sub">
+          <a class="end-link" href="/client/oauth2/admin/modifyclient?clienttype=confidential_21"><div class="menu-item">Confidential OAuth 2.1 client</div></a>
+          <a class="end-link" href="/client/oauth2/admin/modifyclient?clienttype=public_21"><div class="menu-item">Public OAuth 2.1 client</div></a>
+          <a class="end-link" href="/client/oauth2/admin/modifyclient?clienttype=confidential_20"><div class="menu-item">Confidential OAuth 2.0 client</div></a>
+          <a class="end-link" href="/client/oauth2/admin/modifyclient?clienttype=public_20"><div class="menu-item">Public OAuth 2.0 client</div></a>
+        </div>
+      </div>
+    """)
+  
+  def existing_idp_dropdown(self, client_type, idps) :
+    self.add_html("""
+    <div class="menu-item">
+      With existing IdP
+        <div class="sub">""")
+    
+    for idp_id in sorted(idps.keys()):
+      idp = idps[idp_id]
+      idp_name = idp.get('name', 'IDP')
+      end_link = "/client/" + client_type + "/admin/modifyclient?idp_id=" + idp_id
+
+      self.add_html("""
+        <a class="end-link" href="{end_link}">
+          <div class="menu-item">
+          {idp_name}
+          </div>
+	      </a>
+        """.format(
+          end_link = end_link,
+          idp_name = html.escape(idp_name))
+      )
+                  
+    self.add_html("""
+        </div>
+    </div>
+    """)
+  
+  # Only for OAuth
+  def existing_idp_dropdown_complex(self, idps) :
+    self.add_html("""
+    <div class="menu-item">
+      With existing IdP
+        <div class="sub">""")
+    
+    for idp_id in sorted(idps.keys()):
+      idp = idps[idp_id]
+      idp_name = idp.get('name', 'IDP')
+
+      self.add_html("""
+        <div class="menu-item">
+          {idp_name}
+          <div class="sub2">
+            <a class="end-link" href="/client/oauth2/admin/modifyclient?idp_id={idp_id}&clienttype=confidential_21"><div class="menu-item">Confidential OAuth 2.1 client</div></a>
+            <a class="end-link" href="/client/oauth2/admin/modifyclient?idp_id={idp_id}&clienttype=public_21"><div class="menu-item">Public OAuth 2.1 client</div></a>
+            <a class="end-link" href="/client/oauth2/admin/modifyclient?idp_id={idp_id}&clienttype=confidential_20"><div class="menu-item">Confidential OAuth 2.0 client</div></a>
+            <a class="end-link" href="/client/oauth2/admin/modifyclient?idp_id={idp_id}&clienttype=public_20"><div class="menu-item">Public OAuth 2.0 client</div></a>
+          </div>
+        </div>
+        """.format(
+          idp_id = urllib.parse.quote_plus(idp_id),
+          idp_name = html.escape(idp_name))
+      )
+                  
+    self.add_html("""
+        </div>
+    </div>
+    """)
+
+  def end_dropdown(self, button_ID, menu_ID) :
+    self.add_html("""
+    </div>
+    </div>
+    """)
+    self.add_javascript("""display_dropdown_menu(\'{button_id}\',\'{menu_id}\')""".format(button_id=button_ID, menu_id=menu_ID))
