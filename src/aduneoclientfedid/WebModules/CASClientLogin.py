@@ -94,7 +94,13 @@ class CASClientLogin(FlowHandler):
         app_params = self.context.last_app_params
       
       self.log_info(('  ' * 1) + f"for client {app_params['name']} of IdP {idp_params['name']}")
-      self.add_html(f"<h1>Authentication for IdP {idp_params['name']} CAS Client {app_params['name']}</h1>")
+      self.add_html(f"""
+                    <h1>Authentication with CAS Server 
+                    <span style="color: #004c97">{html.escape(idp_params['name'])}</span>
+                    for client 
+                    <span style="color: #004c97">{html.escape(app_params['name'])}</span>
+                    </h1>
+                    """)
 
       # ticket validation version
       cas_server_validate_url = cas_idp_params.get('cas_server_url', '')
@@ -148,7 +154,8 @@ class CASClientLogin(FlowHandler):
             default = 'xml'
             ) \
         .end_section() \
-
+      
+      form.set_hr_title("CAS authentication")
       form.set_request_parameters({
           'service': '@[service_url]',
           'renew': '@[renew]',
@@ -291,7 +298,13 @@ class CASClientLogin(FlowHandler):
       cas_idp_params = idp_params['cas']
       app_params = self.context.last_app_params
 
-      self.add_html(f"<h3>CAS callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
+      self.add_html(f"""
+                    <h3>CAS callback from 
+                    <span style="color: #004c97">{html.escape(idp_params['name'])}</span>
+                    for client 
+                    <span style="color: #004c97">{html.escape(app_params['name'])}</span>
+                    </h3>
+                    """)
 
       self.start_result_table()
       form_id = 'casauth_callback'

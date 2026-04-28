@@ -193,7 +193,9 @@ class OIDCClientLogout(FlowHandler):
           .text('ui_locales', label='UI Locales', clipboard_category='ui_locales') \
           .text('logout_hint', label='Logout Hint', clipboard_category='login_hint') \
         .end_section() \
-
+      
+      form.set_title(f"""OIDC Logout <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
+      form.set_hr_title("Logout request")
       form.set_request_parameters({
           'id_token_hint': '@[id_token_hint]',
           'logout_hint': '@[logout_hint]',

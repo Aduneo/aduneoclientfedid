@@ -129,7 +129,13 @@ class OAuthClientLogin(FlowHandler):
         app_params = self.context.last_app_params
       
       self.log_info(('  ' * 1) + f"for client {app_params['name']} of IdP {idp_params['name']}")
-      self.add_html(f"<h1>IdP {idp_params['name']} OAuth2 Client {app_params['name']}</h1>")
+      self.add_html(f"""
+                    <h1>OAuth2 Authorization with AS 
+                    <span style="color: #004c97">{html.escape(idp_params['name'])}</span> 
+                    for client 
+                    <span style="color: #004c97">{html.escape(app_params['name'])}</span>
+                    </h1>
+                    """)
 
       if fetch_configuration_document:
         self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=oauth2_idp_params['metadata_uri']))
@@ -280,7 +286,8 @@ class OAuthClientLogin(FlowHandler):
           .text('introspection_endpoint_dns_override', label='Introspection endpoint DNS override', clipboard_category='introspection_endpoint_dns_override') \
           .text('revocation_endpoint_dns_override', label='Revocation endpoint DNS override', clipboard_category='revocation_endpoint_dns_override') \
         .end_section() \
-
+      
+      form.set_hr_title("OAuth2 authorization")
       form.set_request_parameters({
           'grant_type': '@[grant_type]',
           'client_id': '@[client_id]',
@@ -473,7 +480,13 @@ class OAuthClientLogin(FlowHandler):
           description = ', '+error_description
         raise AduneoError(self.log_error('IdP returned an error: '+error+description))
 
-      self.add_html(f"<h3>OAuth 2 callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
+      self.add_html(f"""
+                    <h3>OAuth 2 callback from 
+                    <span style="color: #004c97">{html.escape(idp_params['name'])}</span>
+                    for client 
+                    <span style="color: #004c97">{html.escape(app_params['name'])}</span>
+                    </h3>
+                    """)
 
       self.start_result_table()
       form_id = 'oauth2auth_callback' # Doit matcher Requesterform ?

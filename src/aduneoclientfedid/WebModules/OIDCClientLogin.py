@@ -147,7 +147,13 @@ class OIDCClientLogin(FlowHandler):
         app_params = self.context.last_app_params
       
       self.log_info(('  ' * 1) + f"for client {app_params['name']} of IdP {idp_params['name']}")
-      self.add_html(f"<h1>IdP {idp_params['name']} OIDC Client {app_params['name']}</h1>")
+      self.add_html(f"""
+                    <h1>OIDC Login with OP 
+                    <span style="color: #004c97">{html.escape(idp_params['name'])}</span>
+                    for client 
+                    <span style="color: #004c97">{html.escape(app_params['name'])}</span>
+                    </h1>
+                    """)
 
       if fetch_configuration_document:
         self.add_html("""<div class="intertable">Fetching IdP configuration document from {url}</div>""".format(url=oidc_idp_params['discovery_uri']))
@@ -268,7 +274,8 @@ class OIDCClientLogin(FlowHandler):
           .text('token_endpoint_dns_override', label='Token endpoint DNS override', clipboard_category='token_endpoint_dns_override') \
           .text('userinfo_endpoint_dns_override', label='Userinfo endpoint DNS override', clipboard_category='userinfo_endpoint_dns_override') \
         .end_section() \
-
+      
+      form.set_hr_title("OIDC login")
       form.set_request_parameters({
           'client_id': '@[client_id]',
           'redirect_uri': '@[redirect_uri]',
@@ -448,7 +455,13 @@ class OIDCClientLogin(FlowHandler):
       client_id = app_params['client_id']
       redirect_uri = app_params['redirect_uri']
 
-      self.add_html(f"<h3>OIDC callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
+      self.add_html(f"""
+                    <h3>OIDC callback from 
+                    <span style="color: #004c97">{html.escape(idp_params['name'])}</span>
+                    for client 
+                    <span style="color: #004c97">{html.escape(app_params['name'])}</span>
+                    </h3>
+                    """)
 
       self.start_result_table()
       form_id = 'oidcauth_callback' # Doit matcher Requesterform ?

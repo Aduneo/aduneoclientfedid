@@ -118,6 +118,7 @@ class CfiForm():
     
     # Contenu
     self.title = None
+    self.hr_title = None
     self.content = content
     self.tables = {}
     
@@ -139,6 +140,9 @@ class CfiForm():
   
   def set_title(self, title:str):
     self.title = title
+  
+  def set_hr_title(self, hr_title:str):
+    self.hr_title = hr_title
 
 
   def text(self, field_id:str, label:str='', clipboard_category:str=None, copy_value:bool=True, help_button:bool=True, displayed_when:str="True", readonly:bool=False, on_load=None, on_change=None):
@@ -1177,6 +1181,7 @@ class RequesterForm(CfiForm):
     super().__init__(form_id, content, action, mode, submit_label)
     self.mode = mode
     self.title = None
+    self.hr_title = None
     if self.action is None:
       if self.mode == 'new_page':
         self.action = '/client/httprequester/sendrequest'
@@ -1801,7 +1806,7 @@ class RequesterForm(CfiForm):
         auth_method_options = ['none', 'basic', 'form', 'bearer_token']
       auth_method_select = {value: {'none': 'None', 'basic': 'Basic', 'form': 'Form', 'bearer_token': 'Bearer Token'}[value] for value in auth_method_options}
       
-      section_title = 'HTTP request' + (' for '+self.title if self.title else '')
+      section_title = 'HTTP request' + (' for '+self.hr_title if self.hr_title else '')
       self.start_section('http_requester', title=section_title, level=2) \
         .raw_html('<div class="intertable"><label for="{input_id}">Modify request</label><input type="checkbox" id={input_id} name="modify_request" /></div>'.format(input_id=self.form_uuid+"_modify_request")) \
         .textarea('hr_request_url', label='URL', rows=1, displayed_when=displayed_when_dict['hr_request_url'], clipboard_category='request_url') \

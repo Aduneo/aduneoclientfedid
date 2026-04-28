@@ -130,6 +130,7 @@ class SAMLClientLogout(FlowHandler):
           .textarea('logout_request', label='SAML logout request', rows=10, clipboard_category='logout_request', upload_button='Upload XML', on_load='updateLogoutRequest(cfiForm)') \
         .end_section() \
 
+      form.set_title(f"""SAML Logout <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
       self.add_javascript_include('/javascript/SAMLClientLogout.js')
       self.add_html(form.get_html())
       self.add_javascript(form.get_javascript())

@@ -215,7 +215,8 @@ class OAuth2Introspection(FlowHandler):
         .password('introspection_secret', label='Secret', clipboard_category='client_secret!', displayed_when="@[introspection_api] = '__input__' and @[introspection_auth_method] = 'basic'") \
         .text('introspection_endpoint_dns_override', label='Introspection endpoint DNS override', clipboard_category='introspection_endpoint_dns_override') \
         
-      form.set_title('Introspection '+idp_params['name'])
+      form.set_title(f"""Introspection <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
+      form.set_hr_title("Introspection")
       form.set_request_parameters({
         'token': '@[access_token]',
       })

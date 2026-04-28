@@ -202,7 +202,8 @@ class OAuth2TokenExchange(FlowHandler):
         .text('client_id', label='Client ID', clipboard_category='client_id') \
         .password('client_secret', label='Client secret', clipboard_category='client_secret') \
         
-      form.set_title('Token Exchange '+idp_params['name'])
+      form.set_title(f"""Token Exchange <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
+      form.set_hr_title("Token Exchange")
       form.set_table('token_params', token_params)
       form.set_request_parameters({
         'grant_type': '@[grant_type]',

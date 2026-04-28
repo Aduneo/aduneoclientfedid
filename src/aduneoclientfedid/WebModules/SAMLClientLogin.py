@@ -133,7 +133,13 @@ class SAMLClientLogin(FlowHandler):
         app_params = self.context.last_app_params
       
       self.log_info(('  ' * 1) + f"for SP {app_params['name']} of IdP {idp_params['name']}")
-      self.add_html(f"<h1>IdP {idp_params['name']} SAML SP {app_params['name']}</h1>")
+      self.add_html(f"""
+                    <h1>SAML Authentication at IdP 
+                    <span style="color: #004c97">{html.escape(idp_params['name'])}</span>
+                    for SP 
+                    <span style="color: #004c97">{html.escape(app_params['name'])}</span>
+                    </h1>
+                    """)
       
       relay_state = str(uuid.uuid4())
 
@@ -196,7 +202,7 @@ class SAMLClientLogin(FlowHandler):
           .textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sign_auth_request]") \
           .textarea('sp_certificate', label='SP certificate', rows=10, clipboard_category='sp_certificate', upload_button='Upload SP certificate', displayed_when="@[sign_auth_request]") \
         .end_section() \
-        .start_section('authn_params', title="Authentication request") \
+        .start_section('authn_params', title="SAML authentication request") \
           .text('relay_state', label='Relay state', clipboard_category='relay_state') \
           .textarea('authentication_request', label='SAML authentication request', rows=10, clipboard_category='authentication_request', upload_button='Upload XML', on_load='updateAuthenticationRequest(cfiForm)') \
         .end_section() \
@@ -540,7 +546,13 @@ class SAMLClientLogin(FlowHandler):
       saml_idp_params = idp_params['saml']
       app_params = self.context.last_app_params
 
-      self.add_html(f"<h3>SAML callback from {html.escape(idp_params['name'])} for client {html.escape(app_params['name'])}</h3>")
+      self.add_html(f"""
+                    <h3>SAML callback from 
+                    <span style="color: #004c97">{html.escape(idp_params['name'])}</span>
+                    for client 
+                    <span style="color: #004c97">{html.escape(app_params['name'])}</span>
+                    </h3>
+                    """)
 
       self.start_result_table()
       form_id = 'samlauth_callback' # Doit matcher Requesterform ?

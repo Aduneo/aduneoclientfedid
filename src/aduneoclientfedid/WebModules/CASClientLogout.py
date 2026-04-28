@@ -102,6 +102,8 @@ class CASClientLogout(FlowHandler):
           .text('cas_server_logout_url', label='CAS server logout URL', clipboard_category='cas_server_logout_url') \
         .end_section() \
         
+      form.set_title(f"""CAS Logout <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
+      form.set_hr_title("Logout request")
       form.set_request_parameters({
           'service': '@[logout_service_url]',
         })

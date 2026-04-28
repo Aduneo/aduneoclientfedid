@@ -186,7 +186,8 @@ class OAuth2Revocation(FlowHandler):
         .password('client_secret', label='Client Secret', clipboard_category='client_secret!', displayed_when="@[revocation_auth_method] = 'basic'") \
         .text('revocation_endpoint_dns_override', label='Revocation endpoint DNS override', clipboard_category='revocation_endpoint_dns_override') \
         
-      form.set_title('Revocation '+idp_params['name'])
+      form.set_title(f"""Revocation <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
+      form.set_hr_title("Revocation")
       form.set_table('token_wrappers', token_wrappers)
       form.set_request_parameters({
         'token': '@[token]',

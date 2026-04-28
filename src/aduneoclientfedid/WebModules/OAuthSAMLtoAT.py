@@ -135,8 +135,9 @@ class OAuth2SAMLtoAT(FlowHandler):
           values = {'none': 'None', 'basic': 'Basic', 'form': 'Form'},
           default = 'basic'
           ) \
-        
-      form.set_title('SAML Assertion to Access Token '+idp_params['name'])
+      
+      form.set_title(f"""SAML Assertion to Access Token <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
+      form.set_hr_title("SAML Assertion to Access Token")
       form.set_table('client_table', client_table)
       form.set_table('assertion_table', assertions)
       form.set_request_parameters({

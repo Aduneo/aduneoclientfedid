@@ -200,7 +200,8 @@ class OAuth2Refresh(FlowHandler):
         .text('client_id', label='Client ID', clipboard_category='client_id', displayed_when="@[client_ids] = '__input__'") \
         .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[client_ids] = '__input__'") \
         
-      form.set_title('Refresh '+idp_params['name'])
+      form.set_title(f"""Refresh <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
+      form.set_hr_title("Refresh")
       form.set_table('token_clients', token_clients)
       form.set_request_parameters({
         'refresh_token': '@[refresh_token]',

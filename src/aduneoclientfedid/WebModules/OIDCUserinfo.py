@@ -152,7 +152,8 @@ class OIDCUserinfo(FlowHandler):
           ) \
         .text('userinfo_endpoint_dns_override', label='Userinfo endpoint DNS override', clipboard_category='userinfo_endpoint_dns_override') \
         
-      form.set_title('User Info '+idp_params['name'])
+      form.set_title(f"""User Info <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
+      form.set_hr_title("User Info")
       form.set_request_parameters(None)
       form.modify_http_parameters({
         'request_url': '@[userinfo_endpoint]',
