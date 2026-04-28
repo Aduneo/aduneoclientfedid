@@ -60,7 +60,6 @@ class OIDCClientLogout(FlowHandler):
       oidc_idp_params = idp_params.get('oidc', {})
       fetch_configuration_document = False
 
-      print("PONG", oidc_idp_params)
       # Cas par défaut : on prend les paramètres OIDC si ils existent
       if 'end_session_endpoint' in oidc_idp_params:
           self.log_info("Using OIDC IDP parameters for logout_endpoint")
