@@ -115,13 +115,12 @@ class OIDCClientLogout(FlowHandler):
       #if not oidc_idp_params:
       #  raise AduneoError(f"OIDC IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
       
-
+      idp_id = self.get_query_string_param('idpid', '')
       app_params = None
       app_id = self.get_query_string_param('appid', '')
       app_params = self.context.app_params.get(app_id, None)
       if not app_params:
         # les paramètres du client ne sont pas dans le contexte, on va les chercher dans la configuration
-        idp_id = self.get_query_string_param('idpid', '')
         if idp_id == '':
           raise AduneoError(f"IdP {idp_id} does not exist", button_label="Return to homepage", action="/")
         idp = copy.deepcopy(self.conf['idps'][idp_id])
@@ -221,6 +220,7 @@ class OIDCClientLogout(FlowHandler):
 
       self.add_html(form.get_html())
       self.add_javascript(form.get_javascript())
+      self.add_javascript("""document.getElementById('homeButton').href = '/?idpid={idp_id}';""".format(idp_id = idp_id))
 
     except AduneoError as e:
 
@@ -347,6 +347,7 @@ class OIDCClientLogout(FlowHandler):
         raise AduneoError(self.log_error(f"Can't retrieve request context because context id {context_id} not found in session"))
         
       self.logoff('oidc_client_'+self.context['idp_id']+'/'+self.context['app_id'])
+      self.add_javascript("""document.getElementById('homeButton').href = '/?idpid={idp_id}';""".format(idp_id = self.context['idp_id']))
 
       self.add_menu()
       self.send_page()

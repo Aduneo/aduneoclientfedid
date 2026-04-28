@@ -50,8 +50,10 @@ class Home(BaseHandler):
     for idp_id in sorted(idps.keys()):
       
       idp = idps[idp_id]
+      
+      idp_id_to_open = self.get_query_string_param('idpid', '')
+      opened = bool(idp_id == idp_id_to_open)
 
-      opened = False
       self.add_html("""
         <div id="{section_id}" style="display: flex; margin-top: 2px; margin-bottom: 2px;">
           <span style="display: inline-block; width: 20px; vertical-align: top; padding-top: 6px;">

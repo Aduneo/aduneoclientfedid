@@ -123,6 +123,7 @@ class CASClientLogout(FlowHandler):
 
       self.add_html(form.get_html())
       self.add_javascript(form.get_javascript())
+      self.add_javascript("""document.getElementById('homeButton').href = '/?idpid={idp_id}';""".format(idp_id = idp_id))
 
     except AduneoError as error:
       self.add_html('<h4>Error: '+html.escape(str(error))+'</h4>')
@@ -213,6 +214,7 @@ class CASClientLogout(FlowHandler):
         self.context = self.get_session_value(context_id)
         if self.context:
           self.logoff('cas_client_'+self.context['idp_id']+'/'+self.context['app_id'])
+          self.add_javascript("""document.getElementById('homeButton').href = '/?idpid={idp_id}';""".format(idp_id = self.context['idp_id']))
       
     except AduneoError as error:
       if self.is_result_in_table():

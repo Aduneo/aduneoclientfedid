@@ -492,7 +492,7 @@ class CodeGenerator():
     else:
       
       self.html += '<div id="'+html.escape(self.form.form_uuid)+'_button_bar">'
-      self.html += '<span><a href="/"><img style="height: 30px; vertical-align: middle"; src="/images/home.png"></a></span>'
+      #self.html += '<span><a id="homeButtonForm" href="/"><img style="height: 30px; vertical-align: middle"; src="/images/home.png"></a></span>'
       self.html += '<span class="middlebutton" onClick="reinitFormRequest(\''+html.escape(self.form.form_uuid)+'\')">Reinit request</span>'
 
       if self.form.mode == 'new_page':

@@ -63,12 +63,12 @@ class SAMLClientLogout(FlowHandler):
       idp_params = self.context.idp_params
       saml_idp_params = idp_params['saml']
 
+      idp_id = self.get_query_string_param('idpid', '')
       app_params = None
       app_id = self.get_query_string_param('appid', '')
       app_params = self.context.app_params.get(app_id, None)
       if not app_params:
         # les paramètres du client ne sont pas dans le contexte, on va les chercher dans la configuration
-        idp_id = self.get_query_string_param('idpid', '')
         if idp_id == '':
           raise AduneoError(f"IdP {idp_id} does not exist", button_label="Return to homepage", action="/")
         idp = copy.deepcopy(self.conf['idps'][idp_id])
@@ -134,6 +134,7 @@ class SAMLClientLogout(FlowHandler):
       self.add_javascript_include('/javascript/SAMLClientLogout.js')
       self.add_html(form.get_html())
       self.add_javascript(form.get_javascript())
+      self.add_javascript("""document.getElementById('homeButton').href = '/?idpid={idp_id}';""".format(idp_id = idp_id))
 
     except AduneoError as error:
       self.add_html('<h4>Error: '+html.escape(str(error))+'</h4>')
@@ -485,4 +486,6 @@ class SAMLClientLogout(FlowHandler):
       if sp_id is not None:
         self.log_info('Removing session for SP '+sp_id)
         self.logoff('saml_client_'+sp_id)
+    
+    self.add_javascript("""document.getElementById('homeButton').href = '/?idpid={idp_id}';""".format(idp_id = self.context['idp_id']))
 

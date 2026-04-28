@@ -210,6 +210,7 @@ class SAMLClientLogin(FlowHandler):
       self.add_javascript_include('/javascript/SAMLClientLogin.js')
       self.add_html(form.get_html())
       self.add_javascript(form.get_javascript())
+      self.add_javascript("""document.getElementById('homeButton').href = '/?idpid={idp_id}';""".format(idp_id = idp_id))
 
     except AduneoError as error:
       self.add_html('<h4>Error: '+html.escape(str(error))+'</h4>')
@@ -553,6 +554,7 @@ class SAMLClientLogin(FlowHandler):
                     <span style="color: #004c97">{html.escape(app_params['name'])}</span>
                     </h3>
                     """)
+      self.add_javascript("""document.getElementById('homeButton').href = '/?idpid={idp_id}';""".format(idp_id = idp_id))
 
       self.start_result_table()
       form_id = 'samlauth_callback' # Doit matcher Requesterform ?
