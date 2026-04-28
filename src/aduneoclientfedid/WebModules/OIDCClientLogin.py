@@ -214,6 +214,11 @@ class OIDCClientLogin(FlowHandler):
         'nonce': nonce,
       }
       
+      if self.password_found_in_config('oidc_clients'):
+        client_secret_label = 'Client Secret <span style="color: #00aa00"> 🟢 FOUND in configuration, will be using this one if left empty </span>'
+      else :
+        client_secret_label = 'Client Secret <span style="color: #ff0000"> 🔴 NOT FOUND in configuration, you need to enter a value if you want to authenticate properly</span>'
+      
       form = RequesterForm(form_id, form_content, action='/client/oidc/login/sendrequest', mode='new_page', request_url='@[authorization_endpoint]') \
         .hidden('form_id') \
         .hidden('contextid') \
@@ -240,7 +245,7 @@ class OIDCClientLogin(FlowHandler):
         .end_section() \
         .start_section('client_params', title="Client Parameters", collapsible=True, collapsible_default=False) \
           .text('client_id', label='Client ID', clipboard_category='client_id') \
-          .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
+          .password('client_secret', label=client_secret_label, clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
           .text('scope', label='Scope', clipboard_category='scope') \
           .closed_list('response_type', label='Reponse type', 
             values={'code': 'code'},

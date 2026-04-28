@@ -349,3 +349,6 @@ class FlowHandler(BaseHandler):
       if oauth_exchange:
         self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/samltoat/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+urllib.parse.quote_plus(dom_id)+'\')" class="middlebutton">Exchange SAML -> OAuth</span>')
       self.add_html('</div>')
+  
+  def password_found_in_config(self, client_type):
+    return bool(self.conf['idps'][self.context.idp_id][client_type][self.context.app_id].get('client_secret!', '') != '')

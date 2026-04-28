@@ -1043,9 +1043,9 @@ class CodeGenerator():
       '<span class="cellimg">'
       '<img onclick="help(this, \'{help_id}\')" src="/images/help.png">'
       '</span>'
-      ).format(label=html.escape(label), help_id=html.escape(help_id))
+      ).format(label=label, help_id=html.escape(help_id))
     else:
-      row_label = html.escape(label)
+      row_label = label
       
     return row_label
     
