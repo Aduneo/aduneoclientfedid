@@ -194,7 +194,7 @@ class SAMLClientAdmin(BaseHandler):
       .end_section() \
       
     form.set_title('SAML SP configuration'+('' if form_content['idp_name'] == '' else ': '+form_content['idp_name']))
-    form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
+    form.add_button('Cancel', f'/?idpid={idp_id}', display='all')
     form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     self.add_javascript_include('/javascript/SAMLClientAdmin.js')
@@ -275,7 +275,7 @@ class SAMLClientAdmin(BaseHandler):
 
     Configuration.write_configuration(self.conf)
     
-    self.send_redirection(f"/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}")
+    self.send_redirection(f"/?idpid={idp_id}")
 
 
   @register_page_url(url='modifymulti', method='GET', template='page_default.html', continuous=True)
@@ -379,7 +379,7 @@ class SAMLClientAdmin(BaseHandler):
         
     Configuration.write_configuration(self.conf)
     
-    self.send_redirection(f"/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}")
+    self.send_redirection(f"/?idpid={idp_id}")
 
 
   @register_url(url='downloadSPMetadata', method='POST')

@@ -146,7 +146,8 @@ class CASClientAdmin(BaseHandler):
         .check_box('verify_certificates', label='Verify certificates') \
       .end_section() 
       
-    form.set_title('CAS authentication'+('' if form_content['idp_name'] == '' else ': '+form_content['idp_name']))
+    form.set_title('CAS configuration'+('' if form_content['idp_name'] == '' else ': '+form_content['idp_name']))
+    form.add_button('Cancel', f'/?idpid={idp_id}', display='all')
     form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     self.add_html(form.get_html())
@@ -213,7 +214,7 @@ class CASClientAdmin(BaseHandler):
 
     Configuration.write_configuration(self.conf)
     
-    self.send_redirection(f"/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}")
+    self.send_redirection(f"/?idpid={idp_id}")
 
 
   @register_page_url(url='modifymulti', method='GET', template='page_default.html', continuous=False)
@@ -308,7 +309,7 @@ class CASClientAdmin(BaseHandler):
         
     Configuration.write_configuration(self.conf)
     
-    self.send_redirection(f"/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}")
+    self.send_redirection(f"/?idpid={idp_id}")
 
 
   @register_page_url(url='removeapp', method='GET', template='page_default.html', continuous=False)
