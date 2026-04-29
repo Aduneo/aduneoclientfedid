@@ -106,7 +106,7 @@ class FlowHandler(BaseHandler):
           client = idp['oidc_clients'][client_id]
           self.add_html("""
             <div>
-              <span>{name}</span>
+              <span style="color: #004c97; margin-left: 20px">{name}</span>
               <span><a href="/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
             </div>
             """.format(
@@ -125,7 +125,7 @@ class FlowHandler(BaseHandler):
           client = idp['oauth2_clients'][client_id]
           self.add_html("""
             <div>
-              <span>{name}</span>
+              <span style="color: #004c97; margin-left: 20px">{name}</span>
               <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
             </div>
             """.format(
@@ -144,7 +144,7 @@ class FlowHandler(BaseHandler):
           client = idp['saml_clients'][client_id]
           self.add_html("""
             <div>
-              <span>{name}</span>
+              <span style="color: #004c97; margin-left: 20px">{name}</span>
               <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
             </div>
             """.format(
@@ -163,7 +163,7 @@ class FlowHandler(BaseHandler):
           client = idp['cas_clients'][client_id]
           self.add_html("""
             <div>
-              <span>{name}</span>
+              <span style="color: #004c97; margin-left: 20px">{name}</span>
               <span><a href="/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
             </div>
             """.format(
@@ -209,7 +209,7 @@ class FlowHandler(BaseHandler):
         client = idp['oidc_clients'][client_id]
         self.add_html("""
           <div>
-            <span>{name}</span>
+            <span style="color: #004c97; margin-left: 20px">{name}</span>
             <span><a href="/client/oidc/logout/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}" class="smallbutton">Logout</a></span>
           </div>
           """.format(
@@ -229,7 +229,7 @@ class FlowHandler(BaseHandler):
         app_params = idp['saml_clients'][app_id]
         self.add_html("""
           <div>
-            <span>{name}</span>
+            <span style="color: #004c97; margin-left: 20px">{name}</span>
             <span><a href="/client/saml/logout/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}" class="smallbutton">Logout</a></span>
           </div>
           """.format(
@@ -249,7 +249,7 @@ class FlowHandler(BaseHandler):
         app_params = idp['cas_clients'][app_id]
         self.add_html("""
           <div>
-            <span>{name}</span>
+            <span style="color: #004c97; margin-left: 20px">{name}</span>
             <span><a href="/client/cas/logout/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}" class="smallbutton">Logout</a></span>
           </div>
           """.format(
