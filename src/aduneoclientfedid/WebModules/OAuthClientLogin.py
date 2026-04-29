@@ -322,6 +322,7 @@ class OAuthClientLogin(FlowHandler):
         return generateOAuth2Request(paramValues, cfiForm);;
       """)
       form.set_option('/requester/include_empty_items', False)
+      form.add_button('Cancel', f'/?idpid={idp_id}', display='all')
 
       self.add_html(form.get_html())
       self.add_javascript_include('/javascript/OAuthClientLogin.js')

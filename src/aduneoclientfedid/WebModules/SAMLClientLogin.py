@@ -206,6 +206,8 @@ class SAMLClientLogin(FlowHandler):
           .text('relay_state', label='Relay state', clipboard_category='relay_state') \
           .textarea('authentication_request', label='SAML authentication request', rows=10, clipboard_category='authentication_request', upload_button='Upload XML', on_load='updateAuthenticationRequest(cfiForm)') \
         .end_section() \
+      
+      form.add_button('Cancel', f'/?idpid={idp_id}', display='all')
 
       self.add_javascript_include('/javascript/SAMLClientLogin.js')
       self.add_html(form.get_html())
