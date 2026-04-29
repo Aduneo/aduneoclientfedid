@@ -46,6 +46,7 @@ class Home(BaseHandler):
     self.dropdown_menu('oauth2', 'Add OAuth2 Client', idps, 'oauth2Button1', 'oauth2Menu1')
     self.dropdown_menu('saml', 'Add SAML Client', idps, 'samlButton1', 'samlMenu1')
     self.dropdown_menu('cas', 'Add CAS Client', idps, 'casButton1', 'casMenu1')
+    self.add_html("""<div aria-hidden="true" style="height: 20px;"></div>""")
 
     for idp_id in sorted(idps.keys()):
       
@@ -61,7 +62,7 @@ class Home(BaseHandler):
             <img class="minus_button" src="/images/moins.png" title="Collapse" style="display: {minus_display}" onclick="collapseSection(\'{section_id}\')">
           </span>
           <span style="display: inline-block; vertical-align: top; width: 100%; border-bottom-style: solid; border-bottom-width: 1px; padding: 2px 2px 2px 2px;">
-            <span class="homeIdp">{title}</span>
+            <span class="homeIdp" style="font-size: 16pt;">{title}</span>
             <span class="section_content" style="display: {display};">
               <div>
                 <span><a href="/client/idp/admin/display?idpid={idp_id}" class="smallbutton">Display IdP Parameters</a></span>
@@ -266,7 +267,7 @@ class Home(BaseHandler):
     for idp_id in sorted(idps.keys()):
       idp = idps[idp_id]
       idp_name = idp.get('name', 'IDP')
-      end_link = "/client/" + client_type + "/admin/modifyclient?idp_id=" + idp_id
+      end_link = "/client/" + client_type + "/admin/modifyclient?idpid=" + idp_id
 
       self.add_html("""
         <a class="end-link" href="{end_link}">
@@ -299,10 +300,10 @@ class Home(BaseHandler):
         <div class="menu-item">
           {idp_name}
           <div class="sub2">
-            <a class="end-link" href="/client/oauth2/admin/modifyclient?idp_id={idp_id}&clienttype=confidential_21"><div class="menu-item">Confidential OAuth 2.1 client</div></a>
-            <a class="end-link" href="/client/oauth2/admin/modifyclient?idp_id={idp_id}&clienttype=public_21"><div class="menu-item">Public OAuth 2.1 client</div></a>
-            <a class="end-link" href="/client/oauth2/admin/modifyclient?idp_id={idp_id}&clienttype=confidential_20"><div class="menu-item">Confidential OAuth 2.0 client</div></a>
-            <a class="end-link" href="/client/oauth2/admin/modifyclient?idp_id={idp_id}&clienttype=public_20"><div class="menu-item">Public OAuth 2.0 client</div></a>
+            <a class="end-link" href="/client/oauth2/admin/modifyclient?idpid={idp_id}&clienttype=confidential_21"><div class="menu-item">Confidential OAuth 2.1 client</div></a>
+            <a class="end-link" href="/client/oauth2/admin/modifyclient?idpid={idp_id}&clienttype=public_21"><div class="menu-item">Public OAuth 2.1 client</div></a>
+            <a class="end-link" href="/client/oauth2/admin/modifyclient?idpid={idp_id}&clienttype=confidential_20"><div class="menu-item">Confidential OAuth 2.0 client</div></a>
+            <a class="end-link" href="/client/oauth2/admin/modifyclient?idpid={idp_id}&clienttype=public_20"><div class="menu-item">Public OAuth 2.0 client</div></a>
           </div>
         </div>
         """.format(
