@@ -60,7 +60,7 @@ from .FlowHandler import FlowHandler
 @register_web_module('/client/oidc/login')
 class OIDCClientLogin(FlowHandler):
 
-  @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=True)
+  @register_page_url(url='preparerequest', method='GET', template='page_default.html', continuous=False)
   def prepare_request(self):
     """
       Prépare la requête d'authentification OIDC
@@ -219,7 +219,7 @@ class OIDCClientLogin(FlowHandler):
       else :
         client_secret_label = 'Client Secret <span style="color: #ff0000"> 🔴 NOT FOUND in configuration, you need to enter a value if you want to authenticate properly</span>'
       
-      form = RequesterForm(form_id, form_content, action='/client/oidc/login/sendrequest', mode='api', request_url='@[authorization_endpoint]') \
+      form = RequesterForm(form_id, form_content, action='/client/oidc/login/sendrequest', mode='new_page', request_url='@[authorization_endpoint]') \
         .hidden('form_id') \
         .hidden('contextid') \
         .start_section('clientfedid_params', title="ClientFedID Parameters") \
@@ -341,7 +341,7 @@ class OIDCClientLogin(FlowHandler):
           """)
 
 
-  @register_page_url(url='sendrequest', method='POST', continuous=True)
+  @register_url(url='sendrequest', method='POST')
   def send_request(self):
     
     """
