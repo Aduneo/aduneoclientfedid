@@ -129,7 +129,7 @@ class OAuth2SAMLtoAT(FlowHandler):
         .hidden('app_type') \
         .text('token_endpoint', label='Token endpoint', clipboard_category='token_endpoint', displayed_when="@[app_id] = '__input__'") \
         .text('client_id', label='Client ID', clipboard_category='client_id', displayed_when="@[app_id] = '__input__'") \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret', displayed_when="@[app_id] = '__input__'") \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[app_id] = '__input__'") \
         .text('scope', label='Scope', clipboard_category='scope') \
         .closed_list('auth_method', label='Authn. Method', 
           values = {'none': 'None', 'basic': 'Basic', 'form': 'Form'},
@@ -168,7 +168,7 @@ class OAuth2SAMLtoAT(FlowHandler):
           .replace(/=+$/, '');
         return paramValues;
       """)
-      form.set_option('/clipboard/remember_secrets', True)
+      #form.set_option('/clipboard/remember_secrets', True)
       form.set_option('/requester/auth_method_options', ['none', 'basic', 'bearer_token'])
       form.set_option('/requester/cancel_button', '/client/flows/cancelrequest?contextid='+urllib.parse.quote(self.context.context_id))
       form.set_option('/requester/include_empty_items', False)

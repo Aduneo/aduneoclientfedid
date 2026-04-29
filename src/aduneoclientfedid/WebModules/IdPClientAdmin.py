@@ -206,7 +206,6 @@ class IdPClientAdmin(BaseHandler):
           <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">Display parameters</span>
           <span><a href="/client/oidc/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
           <span><a href="/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
-          <span><a href="/client/oidc/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
           <span><a href="/client/oidc/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbutton">Remove</a></span>
         </div>
         """.format(
@@ -215,6 +214,7 @@ class IdPClientAdmin(BaseHandler):
           app_id = client_id,
           div_id = param_uuid,
           ))
+      #<span><a href="/client/oidc/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
           
       client['idp_id'] = idp_id
       client['app_id'] = client_id
@@ -247,7 +247,6 @@ class IdPClientAdmin(BaseHandler):
           <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">Display parameters</span>
           <span><a href="/client/oauth2/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
           <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
-          <span><a href="/client/oauth2/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Revoke</a></span>
           <span><a href="/client/oauth2/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbutton">Remove</a></span>
         </div>
         """.format(
@@ -256,6 +255,7 @@ class IdPClientAdmin(BaseHandler):
           app_id = client_id,
           div_id = param_uuid,
           ))
+      #<span><a href="/client/oauth2/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Revoke</a></span>
           
       client['idp_id'] = idp_id
       client['app_id'] = client_id
@@ -323,7 +323,6 @@ class IdPClientAdmin(BaseHandler):
             <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">Display parameters</span>
             <span><a href="/client/saml/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
             <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
-            <span><a href="/client/saml/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
             <span><a href="/client/saml/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbutton">Remove</a></span>
           </div>
           """.format(
@@ -332,6 +331,7 @@ class IdPClientAdmin(BaseHandler):
             app_id = sp_id,
             div_id = param_uuid,
             ))
+        # <span><a href="/client/saml/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
             
         sp['idp_id'] = idp_id
         sp['app_id'] = sp_id
@@ -361,7 +361,6 @@ class IdPClientAdmin(BaseHandler):
           <span class="smallbutton" onclick="togglePanel(this, 'panel_{div_id}')" hideLabel="Hide parameters" displayLabel="Display parameters">Display parameters</span>
           <span><a href="/client/cas/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Modify</a></span>
           <span><a href="/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
-          <span><a href="/client/cas/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
           <span><a href="/client/cas/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbutton">Remove</a></span>
         </div>
         """.format(
@@ -370,6 +369,7 @@ class IdPClientAdmin(BaseHandler):
           app_id = client_id,
           div_id = param_uuid,
           ))
+      #<span><a href="/client/cas/logout/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Logout</a></span>
           
       client['idp_id'] = idp_id
       client['app_id'] = client_id

@@ -208,7 +208,7 @@ class OAuth2Revocation(FlowHandler):
         'auth_method': True,
         'verify_certificates': True,
         })
-      form.set_option('/clipboard/remember_secrets', True)
+      #form.set_option('/clipboard/remember_secrets', True)
       form.set_option('/requester/auth_method_options', ['none', 'basic'])
       form.set_option('/requester/cancel_button', '/client/flows/cancelrequest?contextid='+urllib.parse.quote(self.context.context_id))
 

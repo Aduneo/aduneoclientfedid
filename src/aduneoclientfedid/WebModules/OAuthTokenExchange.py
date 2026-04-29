@@ -200,7 +200,7 @@ class OAuth2TokenExchange(FlowHandler):
         .hidden('app_id') \
         .hidden('token_name') \
         .text('client_id', label='Client ID', clipboard_category='client_id') \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret') \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret!') \
         
       form.set_title(f"""Token Exchange <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
       form.set_hr_title("Token Exchange")
@@ -236,7 +236,7 @@ class OAuth2TokenExchange(FlowHandler):
         }
         return paramValues;
       """)
-      form.set_option('/clipboard/remember_secrets', True)
+      #form.set_option('/clipboard/remember_secrets', True)
       form.set_option('/requester/auth_method_options', ['none', 'basic', 'bearer_token'])
       form.set_option('/requester/cancel_button', '/client/flows/cancelrequest?contextid='+urllib.parse.quote(self.context.context_id))
       form.set_option('/requester/include_empty_items', False)
