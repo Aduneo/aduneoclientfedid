@@ -210,6 +210,11 @@ class OAuthClientLogin(FlowHandler):
         'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'basic'),
         'state': state,
       }
+
+      if self.password_found_in_config('oauth2_clients'):
+        client_secret_label = 'Client Secret <span style="color: #00aa00"> 🟢 FOUND in configuration, will be using this one if left empty </span>'
+      else :
+        client_secret_label = 'Client Secret <span style="color: #ff0000"> 🔴 NOT FOUND in configuration, you need to enter a value if you want to authenticate properly</span>'
       
       form = RequesterForm(form_id, form_content, action='/client/oauth2/login/sendrequest', mode='api', request_url='@[authorization_endpoint]') \
         .hidden('form_id') \
@@ -256,7 +261,7 @@ class OAuthClientLogin(FlowHandler):
           .text('code_challenge', label='PKCE code challenge', displayed_when="@[oauth_flow] = 'authorization_code_pkce' and @[code_challenge_method] = 'S256'") \
           .text('code_verifier', label='PKCE code verifier', displayed_when="@[oauth_flow] = 'authorization_code_pkce'") \
           .text('client_id', label='Client ID', clipboard_category='client_id') \
-          .password('client_secret', label='Client secret', clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
+          .password('client_secret', label=client_secret_label, clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
           .text('username', label='User name', clipboard_category='username', displayed_when="@[oauth_flow] = 'resource_owner_password_credentials'") \
           .password('password', label='User password', clipboard_category='userpassword', displayed_when="@[oauth_flow] = 'resource_owner_password_credentials'") \
           .text('scope', label='Scope', clipboard_category='scope') \
