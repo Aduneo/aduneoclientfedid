@@ -433,7 +433,7 @@ class CodeGenerator():
 
     self.html = ''
     if not self.display_only:
-      self.html += '<form id="form-'+self.form.form_uuid+'" method="POST" {action}">'.format(
+      self.html += '<form id="form-'+self.form.form_uuid+'" method="POST" {action}>'.format(
         action = 'action="'+self.form.action+'"' if self.form.action else ''
         )
     self.javascript = ''
@@ -1809,7 +1809,7 @@ class RequesterForm(CfiForm):
       section_title = 'HTTP request' + (' for '+self.hr_title if self.hr_title else '')
       self.start_section('http_requester', title=section_title, level=2) \
         .raw_html('<div class="intertable"><label for="{input_id}">Modify request</label><input type="checkbox" id={input_id} name="modify_request" /></div>'.format(input_id=self.form_uuid+"_modify_request")) \
-        .textarea('hr_request_url', label='URL', rows=1, displayed_when=displayed_when_dict['hr_request_url'], clipboard_category='request_url') \
+        .text('hr_request_url', label='URL', displayed_when=displayed_when_dict['hr_request_url'], clipboard_category='hr_request_url') \
         .closed_list('hr_form_method', label='HTTP Method', displayed_when=displayed_when_dict['hr_form_method'], 
           values=http_methods,
           default = 'post',
@@ -1823,9 +1823,9 @@ class RequesterForm(CfiForm):
           values = auth_method_select,
           default = 'None'
           ) \
-        .text('hr_auth_login', label='HTTP login', clipboard_category='client_id', displayed_when=displayed_when_dict['hr_auth_login']) \
+        .text('hr_auth_login', label='HTTP login', clipboard_category='hr_auth_login', displayed_when=displayed_when_dict['hr_auth_login']) \
         .text('hr_auth_login_param', label='Login parameter name', displayed_when=displayed_when_dict['hr_auth_login_param']) \
-        .password('hr_auth_secret', label='HTTP secret', clipboard_category='client_secret', displayed_when=displayed_when_dict['hr_auth_secret']) \
+        .password('hr_auth_secret', label='HTTP secret', clipboard_category='hr_auth_secret', displayed_when=displayed_when_dict['hr_auth_secret']) \
         .text('hr_auth_secret_param', label='Secret parameter name', displayed_when=displayed_when_dict['hr_auth_secret_param']) \
         .check_box('hr_verify_certificates', label='Verify certificates', displayed_when=displayed_when_dict['hr_verify_certificates']) \
         .text('hr_dns_override', label='DNS override', clipboard_category='dns_override', displayed_when=displayed_when_dict['hr_dns_override']) \

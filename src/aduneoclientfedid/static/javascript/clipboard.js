@@ -6,6 +6,8 @@
 clipboardCategories = {
   "authorization_endpoint": "Authorization endpoint",
   "token_endpoint": "Token endpoint",
+  "userinfo_endpoint": "Userinfo Endpoint",
+  "issuer": "Issuer",
   "jwks_uri": "JWKS URI",
   "client_id": "Client ID",
   "client_secret": "Client secret",
@@ -15,7 +17,12 @@ clipboardCategories = {
   "resource": "Resource",
   "introspection_endpoint": "Introspection endpoint",
   "access_token": "Access token",
-  "request_url": "URL",
+  "hr_request_url": "URL HTTP",
+  "hr_auth_login": "Login HTTP",
+  "hr_auth_secret": "Secret HTTP",
+  "post_logout_redirect_uri": "Post Logout Redirect URI",
+  "idp_entity_id": "IdP entity ID",
+  "idp_sso_url": "IdP SSO URL"
 }
 var clipboardTarget;
 var clipboardCategory;
