@@ -162,7 +162,7 @@ class Clipboard(BaseHandler):
 </div>
 """    
   
-  @register_url(method='POST')
+  @register_url(url='update', method='POST')
   def update(self):
     for category in self.post_json:
       for text in self.post_json[category]:

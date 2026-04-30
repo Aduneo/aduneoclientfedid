@@ -35,14 +35,13 @@ function displayClipboard(imgElement) {
   clipboardTD = clipboardSpan.parentElement;
   commonTR = clipboardTD.parentElement;
   inputs = commonTR.getElementsByTagName('input');
-  if (inputs.length == 1) {
-    clipboardTarget = inputs[0]
-  } else {
-    textareas = commonTR.getElementsByTagName('textarea');
-    if (textareas.length == 1) {
-      clipboardTarget = textareas[0]
-    }
+  textareas = commonTR.getElementsByTagName('textarea');
+  if (textareas.length == 1){
+    clipboardTarget = textareas[0];
   }
+  else if (inputs.length == 1) {
+    clipboardTarget = inputs[0];
+  } 
   
   if (clipboardTarget) {
   
@@ -137,7 +136,7 @@ function fillClipboard(form) {
   values = {};
   
   Array.prototype.forEach.call(form.elements, item => {
-    if ((item.type == 'text') || (item.type == 'password')) {
+    if ((item.type == 'text') || (item.type == 'password') || (item.type == 'textarea') ) {
       clipboardCategory = item.dataset.clipboardcategory;
       if (clipboardCategory && (item.value != '')) {
         if (clipboardCategory == '#name') { clipboardCategory = item.name; }
@@ -147,12 +146,13 @@ function fillClipboard(form) {
     }
   });  
   
-  let xhttp = new XMLHttpRequest();
-  xhttp.open("POST", "/client/clipboard/update");
-  xhttp.setRequestHeader("Content-Type", "application/json");
-  xhttp.send(JSON.stringify(values));
+  updateClipboard("/client/clipboard/update", JSON.stringify(values));
 }
 
+/* Permet à la requête de survivre la redirection lorsque RequesterForm est en mode 'new_page' */
+function updateClipboard(url, json_data) {
+  navigator.sendBeacon(url, new Blob([json_data], { type: "application/json" }));
+}
 
 function selectClipboardText(buttonDiv) {
   textSpan = buttonDiv.getElementsByTagName('span')[0];

@@ -337,7 +337,7 @@ function sendToRequester_newPage(formUUID) {
   document.getElementById(formUUID+'_button_bar').style.display = 'none';
   document.getElementById(formUUID+'_send_notification').style.display = 'block';
 
-  fillClipboard(request_form)
+  fillClipboard(request_form);
 
   request_form.submit();
 }
@@ -377,7 +377,7 @@ function sendToRequester_api(formUUID) {
   // TODO : généraliser la notification d'envoi de la requête
   document.getElementById(formUUID+'_send_notification').style.display = 'block';
 
-  fillClipboard(request_form)
+  fillClipboard(request_form);
 
   fetchContent('POST', request_form.action, data, formUUID+'_button_bar', formUUID+'_send_notification');
 }

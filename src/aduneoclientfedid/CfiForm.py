@@ -739,7 +739,7 @@ class CodeGenerator():
         display = 'table-row' if display else 'none',
         )
     else:
-      self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><textarea name="{field_id}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" rows={rows} {disabled}{clipboard_data}{readonly}>{value}</textarea>{upload_button}</td><td>{clipboard_html}</td><td>{copy_value_html}</td></tr>'.format(
+      self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><textarea type=textarea name="{field_id}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" rows={rows} {disabled}{clipboard_data}{readonly}>{value}</textarea>{upload_button}</td><td>{clipboard_html}</td><td>{copy_value_html}</td></tr>'.format(
         form_uuid = self.form.form_uuid,
         tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
         input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
