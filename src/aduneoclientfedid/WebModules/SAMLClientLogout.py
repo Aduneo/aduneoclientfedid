@@ -126,8 +126,8 @@ class SAMLClientLogout(FlowHandler):
           .textarea('sp_certificate', label='SP certificate', rows=10, clipboard_category='sp_certificate', upload_button='Upload SP certificate', displayed_when="@[sign_logout_request]") \
         .end_section() \
         .start_section('logout_params', title="Logout request") \
-          .text('relay_state', label='Relay state', clipboard_category='relay_state') \
-          .textarea('logout_request', label='SAML logout request', rows=10, clipboard_category='logout_request', upload_button='Upload XML', on_load='updateLogoutRequest(cfiForm)') \
+          .text('relay_state', label='Relay state') \
+          .textarea('logout_request', label='SAML logout request', rows=10, upload_button='Upload XML', on_load='updateLogoutRequest(cfiForm)') \
         .end_section() \
 
       form.set_title(f"""SAML Logout <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")

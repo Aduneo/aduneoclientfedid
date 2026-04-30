@@ -203,8 +203,8 @@ class SAMLClientLogin(FlowHandler):
           .textarea('sp_certificate', label='SP certificate', rows=10, clipboard_category='sp_certificate', upload_button='Upload SP certificate', displayed_when="@[sign_auth_request]") \
         .end_section() \
         .start_section('authn_params', title="SAML authentication request") \
-          .text('relay_state', label='Relay state', clipboard_category='relay_state') \
-          .textarea('authentication_request', label='SAML authentication request', rows=10, clipboard_category='authentication_request', upload_button='Upload XML', on_load='updateAuthenticationRequest(cfiForm)') \
+          .text('relay_state', label='Relay state') \
+          .textarea('authentication_request', label='SAML authentication request', rows=10, upload_button='Upload XML', on_load='updateAuthenticationRequest(cfiForm)') \
         .end_section() \
       
       form.add_button('Cancel', f'/?idpid={idp_id}', display='all')
