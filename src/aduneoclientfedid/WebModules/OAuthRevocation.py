@@ -183,7 +183,7 @@ class OAuth2Revocation(FlowHandler):
           default = 'basic'
           ) \
         .text('client_id', label='Client ID', clipboard_category='client_id', displayed_when="@[revocation_auth_method] = 'basic'") \
-        .password('client_secret', label='Client Secret', clipboard_category='client_secret!', displayed_when="@[revocation_auth_method] = 'basic'") \
+        .password('client_secret', label='Client Secret', clipboard_category='client_secret', displayed_when="@[revocation_auth_method] = 'basic'") \
         .text('revocation_endpoint_dns_override', label='Revocation endpoint DNS override', clipboard_category='revocation_endpoint_dns_override') \
         
       form.set_title(f"""Revocation <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
@@ -208,7 +208,7 @@ class OAuth2Revocation(FlowHandler):
         'auth_method': True,
         'verify_certificates': True,
         })
-      #form.set_option('/clipboard/remember_secrets', True)
+      form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
       form.set_option('/requester/auth_method_options', ['none', 'basic'])
       form.set_option('/requester/cancel_button', '/client/flows/cancelrequest?contextid='+urllib.parse.quote(self.context.context_id))
 

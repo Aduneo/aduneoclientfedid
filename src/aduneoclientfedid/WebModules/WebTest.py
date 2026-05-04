@@ -261,7 +261,7 @@ class WebTest(BaseHandler):
           values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
           default = 'client_secret_basic'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
       .end_section() \
       .start_section('connection_options', title="Connection options") \
         .check_box('verify_certificates', label='Verify certificates') \
@@ -343,7 +343,7 @@ class WebTest(BaseHandler):
           values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
           default = 'client_secret_basic'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
       .end_section() \
       .start_section('connection_options', title="Connection options") \
         .check_box('verify_certificates', label='Verify certificates') \
@@ -699,7 +699,7 @@ class WebTest(BaseHandler):
         default = 'basic'
         ) \
       .text('client_id', label='Client ID', clipboard_category='client_id') \
-      .password('client_secret', label='Client secret', clipboard_category='client_secret!') \
+      .password('client_secret', label='Client secret', clipboard_category='client_secret') \
 
     form.set_table('token_clients', token_clients)
     form.set_request_parameters({

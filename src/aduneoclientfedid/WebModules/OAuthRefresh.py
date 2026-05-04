@@ -198,7 +198,7 @@ class OAuth2Refresh(FlowHandler):
           default = 'basic'
           ) \
         .text('client_id', label='Client ID', clipboard_category='client_id', displayed_when="@[client_ids] = '__input__'") \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[client_ids] = '__input__'") \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret', displayed_when="@[client_ids] = '__input__'") \
         
       form.set_title(f"""Refresh <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
       form.set_hr_title("Refresh")
@@ -227,7 +227,7 @@ class OAuth2Refresh(FlowHandler):
         'auth_method': True,
         'verify_certificates': True,
         })
-      #form.set_option('/clipboard/remember_secrets', True)
+      form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
       form.set_option('/requester/cancel_button', '/client/flows/cancelrequest?contextid='+urllib.parse.quote(self.context.context_id))
       form.set_option('/requester/include_empty_items', False)
 

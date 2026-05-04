@@ -132,6 +132,11 @@ class OIDCClientAdmin(BaseHandler):
       'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
       }
     
+    if self.password_found_in_config('oidc_clients', idp_id, app_id):
+      client_secret_label = 'Client Secret <span style="color: #00aa00"> 🟢 FOUND in configuration, will be using this one if left empty </span>'
+    else :
+      client_secret_label = 'Client Secret <span style="color: #ff0000"> 🔴 NOT FOUND in configuration, you need to enter a value if you want the value to be propagated between flows</span>'
+
     form = CfiForm('oidcadmin', form_content, action='modifyclientsingle', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
@@ -184,7 +189,7 @@ class OIDCClientAdmin(BaseHandler):
           values={'get': 'GET', 'post': 'POST'},
           default = 'post'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
+        .password('client_secret', label=client_secret_label, clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
       .end_section() \
       .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=True) \
         .closed_list('display', label='Display', 
@@ -352,6 +357,8 @@ class OIDCClientAdmin(BaseHandler):
 
       self.add_html(app_form.get_html())
       self.add_javascript(app_form.get_javascript())
+       
+      self.send_page()
 
 
   @register_url(url='modifymulti', method='POST')
@@ -532,6 +539,11 @@ class OIDCClientAdmin(BaseHandler):
       'acr_values': app_params.get('acr_values', ''),
       }
     
+    if handler.password_found_in_config('oidc_clients', app_params['idp_id'], app_params['app_id']):
+      client_secret_label = 'Client Secret <span style="color: #00aa00"> 🟢 FOUND in configuration, will be using this one if left empty </span>'
+    else :
+      client_secret_label = 'Client Secret <span style="color: #ff0000"> 🔴 NOT FOUND in configuration, you need to enter a value if you want the value to be propagated between flows</span>'
+    
     form = CfiForm('oidcadmin', form_content, action='modifymulti', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
@@ -559,7 +571,7 @@ class OIDCClientAdmin(BaseHandler):
           values={'get': 'GET', 'post': 'POST'},
           default = 'post'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
+        .password('client_secret', label=client_secret_label, clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
       .end_section() \
       .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=True) \
         .closed_list('display', label='Display', 

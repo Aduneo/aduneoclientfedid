@@ -212,7 +212,7 @@ class OAuth2Introspection(FlowHandler):
           default = 'basic'
           ) \
         .text('introspection_login', label='Login', clipboard_category='client_id', displayed_when="@[introspection_api] = '__input__' and (@[introspection_auth_method] = 'basic' or @[introspection_auth_method] = 'bearer_token')") \
-        .password('introspection_secret', label='Secret', clipboard_category='client_secret!', displayed_when="@[introspection_api] = '__input__' and @[introspection_auth_method] = 'basic'") \
+        .password('introspection_secret', label='Secret', clipboard_category='client_secret', displayed_when="@[introspection_api] = '__input__' and @[introspection_auth_method] = 'basic'") \
         .text('introspection_endpoint_dns_override', label='Introspection endpoint DNS override', clipboard_category='introspection_endpoint_dns_override') \
         
       form.set_title(f"""Introspection <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
@@ -236,7 +236,7 @@ class OAuth2Introspection(FlowHandler):
         'auth_method': True,
         'verify_certificates': True,
         })
-      #form.set_option('/clipboard/remember_secrets', True)
+      form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
       form.set_option('/requester/auth_method_options', ['none', 'basic', 'bearer_token'])
       form.set_option('/requester/cancel_button', '/client/flows/cancelrequest?contextid='+urllib.parse.quote(self.context.context_id))
 

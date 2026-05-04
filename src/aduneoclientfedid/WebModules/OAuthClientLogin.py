@@ -261,7 +261,7 @@ class OAuthClientLogin(FlowHandler):
           .text('code_challenge', label='PKCE code challenge', displayed_when="@[oauth_flow] = 'authorization_code_pkce' and @[code_challenge_method] = 'S256'") \
           .text('code_verifier', label='PKCE code verifier', displayed_when="@[oauth_flow] = 'authorization_code_pkce'") \
           .text('client_id', label='Client ID', clipboard_category='client_id') \
-          .password('client_secret', label=client_secret_label, clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
+          .password('client_secret', label=client_secret_label, clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
           .text('username', label='User name', clipboard_category='username', displayed_when="@[oauth_flow] = 'resource_owner_password_credentials'") \
           .password('password', label='User password', clipboard_category='userpassword', displayed_when="@[oauth_flow] = 'resource_owner_password_credentials'") \
           .text('scope', label='Scope', clipboard_category='scope') \
@@ -326,6 +326,7 @@ class OAuthClientLogin(FlowHandler):
       form.set_data_generator_code("""
         return generateOAuth2Request(paramValues, cfiForm);;
       """)
+      form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
       form.set_option('/requester/include_empty_items', False)
       form.add_button('Cancel', f'/?idpid={idp_id}', display='all')
 

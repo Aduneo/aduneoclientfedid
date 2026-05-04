@@ -1080,6 +1080,9 @@ class BaseHandler:
       26/02/2026 (mpham) mise en cache dans self.authentication_parameters
     """
     return self.hreq.get_authentication_parameters()
+  
+  def password_found_in_config(self, client_type, idp_id, app_id):
+    return bool(self.conf.get('idps', {}).get(idp_id, {}).get(client_type, {}).get(app_id, {}).get('client_secret!', '') != '')
 
 
 

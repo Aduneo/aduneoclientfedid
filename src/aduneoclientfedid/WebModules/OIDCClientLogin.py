@@ -245,7 +245,7 @@ class OIDCClientLogin(FlowHandler):
         .end_section() \
         .start_section('client_params', title="Client Parameters", collapsible=True, collapsible_default=False) \
           .text('client_id', label='Client ID', clipboard_category='client_id') \
-          .password('client_secret', label=client_secret_label, clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
+          .password('client_secret', label=client_secret_label, clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
           .text('scope', label='Scope', clipboard_category='scope') \
           .closed_list('response_type', label='Reponse type', 
             values={'code': 'code'},
@@ -309,6 +309,7 @@ class OIDCClientLogin(FlowHandler):
         'auth_method': False,
         'verify_certificates': True,
         })
+      form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
       form.set_option('/requester/include_empty_items', False)
       form.add_button('Cancel', f'/?idpid={idp_id}', display='all')
 

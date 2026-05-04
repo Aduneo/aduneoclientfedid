@@ -125,7 +125,6 @@ class SAMLClientAdmin(BaseHandler):
       'sp_acs_url': app_params.get('sp_acs_url', ''),
       'sp_slo_url': app_params.get('sp_slo_url', ''),
       'sp_key_configuration': app_params.get('sp_key_configuration', 'clientfedid_keys'),
-      'sp_private_key': app_params.get('sp_private_key', ''),
       'sp_certificate': app_params.get('sp_certificate', SAMLClientAdmin._get_clientfedid_certificate()),
       'nameid_policy': app_params.get('nameid_policy', 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'),
       'authentication_binding': app_params.get('authentication_binding', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'),
@@ -260,12 +259,16 @@ class SAMLClientAdmin(BaseHandler):
       else:
         saml_params[item] = self.post_form[item].split('\t')
       
-    for item in ['sp_entity_id', 'sp_acs_url', 'sp_slo_url', 'sp_key_configuration', 'sp_private_key', 'sp_certificate', 'nameid_policy',
+    for item in ['sp_entity_id', 'sp_acs_url', 'sp_slo_url', 'sp_key_configuration', 'sp_certificate', 'nameid_policy',
       'authentication_binding', 'logout_binding']:
       if self.post_form.get(item, '') == '':
         app_params.pop(item, None)
       else:
         app_params[item] = self.post_form[item].strip()
+    
+    for secret in ['sp_private_key']:
+      if self.post_form.get(secret, '') != '':
+        app_params[secret+'!'] = self.post_form[secret]
       
     for item in ['sign_auth_request', 'sign_logout_request']:
       if item in self.post_form:
@@ -364,12 +367,16 @@ class SAMLClientAdmin(BaseHandler):
 
     app_params['name'] = self.post_form['name'].strip()
     
-    for item in ['sp_entity_id', 'sp_acs_url', 'sp_slo_url', 'sp_key_configuration', 'sp_private_key', 'sp_certificate', 'nameid_policy',
+    for item in ['sp_entity_id', 'sp_acs_url', 'sp_slo_url', 'sp_key_configuration', 'sp_certificate', 'nameid_policy',
       'authentication_binding', 'logout_binding']:
       if self.post_form.get(item, '') == '':
         app_params.pop(item, None)
       else:
         app_params[item] = self.post_form[item].strip()
+    
+    for secret in ['sp_private_key']:
+      if self.post_form.get(secret, '') != '':
+        app_params[secret+'!'] = self.post_form[secret]
       
     for item in ['sign_auth_request', 'sign_logout_request']:
       if item in self.post_form:

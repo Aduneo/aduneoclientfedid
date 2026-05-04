@@ -98,7 +98,6 @@ class SAMLClientLogout(FlowHandler):
         'session_index': default_assertion_wrapper.get('session_index', '') if default_assertion_wrapper else '',
         'logout_binding': app_params.get('logout_binding', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'),
         'sign_logout_request': Configuration.is_on(app_params.get('sign_logout_request', 'off')),
-        'sp_private_key': '',
         'sp_certificate': app_params.get('sp_certificate', ''),
         'relay_state': relay_state,
         'request_id': 'id'+str(uuid.uuid4()),
@@ -201,7 +200,7 @@ class SAMLClientLogout(FlowHandler):
         conf_app = conf_idp['saml_clients'][self.post_form.get('app_id','')]
         if conf_app.get('sp_key_configuration', 'clientfedid_keys') == 'specific_keys':
           self.log_info("  private key was in the SP configuration")
-          app_params['sp_private_key'] = conf_app.get('sp_private_key', '')
+          app_params['sp_private_key'] = conf_app.get('sp_private_key!', '')
         else:
           self.log_info("  private key is the default SAML private key")
           app_params['sp_private_key'] = SAMLClientAdmin._get_clientfedid_private_key()

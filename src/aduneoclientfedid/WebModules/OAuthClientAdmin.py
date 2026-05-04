@@ -131,6 +131,11 @@ class OAuthClientAdmin(BaseHandler):
       'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
       }
     
+    if self.password_found_in_config('oauth2_clients', idp_id, app_id):
+      client_secret_label = 'Client Secret <span style="color: #00aa00"> 🟢 FOUND in configuration, will be using this one if left empty </span>'
+    else :
+      client_secret_label = 'Client Secret <span style="color: #ff0000"> 🔴 NOT FOUND in configuration, you need to enter a value if you want the value to be propagated between flows</span>'
+    
     form = CfiForm('oauth2admin', form_content, action='modifyclientsingle', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
@@ -175,7 +180,7 @@ class OAuthClientAdmin(BaseHandler):
           values={'none': 'none', 'basic': 'client_secret_basic', 'form': 'client_secret_post'},
           default = 'form'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
+        .password('client_secret', label=client_secret_label, clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
       .end_section() \
       .start_section('clientfedid_configuration', title="ClientFedID Configuration", collapsible=True, collapsible_default=True) \
         .text('token_endpoint_dns_override', label='Token endpoint DNS override', clipboard_category='token_endpoint_dns_override') \
@@ -502,6 +507,11 @@ class OAuthClientAdmin(BaseHandler):
       'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', token_endpoint_auth_method_default),
       }
     
+    if handler.password_found_in_config('oauth2_clients', app_params['idp_id'], app_params['app_id']):
+      client_secret_label = 'Client Secret <span style="color: #00aa00"> 🟢 FOUND in configuration, will be using this one if left empty </span>'
+    else :
+      client_secret_label = 'Client Secret <span style="color: #ff0000"> 🔴 NOT FOUND in configuration, you need to enter a value if you want the value to be propagated between flows</span>'
+
     form = CfiForm('oauth2admin', form_content, action='modifymulti', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
@@ -530,7 +540,7 @@ class OAuthClientAdmin(BaseHandler):
           values={'none': 'none', 'basic': 'client_secret_basic', 'form': 'client_secret_post'},
           default = 'form'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
+        .password('client_secret', label=client_secret_label, clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
       .end_section() 
       
     form.set_title('OAuth 2 Authorization'+('' if form_content['name'] == '' else ': '+form_content['name']))
@@ -757,7 +767,7 @@ class OAuthClientAdmin(BaseHandler):
         default = 'inherit_from_idp'
         ) \
       .text('login', label='Login', clipboard_category='client_id') \
-      .password('secret', label='Secret', clipboard_category='client_secret!')
+      .password('secret', label='Secret', clipboard_category='client_secret')
       
     form.set_title('OAuth 2 API'+('' if form_content['name'] == '' else ': '+form_content['name']))
     form.add_button('Cancel', f"/client/idp/admin/display?idpid={api_params['idp_id']}", display='modify')
