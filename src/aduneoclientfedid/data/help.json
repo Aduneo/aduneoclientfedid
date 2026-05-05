@@ -1383,5 +1383,40 @@
     "header_fr": "Session Index",
     "content_fr": "Valeur de l'attribut `SessionIndex` contenu dans l'élément `<saml:AuthnStatement>` de l'assertion. Il identifie de manière unique la session établie entre l'utilisateur et l'IdP lors de cette authentification.\n\nLe SP doit conserver cette valeur car elle est requise lors de la déconnexion SAML (*LogoutRequest*) pour permettre à l'IdP d'identifier et de terminer la session concernée, notamment en cas de sessions multiples pour un même utilisateur.\n\nL'élément `<saml:AuthnStatement>` contient également l'`AuthnInstant` (instant d'authentification) et, optionnellement, la `SessionNotOnOrAfter` (date d'expiration de la session SSO côté IdP).",
     "format_fr": "md"
+  },
+    "/oidcadmin/display": {
+    "header_fr": "Display",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nLe paramètre *display* indique à l'IdP le type d'interface à présenter à l'utilisateur :\n\n- `page` : comportement par défaut (page pleine)\n- `popup` : fenêtre popup\n- `touch` : interface optimisée pour écran tactile\n- `wap` : interface pour appareils WAP (obsolète)",
+    "format_fr": "md"
+  },
+  "/oidcadmin/prompt": {
+    "header_fr": "Prompt",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nLe paramètre *prompt* indique à l'IdP les interactions souhaitées avec l'utilisateur :\n\n- `none` : aucune interaction, retourne une erreur si une authentification est nécessaire\n- `login` : force la réauthentification de l'utilisateur\n- `consent` : redemande le consentement à l'utilisateur\n- `select_account` : permet à l'utilisateur de choisir un compte",
+    "format_fr": "md"
+  },
+  "/oidcadmin/max_age": {
+    "header_fr": "Max Age",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nLe paramètre *max_age* indique la durée maximale (en secondes) depuis la dernière authentification active de l'utilisateur. Si cette durée est dépassée, l'IdP doit réauthentifier l'utilisateur.\n\nLa date d'authentification est vérifiable dans le claim *auth_time* du jeton d'identité.",
+    "format_fr": "md"
+  },
+  "/oidcadmin/ui_locales": {
+    "header_fr": "UI Locales",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nLe paramètre *ui_locales* indique à l'IdP les langues préférées pour l'interface présentée à l'utilisateur, sous forme d'une liste ordonnée de codes BCP47.\n\n- `fr` : français\n- `fr-FR en` : français (France) puis anglais en secours",
+    "format_fr": "md"
+  },
+  "/oidcadmin/id_token_hint": {
+    "header_fr": "ID Token Hint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nLe paramètre *id_token_hint* permet de transmettre le jeton d'identité d'une authentification précédente lors d'une nouvelle requête. L'IdP peut l'utiliser pour identifier l'utilisateur déjà authentifié, notamment lors d'une déconnexion ou d'une réauthentification silencieuse.",
+    "format_fr": "md"
+  },
+  "/oidcadmin/login_hint": {
+    "header_fr": "Login Hint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nLe paramètre *login_hint* permet de transmettre à l'IdP un identifiant (email, nom d'utilisateur…) pour préremplir la page de connexion et faciliter l'expérience utilisateur.",
+    "format_fr": "md"
+  },
+  "/oidcadmin/acr_values": {
+    "header_fr": "ACR Values",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nLe paramètre *acr_values* permet au client de demander un niveau minimum d'assurance d'authentification (*Authentication Context Class Reference*). L'IdP indique dans le jeton le niveau effectivement appliqué via le claim *acr*.\n\nExemples de valeurs : `urn:mace:incommon:iap:silver`, `urn:mace:incommon:iap:gold`",
+    "format_fr": "md"
   }
 }
