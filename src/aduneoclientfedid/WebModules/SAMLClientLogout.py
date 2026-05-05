@@ -121,7 +121,7 @@ class SAMLClientLogout(FlowHandler):
             default = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
             ) \
           .check_box('sign_logout_request', label='Sign logout request') \
-          .textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sign_logout_request]") \
+          .password_textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sign_logout_request]") \
           .textarea('sp_certificate', label='SP certificate', rows=10, clipboard_category='sp_certificate', upload_button='Upload SP certificate', displayed_when="@[sign_logout_request]") \
         .end_section() \
         .start_section('logout_params', title="Logout request") \
@@ -129,6 +129,7 @@ class SAMLClientLogout(FlowHandler):
           .textarea('logout_request', label='SAML logout request', rows=10, upload_button='Upload XML', on_load='updateLogoutRequest(cfiForm)') \
         .end_section() \
 
+      form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
       form.set_title(f"""SAML Logout <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
       self.add_javascript_include('/javascript/SAMLClientLogout.js')
       self.add_html(form.get_html())

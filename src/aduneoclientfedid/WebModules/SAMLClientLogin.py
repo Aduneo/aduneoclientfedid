@@ -198,7 +198,7 @@ class SAMLClientLogin(FlowHandler):
             default = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
             ) \
           .check_box('sign_auth_request', label='Sign authentication request') \
-          .textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sign_auth_request]") \
+          .password_textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sign_auth_request]") \
           .textarea('sp_certificate', label='SP certificate', rows=10, clipboard_category='sp_certificate', upload_button='Upload SP certificate', displayed_when="@[sign_auth_request]") \
         .end_section() \
         .start_section('authn_params', title="SAML authentication request") \
@@ -206,6 +206,7 @@ class SAMLClientLogin(FlowHandler):
           .textarea('authentication_request', label='SAML authentication request', rows=10, upload_button='Upload XML', on_load='updateAuthenticationRequest(cfiForm)') \
         .end_section() \
       
+      form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
       form.add_button('Cancel', f'/?idpid={idp_id}', display='all')
 
       self.add_javascript_include('/javascript/SAMLClientLogin.js')

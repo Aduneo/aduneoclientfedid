@@ -192,6 +192,34 @@ class CfiForm():
       textarea['on_upload'] = on_upload
     return self
 
+  def password_textarea(self, field_id:str, label:str='', rows=4, clipboard_category:str=None, copy_value:bool=True, help_button:bool=True, displayed_when:str="True", readonly:bool=False, on_load=None, upload_button:str=None, on_upload:str=None):
+    """
+    Version adaptée de textarea pour pouvoir afficher proprement les private keys SAML dans le clipboard en fonction de la config du clipboard
+    Args:
+      upload_button: affiche un bouton téléchargeant un fichier
+                       le comportement par défaut est de mettre le contenu brut du fichier dans le password_textarea
+                       mais il peut être modifié en donnant le code Javascript dans on_upload
+      on_upload: action à réaliser après un chargement de fichier
+                   le code a accès à
+                    - upload_content : le contenu du fichier
+                    - cfiForm : le formulaire en cours
+    
+    Versions:
+      05/05/2026 (vbittard) initial
+    """
+  
+    password_textarea = self._add_template_item('password_textarea', field_id, label, help_button, displayed_when, readonly)
+    password_textarea['rows'] = rows
+    password_textarea['clipboard_category'] = clipboard_category
+    password_textarea['copy_value'] = copy_value
+    if on_load:
+      password_textarea['on_load'] = on_load
+    if upload_button:
+      password_textarea['upload_button'] = upload_button
+    if on_upload:
+      password_textarea['on_upload'] = on_upload
+    return self
+
 
   def closed_list(self, field_id:str, label:str='', values:dict={}, default:str='', help_button:bool=True, displayed_when:str="True", readonly:bool=False, on_load=None, on_change=None):
     """
@@ -452,6 +480,8 @@ class CodeGenerator():
         self._generate_code_password(template_item)
       elif template_item['type'] == 'textarea':
         self._generate_code_textarea(template_item)
+      elif template_item['type'] == 'password_textarea':
+        self._generate_code_password_textarea(template_item)
       elif template_item['type'] == 'closed_list':
         self._generate_code_closed_list(template_item)
       elif template_item['type'] == 'open_list':
@@ -561,7 +591,7 @@ class CodeGenerator():
       for template_item in self.form.template:
         if template_item.get('on_change'):
           event = 'change'
-          if template_item['type'] in ['text', 'password', 'textarea', 'open_list']:
+          if template_item['type'] in ['text', 'password', 'textarea', 'password_textarea', 'open_list']:
             event = 'keyup'
           self.javascript += "document.getElementById('"+self.form.form_uuid+'_d_'+template_item['id']+"').addEventListener('"+event+"', () => { cfiForm = new CfiForm('"+self.form.form_uuid+"', '"+template_item['id']+"'); "+template_item['on_change']+"      });";
           
@@ -692,6 +722,69 @@ class CodeGenerator():
         )
   
   
+  def _generate_code_password_textarea(self, template_item:str):
+    """
+    Versions:
+      05/05/2026 (vbittard) init : version adaptée de textarea pour afficher proprement les contenus de clipboard sur les private keys SAML
+    """
+
+    self._start_table()
+  
+    display = self._evaluate_display(template_item['displayed_when'])
+    if not self.display_only:
+      self._add_display_javascript(template_item['id'], template_item['displayed_when'])
+
+    clipboard_data = ''
+    clipboard_html = ''
+    if template_item.get('clipboard_category') and self.form.options['/clipboard/remember_secrets']:
+      print("PONG")
+      clipboard_data = ' data-clipboardcategory="'+html.escape(template_item['clipboard_category'])+'"'
+      clipboard_html = """<span class="cellimg"><img title="Clipboard" onclick="displayClipboard(this)" src="/images/clipboard.png"></span>"""
+
+    copy_value_html = ''
+    if template_item.get('copy_value'):
+      copy_value_html = """<span class="cellimg"><img title="Copy value" onclick="copyFieldValue(this)" src="/images/copy.png"></span>"""
+
+    upload_button_html = ''
+    if template_item.get('upload_button'):
+      upload_button_html = """
+        <label for="{input_uuid}" class="middlebutton">{button_label}</label>
+        <input id="{input_uuid}" type="file" style="display: none" class="{form_uuid}" {disabled}{readonly}>
+        """.format(
+          form_uuid = self.form.form_uuid,
+          input_uuid = self.form.form_uuid+'_upload_'+template_item['id'],
+          button_label = html.escape(template_item['upload_button']),
+          disabled = 'disabled ' if not display else '',
+          readonly = 'readonly' if template_item.get('readonly', False) else '',
+          )
+      if not template_item.get('on_upload'):
+        # comportement non donné, on ajoute le comportement par défaut
+        template_item['on_upload'] = "cfiForm.setFieldValue('"+template_item['id']+"', upload_content);"
+
+    if self.display_only:
+      self.html += '<tr style="display: {display}"><td>{label}</td><td>{value}</td><td></td><td></td></tr>'.format(
+        label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+        value = html.escape(self.form.content.get(template_item['id'], '')),
+        display = 'table-row' if display else 'none',
+        )
+    else:
+      self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><textarea type="password_textarea" name="{field_id}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" rows={rows} {disabled}{clipboard_data}{readonly}>{value}</textarea>{upload_button}</td><td>{clipboard_html}</td><td>{copy_value_html}</td></tr>'.format(
+        form_uuid = self.form.form_uuid,
+        tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
+        input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
+        label = self._row_label(template_item['label'], template_item['help_button'], template_item['id']), 
+        field_id = html.escape(template_item['id']),
+        value = html.escape(self.form.content.get(template_item['id'], '')),
+        rows = template_item['rows'],
+        display = 'table-row' if display else 'none',
+        disabled = 'disabled ' if not display else '',
+        clipboard_data = clipboard_data,
+        clipboard_html = clipboard_html,
+        copy_value_html = copy_value_html,
+        readonly = 'readonly' if template_item.get('readonly', False) else '',
+        upload_button = upload_button_html,
+        )
+      
   def _generate_code_textarea(self, template_item:str):
     """
     Versions:
@@ -739,7 +832,7 @@ class CodeGenerator():
         display = 'table-row' if display else 'none',
         )
     else:
-      self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><textarea type=textarea name="{field_id}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" rows={rows} {disabled}{clipboard_data}{readonly}>{value}</textarea>{upload_button}</td><td>{clipboard_html}</td><td>{copy_value_html}</td></tr>'.format(
+      self.html += '<tr id={tr_uuid} style="display: {display}"><td>{label}</td><td><textarea type="textarea" name="{field_id}" defaultValue="{value}" id="{input_uuid}" class="intable {form_uuid}" rows={rows} {disabled}{clipboard_data}{readonly}>{value}</textarea>{upload_button}</td><td>{clipboard_html}</td><td>{copy_value_html}</td></tr>'.format(
         form_uuid = self.form.form_uuid,
         tr_uuid = self.form.form_uuid+'_tr_'+template_item['id'],
         input_uuid = self.form.form_uuid+'_d_'+template_item['id'],
@@ -1402,7 +1495,7 @@ class RequesterForm(CfiForm):
         if template_item is None:
           raise DesignError("unknown field {field_id}".format(field_id=field_id))
         event = 'change'
-        if template_item['type'] in ['text', 'password', 'textarea', 'open_list']:
+        if template_item['type'] in ['text', 'password', 'textarea', 'password_textarea', 'open_list']:
           event = 'keyup'
         js = """document.getElementById('"""+self.form_uuid+'_d_'+html.escape(field_id)+"""').addEventListener('"""+event+"""', () => {
           updateRequest_"""+self.form_uuid+"""();

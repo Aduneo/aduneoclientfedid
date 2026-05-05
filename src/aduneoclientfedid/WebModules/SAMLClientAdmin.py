@@ -164,7 +164,7 @@ class SAMLClientAdmin(BaseHandler):
           ) \
         .button('download_sp_cfi_certificate', label='Download ClientFedID certificate', link='/client/saml/admin/downloadcficertificate', displayed_when="@[sp_key_configuration] = 'clientfedid_keys'") \
         .button('generate_sp_keys', label='Generate SP keys', on_click='generateSPKeys(cfiForm)', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
-        .textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
+        .password_textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
         .textarea('sp_certificate', label='SP certificate', rows=10, clipboard_category='sp_certificate', upload_button='Upload SP certificate', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
         .button('download_sp_specific_certificate', label='Download specific certificate', on_click='downloadSpecificCertificate(cfiForm)', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
       .end_section() \
@@ -614,7 +614,7 @@ class SAMLClientAdmin(BaseHandler):
           ) \
         .button('download_sp_cfi_certificate', label='Download ClientFedID certificate', link='/client/saml/admin/downloadcficertificate', displayed_when="@[sp_key_configuration] = 'clientfedid_keys'") \
         .button('generate_sp_keys', label='Generate SP keys', on_click='generateSPKeys(cfiForm)', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
-        .textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
+        .password_textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
         .textarea('sp_certificate', label='SP certificate', rows=10, clipboard_category='sp_certificate', upload_button='Upload SP certificate', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
         .button('download_sp_specific_certificate', label='Download specific certificate', on_click='downloadSpecificCertificate(cfiForm)', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
       .end_section() \
