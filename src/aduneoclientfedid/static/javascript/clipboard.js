@@ -89,7 +89,7 @@ function displayClipboard(imgElement) {
       
       modalBackground = document.getElementById('clipboardWindowBackground')
       modal = document.getElementById('clipboardWindow')
-      modal.style.left = targetRect.left;
+      modal.style.left = window.pageXOffset+targetRect.left;
       modal.style.top = window.pageYOffset+targetRect.bottom+4;
       modalBackground.style.visibility = 'visible';
       modal.style.visibility = 'visible';

@@ -5,7 +5,7 @@
  */
 function help(imgElement, itemId) {
   var rect = imgElement.getBoundingClientRect();
-  displayHelpPopup(rect.left-50, rect.top+30, itemId);
+  displayHelpPopup(rect.left+30, rect.top+30, itemId);
 }
 
 
