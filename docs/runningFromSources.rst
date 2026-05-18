@@ -19,6 +19,8 @@ It's still possible to run it from the sources.
 * deprecated
 * wrapt
 * jwcrypto
+* argon2-cffi
+* markdown
   
 2. Additionaly (for SAML):
 

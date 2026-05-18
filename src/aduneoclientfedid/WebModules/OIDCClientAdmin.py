@@ -132,7 +132,12 @@ class OIDCClientAdmin(BaseHandler):
       'verify_certificates': Configuration.is_on(idp_params.get('verify_certificates', 'on')),
       }
     
-    form = CfiForm('oidcadminsingle', form_content, action='modifyclientsingle', submit_label='Save') \
+    if self.password_found_in_config('oidc_clients', idp_id, app_id):
+      client_secret_label = 'Client Secret <span style="color: #00aa00"> 🟢 FOUND in configuration, will be using this one if left empty </span>'
+    else :
+      client_secret_label = 'Client Secret <span style="color: #ff0000"> 🔴 NOT FOUND in configuration, you need to enter a value if you want the value to be propagated between flows</span>'
+
+    form = CfiForm('oidcadmin', form_content, action='modifyclientsingle', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
       .text('idp_name', label='IdP name') \
@@ -184,7 +189,7 @@ class OIDCClientAdmin(BaseHandler):
           values={'get': 'GET', 'post': 'POST'},
           default = 'post'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
+        .password('client_secret', label=client_secret_label, clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
       .end_section() \
       .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=True) \
         .closed_list('display', label='Display', 
@@ -209,7 +214,8 @@ class OIDCClientAdmin(BaseHandler):
         .check_box('verify_certificates', label='Verify certificates') \
       .end_section() 
       
-    form.set_title('OpenID Connect authentication'+('' if form_content['idp_name'] == '' else ': '+form_content['idp_name']))
+    form.set_title('OpenID Connect configuration'+('' if form_content['idp_name'] == '' else ': '+form_content['idp_name']))
+    form.add_button('Cancel', f'/?idpid={idp_id}', display='all')
     form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     self.add_html(form.get_html())
@@ -295,7 +301,7 @@ class OIDCClientAdmin(BaseHandler):
 
     Configuration.write_configuration(self.conf)
     
-    self.send_redirection(f"/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}")
+    self.send_redirection(f"/?idpid={idp_id}")
 
 
   @register_page_url(url='modifymulti', method='GET', template='page_default.html', continuous=False)
@@ -351,6 +357,8 @@ class OIDCClientAdmin(BaseHandler):
 
       self.add_html(app_form.get_html())
       self.add_javascript(app_form.get_javascript())
+       
+      self.send_page()
 
 
   @register_url(url='modifymulti', method='POST')
@@ -397,7 +405,7 @@ class OIDCClientAdmin(BaseHandler):
         
     Configuration.write_configuration(self.conf)
     
-    self.send_redirection(f"/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}")
+    self.send_redirection(f"/?idpid={idp_id}")
 
 
   @register_page_url(url='removeapp', method='GET', template='page_default.html', continuous=False)
@@ -531,7 +539,12 @@ class OIDCClientAdmin(BaseHandler):
       'acr_values': app_params.get('acr_values', ''),
       }
     
-    form = CfiForm('oidcadminmulti', form_content, action='modifymulti', submit_label='Save') \
+    if handler.password_found_in_config('oidc_clients', app_params['idp_id'], app_params['app_id']):
+      client_secret_label = 'Client Secret <span style="color: #00aa00"> 🟢 FOUND in configuration, will be using this one if left empty </span>'
+    else :
+      client_secret_label = 'Client Secret <span style="color: #ff0000"> 🔴 NOT FOUND in configuration, you need to enter a value if you want the value to be propagated between flows</span>'
+    
+    form = CfiForm('oidcadmin', form_content, action='modifymulti', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
       .text('name', label='Name') \
@@ -558,7 +571,7 @@ class OIDCClientAdmin(BaseHandler):
           values={'get': 'GET', 'post': 'POST'},
           default = 'post'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
+        .password('client_secret', label=client_secret_label, clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
       .end_section() \
       .start_section('request_params', title="Request Parameters", collapsible=True, collapsible_default=True) \
         .closed_list('display', label='Display', 
@@ -578,6 +591,7 @@ class OIDCClientAdmin(BaseHandler):
       
     form.set_title('OpenID Connect authentication'+('' if form_content['name'] == '' else ': '+form_content['name']))
     form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
+    form.add_button('Cancel', f'/?idpid={app_params['idp_id']}', display='all')
 
     return form
     

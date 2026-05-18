@@ -84,7 +84,9 @@ class OAuth2SAMLtoAT(FlowHandler):
         if default_assertion == '__input__':
           default_assertion = wrapper['saml_assertion']
 
+      form_id = 'samltoat'
       form_content = {
+        'form_id' : form_id,
         'contextid': self.context['context_id'],
         'grant_type': 'urn:ietf:params:oauth:grant-type:saml2-bearer',
         'known_assertions': default_assertion,
@@ -97,7 +99,8 @@ class OAuth2SAMLtoAT(FlowHandler):
         'client_secret': '',
         'scope': '',
       }
-      form = RequesterForm('samltoat', form_content, action='/client/oauth2/samltoat/sendrequest', request_url='@[token_endpoint]', mode='api') \
+      form = RequesterForm(form_id, form_content, action='/client/oauth2/samltoat/sendrequest', request_url='@[token_endpoint]', mode='api') \
+        .hidden('form_id') \
         .hidden('contextid') \
         .text('grant_type', label='Grant type', clipboard_category='grant_type') \
         .closed_list('known_assertions', label='Known SAML assertions', 
@@ -132,8 +135,9 @@ class OAuth2SAMLtoAT(FlowHandler):
           values = {'none': 'None', 'basic': 'Basic', 'form': 'Form'},
           default = 'basic'
           ) \
-        
-      form.set_title('SAML Assertion to Access Token '+idp_params['name'])
+      
+      form.set_title(f"""SAML Assertion to Access Token <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
+      form.set_hr_title("SAML Assertion to Access Token")
       form.set_table('client_table', client_table)
       form.set_table('assertion_table', assertions)
       form.set_request_parameters({
@@ -164,7 +168,7 @@ class OAuth2SAMLtoAT(FlowHandler):
           .replace(/=+$/, '');
         return paramValues;
       """)
-      form.set_option('/clipboard/remember_secrets', True)
+      form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
       form.set_option('/requester/auth_method_options', ['none', 'basic', 'bearer_token'])
       form.set_option('/requester/cancel_button', '/client/flows/cancelrequest?contextid='+urllib.parse.quote(self.context.context_id))
       form.set_option('/requester/include_empty_items', False)
@@ -218,7 +222,8 @@ class OAuth2SAMLtoAT(FlowHandler):
       
       self.start_result_table()
       self.log_info('Token exchange response'+json.dumps(json_response, indent=2))
-      self.add_result_row('Token exchange response', json.dumps(json_response, indent=2), 'userinfo_response', expanded=True)
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Token exchange response', json.dumps(json_response, indent=2), form_id, 'token_exchange_response', expanded=True)
       self.end_result_table()
       
       if response.status_code == 200:

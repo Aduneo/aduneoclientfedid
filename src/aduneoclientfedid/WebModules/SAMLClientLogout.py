@@ -63,12 +63,12 @@ class SAMLClientLogout(FlowHandler):
       idp_params = self.context.idp_params
       saml_idp_params = idp_params['saml']
 
+      idp_id = self.get_query_string_param('idpid', '')
       app_params = None
       app_id = self.get_query_string_param('appid', '')
       app_params = self.context.app_params.get(app_id, None)
       if not app_params:
         # les paramètres du client ne sont pas dans le contexte, on va les chercher dans la configuration
-        idp_id = self.get_query_string_param('idpid', '')
         if idp_id == '':
           raise AduneoError(f"IdP {idp_id} does not exist", button_label="Return to homepage", action="/")
         idp = copy.deepcopy(self.conf['idps'][idp_id])
@@ -98,7 +98,6 @@ class SAMLClientLogout(FlowHandler):
         'session_index': default_assertion_wrapper.get('session_index', '') if default_assertion_wrapper else '',
         'logout_binding': app_params.get('logout_binding', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'),
         'sign_logout_request': Configuration.is_on(app_params.get('sign_logout_request', 'off')),
-        'sp_private_key': '',
         'sp_certificate': app_params.get('sp_certificate', ''),
         'relay_state': relay_state,
         'request_id': 'id'+str(uuid.uuid4()),
@@ -122,17 +121,20 @@ class SAMLClientLogout(FlowHandler):
             default = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
             ) \
           .check_box('sign_logout_request', label='Sign logout request') \
-          .textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sign_logout_request]") \
+          .password_textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sign_logout_request]") \
           .textarea('sp_certificate', label='SP certificate', rows=10, clipboard_category='sp_certificate', upload_button='Upload SP certificate', displayed_when="@[sign_logout_request]") \
         .end_section() \
         .start_section('logout_params', title="Logout request") \
-          .text('relay_state', label='Relay state', clipboard_category='relay_state') \
-          .textarea('logout_request', label='SAML logout request', rows=10, clipboard_category='logout_request', upload_button='Upload XML', on_load='updateLogoutRequest(cfiForm)') \
+          .text('relay_state', label='Relay state') \
+          .textarea('logout_request', label='SAML logout request', rows=10, upload_button='Upload XML', on_load='updateLogoutRequest(cfiForm)') \
         .end_section() \
 
+      form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
+      form.set_title(f"""SAML Logout <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
       self.add_javascript_include('/javascript/SAMLClientLogout.js')
       self.add_html(form.get_html())
       self.add_javascript(form.get_javascript())
+      self.add_javascript("""document.getElementById('homeButton').href = '/?idpid={idp_id}';""".format(idp_id = idp_id))
 
     except AduneoError as error:
       self.add_html('<h4>Error: '+html.escape(str(error))+'</h4>')
@@ -199,7 +201,7 @@ class SAMLClientLogout(FlowHandler):
         conf_app = conf_idp['saml_clients'][self.post_form.get('app_id','')]
         if conf_app.get('sp_key_configuration', 'clientfedid_keys') == 'specific_keys':
           self.log_info("  private key was in the SP configuration")
-          app_params['sp_private_key'] = conf_app.get('sp_private_key', '')
+          app_params['sp_private_key'] = conf_app.get('sp_private_key!', '')
         else:
           self.log_info("  private key is the default SAML private key")
           app_params['sp_private_key'] = SAMLClientAdmin._get_clientfedid_private_key()
@@ -484,4 +486,6 @@ class SAMLClientLogout(FlowHandler):
       if sp_id is not None:
         self.log_info('Removing session for SP '+sp_id)
         self.logoff('saml_client_'+sp_id)
+    
+    self.add_javascript("""document.getElementById('homeButton').href = '/?idpid={idp_id}';""".format(idp_id = self.context['idp_id']))
 

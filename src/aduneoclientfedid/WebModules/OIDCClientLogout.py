@@ -60,7 +60,6 @@ class OIDCClientLogout(FlowHandler):
       oidc_idp_params = idp_params.get('oidc', {})
       fetch_configuration_document = False
 
-      print("PONG", oidc_idp_params)
       # Cas par défaut : on prend les paramètres OIDC si ils existent
       if 'end_session_endpoint' in oidc_idp_params:
           self.log_info("Using OIDC IDP parameters for logout_endpoint")
@@ -109,19 +108,18 @@ class OIDCClientLogout(FlowHandler):
           self.send_page()
           return
       
-      if 'end_session_endpoint' not in oidc_idp_params: 
-        raise AduneoError(self.log_error('Theoretically impossible to reach : no end_session_endpoint in idp_params'))
+        if 'end_session_endpoint' not in oidc_idp_params:
+          self.add_html('<h4>End session endpoint not found in either OIDC or OAuth idp_params, Configure it in OP configuration or use discovery URI</h4>')
       #oidc_idp_params = idp_params.get('oidc')
       #if not oidc_idp_params:
       #  raise AduneoError(f"OIDC IdP configuration missing for {idp_params.get('name', self.context.idp_id)}", button_label="IdP configuration", action=f"/client/idp/admin/modify?idpid={self.context.idp_id}")
       
-
+      idp_id = self.get_query_string_param('idpid', '')
       app_params = None
       app_id = self.get_query_string_param('appid', '')
       app_params = self.context.app_params.get(app_id, None)
       if not app_params:
         # les paramètres du client ne sont pas dans le contexte, on va les chercher dans la configuration
-        idp_id = self.get_query_string_param('idpid', '')
         if idp_id == '':
           raise AduneoError(f"IdP {idp_id} does not exist", button_label="Return to homepage", action="/")
         idp = copy.deepcopy(self.conf['idps'][idp_id])
@@ -152,7 +150,9 @@ class OIDCClientLogout(FlowHandler):
         }
         """
 
+      form_id = 'oidclogout'
       form_content = {
+        'form_id' : form_id,
         'hr_context': self.context['context_id'],
         'end_session_endpoint': oidc_idp_params.get('end_session_endpoint', ''),
         'end_session_endpoint_method': app_params.get('end_session_endpoint_method', 'post'),
@@ -165,7 +165,8 @@ class OIDCClientLogout(FlowHandler):
         'state': state,
       }
       
-      form = RequesterForm('oidclogout', form_content, action='sendrequest', mode='new_page', request_url='@[end_session_endpoint]') \
+      form = RequesterForm(form_id, form_content, action='sendrequest', mode='new_page', request_url='@[end_session_endpoint]') \
+        .hidden('form_id') \
         .start_section('clientfedid_params', title="ClientFedID parameters") \
           .text('post_logout_redirect_uri', label='Post logout redirect URI', clipboard_category='post_logout_redirect_uri') \
         .end_section() \
@@ -190,7 +191,9 @@ class OIDCClientLogout(FlowHandler):
           .text('ui_locales', label='UI Locales', clipboard_category='ui_locales') \
           .text('logout_hint', label='Logout Hint', clipboard_category='login_hint') \
         .end_section() \
-
+      
+      form.set_title(f"""OIDC Logout <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
+      form.set_hr_title("Logout request")
       form.set_request_parameters({
           'id_token_hint': '@[id_token_hint]',
           'logout_hint': '@[logout_hint]',
@@ -216,6 +219,7 @@ class OIDCClientLogout(FlowHandler):
 
       self.add_html(form.get_html())
       self.add_javascript(form.get_javascript())
+      self.add_javascript("""document.getElementById('homeButton').href = '/?idpid={idp_id}';""".format(idp_id = idp_id))
 
     except AduneoError as e:
 
@@ -257,7 +261,7 @@ class OIDCClientLogout(FlowHandler):
 
       # Mise à jour dans le contexte des paramètres liés à l'IdP
       idp_params = self.context.idp_params
-      oidc_idp_params = idp_params['oidc']
+      oidc_idp_params = idp_params.get('oidc', {})
       for item in ['end_session_endpoint']:
         oidc_idp_params[item] = self.post_form.get(item, '').strip()
 
@@ -342,6 +346,7 @@ class OIDCClientLogout(FlowHandler):
         raise AduneoError(self.log_error(f"Can't retrieve request context because context id {context_id} not found in session"))
         
       self.logoff('oidc_client_'+self.context['idp_id']+'/'+self.context['app_id'])
+      self.add_javascript("""document.getElementById('homeButton').href = '/?idpid={idp_id}';""".format(idp_id = self.context['idp_id']))
 
       self.add_menu()
       self.send_page()

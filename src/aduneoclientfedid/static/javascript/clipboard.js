@@ -6,6 +6,8 @@
 clipboardCategories = {
   "authorization_endpoint": "Authorization endpoint",
   "token_endpoint": "Token endpoint",
+  "userinfo_endpoint": "Userinfo Endpoint",
+  "issuer": "Issuer",
   "jwks_uri": "JWKS URI",
   "client_id": "Client ID",
   "client_secret": "Client secret",
@@ -15,7 +17,41 @@ clipboardCategories = {
   "resource": "Resource",
   "introspection_endpoint": "Introspection endpoint",
   "access_token": "Access token",
-  "request_url": "URL",
+  "hr_request_url": "URL HTTP",
+  "hr_auth_login": "Login HTTP",
+  "hr_auth_secret": "Secret HTTP",
+  "post_logout_redirect_uri": "Post Logout Redirect URI",
+  "idp_entity_id": "IdP entity ID",
+  "idp_sso_url": "IdP SSO URL",
+  "idp_certificate": "IdP certificate",
+  "sp_entity_id": "SP entity ID",
+  "sp_acs_url": "SP Assertion Consumer Service URL",
+  "nameid_policy": "NameID Policy",
+  "sp_private_key": "SP private key",
+  "sp_certificate": "SP certificate",
+  "idp_slo_url": "IdP Single Logout Service URL",
+  "name_id": "NameID",
+  "session_index": "Session index",
+  "userinfo_endpoint_dns_override": "Userinfo Endpoint DNS override",
+  "revocation_endpoint_dns_override": "Revocation endpoint DNS override",
+  "introspection_endpoint_dns_override": "Introspection endpoint DNS override",
+  "token_endpoint_dns_override":"Token endpoint DNS override",
+  "dns_override": "DNS override",
+  "grant_type": "Grant Type",
+  "subject_token_type": "Subject token type",
+  "audience": "Audience",
+  "actor_token": "Actor token",
+  "actor_token_type": "Actor token type",
+  "max_age": "Max Age",
+  "ui_locales": "UI Locales",
+  "id_token_hint": "ID Token Hint",
+  "login_hint": "Login Hint",
+  "acr_values": "Authentication Context Class Reference values",
+  "end_session_endpoint": "End Session endpoint",
+  "state": "State",
+  "service_url": "Service URL",
+  "cas_server_login_url": "CAS server login URL",
+  "cas_server_validate_url": "CAS server validate URL"
 }
 var clipboardTarget;
 var clipboardCategory;
@@ -28,14 +64,13 @@ function displayClipboard(imgElement) {
   clipboardTD = clipboardSpan.parentElement;
   commonTR = clipboardTD.parentElement;
   inputs = commonTR.getElementsByTagName('input');
-  if (inputs.length == 1) {
-    clipboardTarget = inputs[0]
-  } else {
-    textareas = commonTR.getElementsByTagName('textarea');
-    if (textareas.length == 1) {
-      clipboardTarget = textareas[0]
-    }
+  textareas = commonTR.getElementsByTagName('textarea');
+  if (textareas.length == 1){
+    clipboardTarget = textareas[0];
   }
+  else if (inputs.length == 1) {
+    clipboardTarget = inputs[0];
+  } 
   
   if (clipboardTarget) {
   
@@ -54,7 +89,7 @@ function displayClipboard(imgElement) {
       
       modalBackground = document.getElementById('clipboardWindowBackground')
       modal = document.getElementById('clipboardWindow')
-      modal.style.left = targetRect.left;
+      modal.style.left = window.pageXOffset+targetRect.left;
       modal.style.top = window.pageYOffset+targetRect.bottom+4;
       modalBackground.style.visibility = 'visible';
       modal.style.visibility = 'visible';
@@ -130,7 +165,7 @@ function fillClipboard(form) {
   values = {};
   
   Array.prototype.forEach.call(form.elements, item => {
-    if ((item.type == 'text') || (item.type == 'password')) {
+    if ((item.type == 'text') || (item.type == 'password') || (item.type == 'textarea') ) {
       clipboardCategory = item.dataset.clipboardcategory;
       if (clipboardCategory && (item.value != '')) {
         if (clipboardCategory == '#name') { clipboardCategory = item.name; }
@@ -140,12 +175,13 @@ function fillClipboard(form) {
     }
   });  
   
-  let xhttp = new XMLHttpRequest();
-  xhttp.open("POST", "/client/clipboard/update");
-  xhttp.setRequestHeader("Content-Type", "application/json");
-  xhttp.send(JSON.stringify(values));
+  updateClipboard("/client/clipboard/update", JSON.stringify(values));
 }
 
+/* Permet à la requête de survivre la redirection lorsque RequesterForm est en mode 'new_page' */
+function updateClipboard(url, json_data) {
+  navigator.sendBeacon(url, new Blob([json_data], { type: "application/json" }));
+}
 
 function selectClipboardText(buttonDiv) {
   textSpan = buttonDiv.getElementsByTagName('span')[0];

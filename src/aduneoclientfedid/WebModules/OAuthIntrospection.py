@@ -119,7 +119,7 @@ class OAuth2Introspection(FlowHandler):
           return
       
       if 'introspection_endpoint' not in oauth2_idp_params: 
-        raise AduneoError(self.log_error('Theoretically impossible to reach : no introspection endpoint scheme in either OIDC or OAuth idp_params'))
+        self.add_html('<h4>Introspection endpoint not found in either OIDC or OAuth idp_params, Configure OAuth API preferably</h4>')
       
       # API réalisant l'introspection
       idp_id = self.context.idp_id
@@ -169,7 +169,9 @@ class OAuth2Introspection(FlowHandler):
         if not default_access_token:
             default_access_token = token_wrapper['access_token']  
 
+      form_id = 'introspection'
       form_content = {
+        'form_id' : form_id,
         'contextid': self.context['context_id'],
         'introspection_endpoint': oauth2_idp_params.get('introspection_endpoint', ''),
         'access_token': default_access_token,
@@ -188,7 +190,8 @@ class OAuth2Introspection(FlowHandler):
           form_content['introspection_auth_method'] = idp_params['oauth2']['introspection_auth_method']
           self.log_info("introspection_auth_method of api inherited from IDP")
 
-      form = RequesterForm('introspection', form_content, action='/client/oauth2/introspection/sendrequest', request_url='@[introspection_endpoint]', mode='api') \
+      form = RequesterForm(form_id, form_content, action='/client/oauth2/introspection/sendrequest', request_url='@[introspection_endpoint]', mode='api') \
+        .hidden('form_id') \
         .hidden('contextid') \
         .text('introspection_endpoint', label='Introspection endpoint', clipboard_category='introspection_endpoint') \
         .closed_list('access_token', label='Access Token', 
@@ -209,10 +212,11 @@ class OAuth2Introspection(FlowHandler):
           default = 'basic'
           ) \
         .text('introspection_login', label='Login', clipboard_category='client_id', displayed_when="@[introspection_api] = '__input__' and (@[introspection_auth_method] = 'basic' or @[introspection_auth_method] = 'bearer_token')") \
-        .password('introspection_secret', label='Secret', clipboard_category='client_secret!', displayed_when="@[introspection_api] = '__input__' and @[introspection_auth_method] = 'basic'") \
+        .password('introspection_secret', label='Secret', clipboard_category='client_secret', displayed_when="@[introspection_api] = '__input__' and @[introspection_auth_method] = 'basic'") \
         .text('introspection_endpoint_dns_override', label='Introspection endpoint DNS override', clipboard_category='introspection_endpoint_dns_override') \
         
-      form.set_title('Introspection '+idp_params['name'])
+      form.set_title(f"""Introspection <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
+      form.set_hr_title("Introspection")
       form.set_request_parameters({
         'token': '@[access_token]',
       })
@@ -232,7 +236,7 @@ class OAuth2Introspection(FlowHandler):
         'auth_method': True,
         'verify_certificates': True,
         })
-      form.set_option('/clipboard/remember_secrets', True)
+      form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
       form.set_option('/requester/auth_method_options', ['none', 'basic', 'bearer_token'])
       form.set_option('/requester/cancel_button', '/client/flows/cancelrequest?contextid='+urllib.parse.quote(self.context.context_id))
 
@@ -302,7 +306,8 @@ class OAuth2Introspection(FlowHandler):
       
       self.start_result_table()
       self.log_info('Introspection response'+json.dumps(json_response, indent=2))
-      self.add_result_row('Introspection response', json.dumps(json_response, indent=2), 'introspection_response', expanded=True)
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Introspection response', json.dumps(json_response, indent=2), form_id, 'introspection_response', expanded=True)
       self.end_result_table()
       
     except AduneoError as error:

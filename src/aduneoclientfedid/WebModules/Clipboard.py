@@ -73,9 +73,7 @@ class ClipboardContent(object):
     
     add = True
     
-    
-    # OBSOLETE : les champs secrets ne ne terminent plus par !
-    if category.endswith('!'):
+    if any(sub in category for sub in ["secret", "private_key"]):
       # on regarde si on doit bien stocker les secrets
       add = Configuration.is_parameter_on(self.conf, '/preferences/clipboard/remember_secrets', False)
     
@@ -162,7 +160,7 @@ class Clipboard(BaseHandler):
 </div>
 """    
   
-  @register_url(method='POST')
+  @register_url(url='update', method='POST')
   def update(self):
     for category in self.post_json:
       for text in self.post_json[category]:

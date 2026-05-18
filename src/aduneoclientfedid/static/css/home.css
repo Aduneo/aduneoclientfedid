@@ -1,0 +1,112 @@
+/* button */
+.dd-root {
+    position: relative;
+    display: inline-block;
+}
+
+.dd-btn {
+    font-family: Verdana, sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #FFA500;
+    border: none;
+    border-radius: 0;
+    color: white;
+    padding: 15px 15px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+    text-align: center;
+}
+
+/* menu */
+.menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 200px;
+    background: #fff;
+    border: 1px solid gray;
+    border-radius: 0;
+    overflow: visible;
+}
+
+.menu.visible {
+    display: block;
+}
+
+/* menu items */
+.menu-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 16px;
+    font-family: Verdana, sans-serif;
+    font-size: 12px;
+    color: #222;
+    cursor: pointer;
+    white-space: nowrap;
+    margin: 0px 0px;
+}
+
+.menu-item:hover {
+    background-color: #FFA500;
+    color: white;
+}
+
+
+.menu-item + .menu-item {
+    border-top: 1px solid lightgray;
+}
+
+
+/* sub-menus */
+.sub,
+.sub2 {
+    display: none;
+    position: absolute;
+    top: -1px;
+    left: calc(100% + 4px);
+    min-width: 200px;
+    background: #fff;
+    border: 1px solid gray;
+    border-radius: 0;
+}
+
+.sub.visible,
+.sub2.visible {
+  display: block;
+}
+
+/* end-link */
+
+.end-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: Verdana, sans-serif;
+    font-size: 12px;
+    color: #222;
+    cursor: pointer;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.end-link + .end-link {
+    border-top: 1px solid lightgray;
+}
+
+.end-link + .menu-item {
+    border-top: 1px solid lightgray;
+}
+
+.end-link:hover {
+    background-color: #FFA500;
+    color: white;
+}
