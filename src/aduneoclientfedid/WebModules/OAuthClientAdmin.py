@@ -544,8 +544,8 @@ class OAuthClientAdmin(BaseHandler):
       .end_section() 
       
     form.set_title('OAuth 2 Authorization'+('' if form_content['name'] == '' else ': '+form_content['name']))
-    form.add_button('Cancel', f"/client/idp/admin/display?idpid={app_params['idp_id']}", display='modify')
     form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
+    form.add_button('Cancel', f'/?idpid={app_params['idp_id']}', display='all')
 
     return form
 

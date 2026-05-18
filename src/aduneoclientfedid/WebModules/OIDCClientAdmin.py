@@ -591,6 +591,7 @@ class OIDCClientAdmin(BaseHandler):
       
     form.set_title('OpenID Connect authentication'+('' if form_content['name'] == '' else ': '+form_content['name']))
     form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
+    form.add_button('Cancel', f'/?idpid={app_params['idp_id']}', display='all')
 
     return form
     
