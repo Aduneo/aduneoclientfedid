@@ -1384,7 +1384,7 @@
     "content_fr": "Valeur de l'attribut `SessionIndex` contenu dans l'élément `<saml:AuthnStatement>` de l'assertion. Il identifie de manière unique la session établie entre l'utilisateur et l'IdP lors de cette authentification.\n\nLe SP doit conserver cette valeur car elle est requise lors de la déconnexion SAML (*LogoutRequest*) pour permettre à l'IdP d'identifier et de terminer la session concernée, notamment en cas de sessions multiples pour un même utilisateur.\n\nL'élément `<saml:AuthnStatement>` contient également l'`AuthnInstant` (instant d'authentification) et, optionnellement, la `SessionNotOnOrAfter` (date d'expiration de la session SSO côté IdP).",
     "format_fr": "md"
   },
-    "/oidcadmin/display": {
+  "/oidcadmin/display": {
     "header_fr": "Display",
     "content_fr": "🟢**OPTIONAL**🟢\n\nLe paramètre *display* indique à l'IdP le type d'interface à présenter à l'utilisateur :\n\n- `page` : comportement par défaut (page pleine)\n- `popup` : fenêtre popup\n- `touch` : interface optimisée pour écran tactile\n- `wap` : interface pour appareils WAP (obsolète)",
     "format_fr": "md"
@@ -1417,6 +1417,211 @@
   "/oidcadmin/acr_values": {
     "header_fr": "ACR Values",
     "content_fr": "🟢**OPTIONAL**🟢\n\nLe paramètre *acr_values* permet au client de demander un niveau minimum d'assurance d'authentification (*Authentication Context Class Reference*). L'IdP indique dans le jeton le niveau effectivement appliqué via le claim *acr*.\n\nExemples de valeurs : `urn:mace:incommon:iap:silver`, `urn:mace:incommon:iap:gold`",
+    "format_fr": "md"
+  },
+  "/idpadmin/oidc_endpoint_configuration": {
+    "header_fr": "Méthode de configuration des endpoints OIDC",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit la méthode utilisée pour configurer les points d'entrée de l'OpenID Provider associé à cet IDP :\n\n- *Discovery URI* : l'OP publie un document de configuration centralisant toutes les URL (recommandé)\n- *Local configuration* : saisie manuelle de chaque endpoint (authorization, token, userinfo, JWKS…)\n- *Same as OAuth2* : récupère la configuration OAuth 2 pour renseigner les endpoints",
+    "format_fr": "md"
+  },
+  "/idpadmin/oidc_discovery_uri": {
+    "header_fr": "Discovery URI",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URI de découverte (Discovery URI) donne la configuration complète de l'OpenID Provider. Elle est définie dans la spécification [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html).\n\n- `https://www.idp.com/.well-known/openid-configuration` quand la configuration est globale\n- `https://tenant.idp.com/.well-known/openid-configuration` pour des IdP en tenant",
+    "format_fr": "md"
+  },
+  "/idpadmin/oidc_userinfo_method": {
+    "header_fr": "Méthode d'appel Userinfo",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nDéfinit la méthode HTTP utilisée pour interroger l'endpoint Userinfo de cet IDP :\n\n- *GET* : l'access token est transmis dans le header `Authorization: Bearer <token>` (méthode la plus courante)\n- *POST* : l'access token est transmis dans le corps de la requête au format `application/x-www-form-urlencoded`",
+    "format_fr": "md"
+  },
+  "/idpadmin/oidc_signature_key_configuration": {
+    "header_fr": "Configuration des clés de signature OIDC",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit la méthode utilisée pour récupérer les clés publiques de vérification de signature des jetons émis par cet IDP :\n\n- *JWKS URI* : le client récupère automatiquement les clés publiques depuis l'URI publiée par l'IdP (recommandé)\n- *Local configuration* : la clé publique est fournie directement dans le formulaire (utile pour les tests)",
+    "format_fr": "md"
+  },
+  "/idpadmin/oauth2_endpoint_configuration": {
+    "header_fr": "Méthode de configuration des endpoints OAuth 2",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit la méthode utilisée pour configurer les points d'entrée du serveur d'autorisation OAuth 2 associé à cet IDP :\n\n- *Authorization Server Metadata URI* : une URL unique suffit, le client récupère automatiquement tous les endpoints (RFC 8414)\n- *Local configuration* : saisie individuelle de chaque endpoint (authorization, token, introspection…)\n- *Same as OIDC* : On utilise la configuration OIDC pour renseigner automatiquement les endpoints",
+    "format_fr": "md"
+  },
+  "/idpadmin/oauth2_introspection_http_method": {
+    "header_fr": "Méthode HTTP d'introspection",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit la méthode HTTP utilisée pour appeler l'endpoint d'introspection de cet IDP (RFC 7662) :\n\n- *POST* : méthode recommandée par la RFC, les paramètres sont transmis dans le corps de la requête au format `application/x-www-form-urlencoded`\n- *GET* : certains serveurs d'autorisation acceptent les requêtes GET avec les paramètres en query string",
+    "format_fr": "md"
+  },
+  "/idpadmin/oauth2_introspection_auth_method": {
+    "header_fr": "Méthode d'authentification pour l'introspection",
+    "content_fr": "🔴**REQUIRED**🔴\n\nDéfinit comment le client s'authentifie auprès de l'endpoint d'introspection de cet IDP (RFC 7662) :\n\n- *client_secret_basic* : identifiant et secret encodés en Base64 dans le header `Authorization: Basic`\n- *client_secret_post* : identifiant et secret transmis dans le corps de la requête POST\n- *bearer_token* : un access token dédié est présenté dans le header `Authorization: Bearer`",
+    "format_fr": "md"
+  },
+  "/idpadmin/verify_certificates": {
+    "header_fr": "Vérification des certificats",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nIndique si le client doit vérifier la validité des certificats TLS de cet IDP lors des connexions aux différents endpoints (token, userinfo, JWKS, introspection…).\n\nDésactiver cette vérification peut être utile en environnement de test avec des certificats auto-signés, mais ne doit jamais être fait en production.",
+    "format_fr": "md"
+  },
+  "/idpadmin/cas_cas_server_url": {
+    "header_fr": "CAS Server URL",
+    "content_fr": "🔴**REQUIRED**🔴\n\nURL de base du serveur CAS. ClientFedID en déduit automatiquement les endpoints CAS standard (`/login`, `/logout`, `/serviceValidate`, `/proxyValidate`…).\n\nExemple : `https://cas.example.com/cas`",
+    "format_fr": "md"
+  },
+  "/idpadmin/upload_idp_metadata": {
+    "header_fr": "Importer les métadonnées de l'IDP",
+    "content_fr": "Permet d'importer automatiquement la configuration SAML de l'IdP à partir de son fichier de métadonnées (XML). Les métadonnées contiennent l'ensemble des informations nécessaires : *Entity ID*, *SSO URL*, *SLO URL*, certificat(s) de signature.\n\nEmplacements pour différents IDP :\n\n- Keycloak : `https://mykeycloak.com/realms/myrealm/protocol/saml/descriptor`\n- Entra ID (indépendant du tenant) : `https://login.microsoftonline.com/common/FederationMetadata/2007-06/FederationMetadata.xml`\n- Entra ID (dépendant du tenant) : `https://login.microsoftonline.com/TenantDomainName/FederationMetadata/2007-06/FederationMetadata.xml`\n- [Guide Okta](https://support.okta.com/help/s/article/how-to-download-okta-identity-provider-metadata-and-saml-signing-certificates)\n- [Guide PingID](https://support.pingidentity.com/s/article/Export-Metadata-for-Service-Provider-Configuration)",
+    "format_fr": "md"
+  },
+  "/idpadmin/idp_entity_id": {
+    "header_fr": "IDP Entity ID",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'identifiant unique (*Entity ID*) de l'Identity Provider SAML. C'est une URI (souvent une URL HTTPS) qui identifie l'IdP de manière non ambiguë dans les métadonnées et dans les assertions SAML. Le SP vérifie que l'émetteur (*Issuer*) des assertions reçues correspond à cet identifiant.",
+    "format_fr": "md"
+  },
+  "/idpadmin/idp_sso_url": {
+    "header_fr": "IDP SSO URL",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URL du service SSO de l'IdP (*Single Sign-On Service*) vers laquelle le SP redirige l'utilisateur pour initier l'authentification SAML. Correspond au *SingleSignOnService* dans les métadonnées de l'IdP.",
+    "format_fr": "md"
+  },
+  "/idpadmin/idp_slo_url": {
+    "header_fr": "IDP SLO URL",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nL'URL du service de déconnexion de l'IdP (*Single Logout Service*). C'est l'endpoint vers lequel le SP envoie la requête de déconnexion SAML pour terminer la session auprès de l'IdP. Correspond au *SingleLogoutService* dans les métadonnées de l'IdP.",
+    "format_fr": "md"
+  },
+  "/idpadmin/idp_certificate": {
+    "header_fr": "Certificat de l'IDP",
+    "content_fr": "🔴**REQUIRED**🔴\n\nCertificat X.509 public de l'IdP, utilisé par le SP pour vérifier la signature des assertions SAML et des réponses reçues. Il est généralement disponible dans les métadonnées de l'IdP.\n\nFormat attendu : certificat PEM (Base64), sans les en-têtes `-----BEGIN CERTIFICATE-----` / `-----END CERTIFICATE-----`.",
+    "format_fr": "md"
+  },
+  "/oidcadmin/token_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS du Token Endpoint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS du token endpoint vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement lorsque le nom de domaine de l'IdP n'est pas encore résolvable publiquement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port`\n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/oidcadmin/userinfo_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS de l'endpoint Userinfo",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS de l'endpoint Userinfo vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement lorsque le nom de domaine de l'IdP n'est pas encore résolvable publiquement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port`\n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/oauth2admin/token_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS du Token Endpoint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS du token endpoint vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement lorsque le nom de domaine du serveur d'autorisation n'est pas encore résolvable publiquement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port`\n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/oauth2admin/introspection_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS de l'endpoint d'introspection",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS de l'endpoint d'introspection vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port`\n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/oauth2admin/revocation_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS de l'endpoint de révocation",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS de l'endpoint de révocation vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port`\n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/oidcauth/token_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS du Token Endpoint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS du token endpoint vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement lorsque le nom de domaine de l'IdP n'est pas encore résolvable publiquement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port`\n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/oidcauth/userinfo_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS de l'endpoint Userinfo",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS de l'endpoint Userinfo vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement lorsque le nom de domaine de l'IdP n'est pas encore résolvable publiquement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port`\n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/oauth2auth/token_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS du Token Endpoint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS du token endpoint vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement lorsque le nom de domaine du serveur d'autorisation n'est pas encore résolvable publiquement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port`\n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/oauth2auth/introspection_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS de l'endpoint d'introspection",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS de l'endpoint d'introspection vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port`\n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/oauth2auth/revocation_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS de l'endpoint de révocation",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS de l'endpoint de révocation vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port`\n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/idpadmin/oidc_authorization_endpoint": {
+    "header_fr": "Authorization Endpoint",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint d'autorisation est l'URL de l'IdP vers laquelle sont redirigés les utilisateurs pour y être authentifiés. C'est le point de départ de la cinématique *Authorization Code*.",
+    "format_fr": "md"
+  },
+  "/idpadmin/oidc_token_endpoint": {
+    "header_fr": "Token Endpoint",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint de jeton est l'URL de l'API de l'IdP appelée directement par le client (back-channel) afin d'échanger le code d'autorisation contre des jetons (ID token, access token, refresh token).",
+    "format_fr": "md"
+  },
+  "/idpadmin/oidc_logout_endpoint": {
+    "header_fr": "End Session Endpoint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nL'URL de l'endpoint de déconnexion de l'IdP (*End Session Endpoint*). L'utilisateur y est redirigé afin de terminer sa session auprès de l'OpenID Provider. Après déconnexion, l'utilisateur est redirigé vers la *post_logout_redirect_uri* configurée.",
+    "format_fr": "md"
+  },
+  "/idpadmin/oidc_userinfo_endpoint": {
+    "header_fr": "Userinfo Endpoint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nL'endpoint Userinfo est l'URL de l'API de l'IdP appelée directement par le client afin d'obtenir des informations complémentaires sur l'utilisateur authentifié. L'access token est présenté en Bearer token dans le header `Authorization`.",
+    "format_fr": "md"
+  },
+  "/idpadmin/oidc_issuer": {
+    "header_fr": "Issuer",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'émetteur (issuer) est l'identifiant unique de l'OpenID Provider. Il est utilisé pour valider le champ *iss* du jeton d'identité.\n\nC'est une URL HTTPS sensible à la casse, sans fragment ni query string.",
+    "format_fr": "md"
+  },
+  "/idpadmin/oidc_signature_key": {
+    "header_fr": "Signature Key",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de fournir directement la clé publique à utiliser pour la vérification de signature des jetons, au format JWK (JSON Web Key).\n\n- `{\"kty\":\"RSA\",\"alg\":\"RS256\",\"kid\":\"<id>\",\"use\":\"sig\",\"e\":\"AQAB\",\"n\":\"g53Bh...\"}`",
+    "format_fr": "md"
+  },
+  "/idpadmin/oauth2_metadata_uri": {
+    "header_fr": "Authorization Server Metadata URI",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'URI de métadonnées (Authorization Server Metadata, RFC 8414) permet au client de récupérer automatiquement la configuration complète du serveur d'autorisation : endpoints, algorithmes supportés, scopes disponibles…\n\nElle est équivalente à la *Discovery URI* d'OpenID Connect.\n\n- `https://www.idp.com/.well-known/oauth-authorization-server`\n- `https://www.idp.com/.well-known/openid-configuration` (souvent compatible)",
+    "format_fr": "md"
+  },
+  "/idpadmin/oauth2_token_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS du Token Endpoint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS du token endpoint vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement lorsque le nom de domaine du serveur d'autorisation n'est pas encore résolvable publiquement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port`\n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/idpadmin/oauth2_introspection_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS de l'endpoint d'introspection",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS de l'endpoint d'introspection vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port`\n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/idpadmin/oauth2_revocation_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS de l'endpoint de révocation",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS de l'endpoint de révocation vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port`\n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/idpadmin/oauth2_authorization_endpoint": {
+    "header_fr": "Authorization Endpoint",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint d'autorisation est l'URL vers laquelle l'utilisateur est redirigé pour accorder ses droits au client. C'est le point de départ de la cinématique OAuth 2 *Authorization Code*.",
+    "format_fr": "md"
+  },
+  "/idpadmin/oauth2_token_endpoint": {
+    "header_fr": "Token Endpoint",
+    "content_fr": "🔴**REQUIRED**🔴\n\nL'endpoint de jeton est l'URL de l'API du serveur d'autorisation appelée en back-channel pour obtenir les jetons (access token, refresh token) en échange du code d'autorisation.",
+    "format_fr": "md"
+  },
+  "/idpadmin/oauth2_revocation_endpoint": {
+    "header_fr": "Revocation Endpoint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nL'endpoint de révocation (RFC 7009) permet au client d'invalider un jeton auprès du serveur d'autorisation. Une fois révoqué, le jeton ne peut plus être utilisé.\n\nLa révocation peut porter sur un access token ou un refresh token. Si un refresh token est révoqué, le serveur d'autorisation peut également invalider les access tokens associés.",
+    "format_fr": "md"
+  },
+  "/idpadmin/oidc_token_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS du Token Endpoint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS du token endpoint vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement lorsque le nom de domaine du serveur d'autorisation n'est pas encore résolvable publiquement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port`\n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/idpadmin/oidc_userinfo_endpoint_dns_override": {
+    "header_fr": "Surcharge DNS de l'endpoint Userinfo",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nPermet de forcer la résolution DNS de l'endpoint Userinfo vers une adresse IP spécifique, indépendamment du DNS système. Utile en environnement de test ou de développement lorsque le nom de domaine de l'IdP n'est pas encore résolvable publiquement.\n\nFormat : `adresse-ip` ou `:port` ou `adresse-ip:port` \n\nExemple : `192.168.1.10:8443`",
+    "format_fr": "md"
+  },
+  "/oidcadmin/userinfo_endpoint": {
+    "header_fr": "Userinfo Endpoint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nL'URL de l'endpoint Userinfo à appeler pour obtenir des informations complémentaires sur l'utilisateur authentifié. L'access token est présenté en Bearer token dans le header `Authorization`.",
+    "format_fr": "md"
+  },
+    "/oidcadmin/logout_endpoint": {
+    "header_fr": "End Session Endpoint",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nL'URL de l'endpoint de déconnexion de l'IdP (*End Session Endpoint*). L'utilisateur y est redirigé afin de terminer sa session auprès de l'OpenID Provider. Après déconnexion, l'utilisateur est redirigé vers la *post_logout_redirect_uri* configurée.",
     "format_fr": "md"
   }
 }
