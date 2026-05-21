@@ -311,7 +311,7 @@ class OIDCClientLogin(FlowHandler):
         })
       form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
       form.set_option('/requester/include_empty_items', False)
-      form.add_button('Cancel', f'/?idpid={idp_id}', display='all')
+      form.add_button('Cancel', f"/?idpid={idp_id}", display='all')
 
 
       self.add_html(form.get_html())
