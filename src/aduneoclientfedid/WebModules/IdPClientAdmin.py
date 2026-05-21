@@ -402,8 +402,8 @@ class IdPClientAdmin(BaseHandler):
       idp['id'] = idp_id
       idp_form = IdPClientAdmin.get_idp_form(self, idp)
       idp_form.set_title('Remove IdP'+(' '+idp['name'] if idp.get('name') else ''))
-      idp_form.add_button('Remove', f'removeconfirmed?idpid={idp_id}', display='all')
-      idp_form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
+      idp_form.add_button('Remove', f"removeconfirmed?idpid={idp_id}", display='all')
+      idp_form.add_button('Cancel', f"/client/idp/admin/display?idpid={idp_id}", display='all')
 
       self.add_html(idp_form.get_html(display_only=True))
       self.add_javascript(idp_form.get_javascript())

@@ -193,7 +193,7 @@ class SAMLClientAdmin(BaseHandler):
       .end_section() \
       
     form.set_title('SAML SP configuration'+('' if form_content['idp_name'] == '' else ': '+form_content['idp_name']))
-    form.add_button('Cancel', f'/?idpid={idp_id}', display='all')
+    form.add_button('Cancel', f"/?idpid={idp_id}", display='all')
     form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     self.add_javascript_include('/javascript/SAMLClientAdmin.js')
@@ -511,8 +511,8 @@ class SAMLClientAdmin(BaseHandler):
       app_params['app_id'] = app_id
       app_form = self.get_app_form(app_params)
       app_form.set_title('Remove SAML app '+(' '+app_params['name'] if app_params.get('name') else ''))
-      app_form.add_button('Remove', f'removeappconfirmed?idpid={idp_id}&appid={app_id}', display='all')
-      app_form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
+      app_form.add_button('Remove', f"removeappconfirmed?idpid={idp_id}&appid={app_id}", display='all')
+      app_form.add_button('Cancel', f"/client/idp/admin/display?idpid={idp_id}", display='all')
 
       self.add_html(app_form.get_html(display_only=True))
       self.add_javascript(app_form.get_javascript())
@@ -644,7 +644,7 @@ class SAMLClientAdmin(BaseHandler):
       
     form.set_title('SAML authentication'+('' if form_content['name'] == '' else ': '+form_content['name']))
     form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
-    form.add_button('Cancel', f'/?idpid={app_params['idp_id']}', display='all')
+    form.add_button('Cancel', f"/?idpid={app_params['idp_id']}", display='all')
 
     return form
 

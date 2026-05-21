@@ -192,7 +192,7 @@ class OAuthClientAdmin(BaseHandler):
       .end_section() 
       
     form.set_title('OAuth 2 configuration'+('' if form_content['idp_name'] == '' else ': '+form_content['idp_name']))
-    form.add_button('Cancel', f'/?idpid={idp_id}', display='all')
+    form.add_button('Cancel', f"/?idpid={idp_id}", display='all')
     form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     self.add_html(form.get_html())
@@ -425,8 +425,8 @@ class OAuthClientAdmin(BaseHandler):
       app_params['app_id'] = app_id
       app_form = self.get_app_form(app_params)
       app_form.set_title('Remove OAuth 2 app '+(' '+app_params['name'] if app_params.get('name') else ''))
-      app_form.add_button('Remove', f'removeappconfirmed?idpid={idp_id}&appid={app_id}', display='all')
-      app_form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
+      app_form.add_button('Remove', f"removeappconfirmed?idpid={idp_id}&appid={app_id}", display='all')
+      app_form.add_button('Cancel', f"/client/idp/admin/display?idpid={idp_id}", display='all')
 
       self.add_html(app_form.get_html(display_only=True))
       self.add_javascript(app_form.get_javascript())
@@ -545,7 +545,7 @@ class OAuthClientAdmin(BaseHandler):
       
     form.set_title('OAuth 2 Authorization'+('' if form_content['name'] == '' else ': '+form_content['name']))
     form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
-    form.add_button('Cancel', f'/?idpid={app_params['idp_id']}', display='all')
+    form.add_button('Cancel', f"/?idpid={app_params['idp_id']}", display='all')
 
     return form
 
@@ -664,7 +664,7 @@ class OAuthClientAdmin(BaseHandler):
       idp = copy.deepcopy(self.conf['idps'][idp_id])
       if api_id == '':
         # Création de l'API
-        self.send_redirection(f'/client/idp/admin/display?idpid={idp_id}')
+        self.send_redirection(f"/client/idp/admin/display?idpid={idp_id}")
       else:
         api_params = idp['oauth2_apis'][api_id]
         
@@ -694,8 +694,8 @@ class OAuthClientAdmin(BaseHandler):
         api_params['api_id'] = api_id
         api_form = self.get_api_form(api_params)
         api_form.set_title('Remove OAuth 2 API '+(' '+api_params['name'] if api_params.get('name') else ''))
-        api_form.add_button('Remove', f'removeapiconfirmed?idpid={idp_id}&apiid={api_id}', display='all')
-        api_form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
+        api_form.add_button('Remove', f"removeapiconfirmed?idpid={idp_id}&apiid={api_id}", display='all')
+        api_form.add_button('Cancel', f"/client/idp/admin/display?idpid={idp_id}", display='all')
 
         self.add_html(api_form.get_html(display_only=True))
         self.add_javascript(api_form.get_javascript())
@@ -720,7 +720,7 @@ class OAuthClientAdmin(BaseHandler):
       idp = self.conf['idps'][idp_id]
       if api_id == '':
         # Création de l'API
-        self.send_redirection(f'/client/idp/admin/display?idpid={idp_id}')
+        self.send_redirection(f"/client/idp/admin/display?idpid={idp_id}")
       else:
         del idp['oauth2_apis'][api_id]
         Configuration.write_configuration(self.conf)
