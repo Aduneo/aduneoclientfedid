@@ -117,7 +117,7 @@ class OAuth2Revocation(FlowHandler):
           return
       
       if 'revocation_endpoint' not in oauth2_idp_params: 
-        raise AduneoError(self.log_error('Theoretically impossible to reach : no revocation endpoint scheme in either OIDC or OAuth idp_params'))
+        self.add_html('<h4>No revocation endpoint in either OIDC or OAuth idp_params, configure OAuth revocation endpoint preferably</h4>')
       
       try : 
         app_params = self.context.last_app_params_of('oauth2')
@@ -147,7 +147,9 @@ class OAuth2Revocation(FlowHandler):
             default_token = refresh_token 
             default_wrapper = token_wrapper 
 
+      form_id = 'revocation'
       form_content = {
+        'form_id' : form_id,
         'contextid': self.context['context_id'],
         'revocation_endpoint': oauth2_idp_params.get('revocation_endpoint', ''),
         'tokens': default_token,
@@ -157,7 +159,8 @@ class OAuth2Revocation(FlowHandler):
         'client_id': app_params.get('client_id', ''),
         'revocation_endpoint_dns_override': oauth2_idp_params.get('revocation_endpoint_dns_override', ''),
       }
-      form = RequesterForm('revocation', form_content, action='/client/oauth2/revocation/sendrequest', request_url='@[revocation_endpoint]', mode='api') \
+      form = RequesterForm(form_id, form_content, action='/client/oauth2/revocation/sendrequest', request_url='@[revocation_endpoint]', mode='api') \
+        .hidden('form_id') \
         .hidden('contextid') \
         .text('revocation_endpoint', label='Revocation endpoint', clipboard_category='revocation_endpoint') \
         .closed_list('tokens', label='Select token', 
@@ -180,10 +183,11 @@ class OAuth2Revocation(FlowHandler):
           default = 'basic'
           ) \
         .text('client_id', label='Client ID', clipboard_category='client_id', displayed_when="@[revocation_auth_method] = 'basic'") \
-        .password('client_secret', label='Client Secret', clipboard_category='client_secret!', displayed_when="@[revocation_auth_method] = 'basic'") \
+        .password('client_secret', label='Client Secret', clipboard_category='client_secret', displayed_when="@[revocation_auth_method] = 'basic'") \
         .text('revocation_endpoint_dns_override', label='Revocation endpoint DNS override', clipboard_category='revocation_endpoint_dns_override') \
         
-      form.set_title('Revocation '+idp_params['name'])
+      form.set_title(f"""Revocation <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
+      form.set_hr_title("Revocation")
       form.set_table('token_wrappers', token_wrappers)
       form.set_request_parameters({
         'token': '@[token]',
@@ -204,7 +208,7 @@ class OAuth2Revocation(FlowHandler):
         'auth_method': True,
         'verify_certificates': True,
         })
-      form.set_option('/clipboard/remember_secrets', True)
+      form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
       form.set_option('/requester/auth_method_options', ['none', 'basic'])
       form.set_option('/requester/cancel_button', '/client/flows/cancelrequest?contextid='+urllib.parse.quote(self.context.context_id))
 
@@ -269,7 +273,8 @@ class OAuth2Revocation(FlowHandler):
       
       self.start_result_table()
       self.log_info('Revocation response: '+str(response.status))
-      self.add_result_row('Revocation response', str(response.status), 'revocation_response', expanded=True)
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Revocation response', str(response.status), form_id, 'revocation_response', expanded=True)
       self.end_result_table()
       
       # on note le jeton comme révoqué dans le contexte
@@ -279,6 +284,10 @@ class OAuth2Revocation(FlowHandler):
             acces_token_wrapper['name'] = 'REVOKED - ' + acces_token_wrapper['name']
       
     except AduneoError as error:
+      self.start_result_table()
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Revocation response', str(error), form_id, 'revocation_response', expanded=True)
+      self.end_result_table()
       self.add_html("""<div class="intertable">Erreur lors de l'appel à revocation : {error}""".format(error=html.escape(str(error))))
     except Exception as error:
       self.log_error(('  ' * 1)+traceback.format_exc())

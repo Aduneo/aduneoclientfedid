@@ -82,13 +82,16 @@ class CASClientLogout(FlowHandler):
       self.log_info(('  ' * 1) + f"for client {app_params['name']} of IdP {idp_params['name']}")
       self.add_html(f"<h1>Logout from IdP {idp_params['name']} CAS Client {app_params['name']}</h1>")
 
+      form_id = 'caslogout'
       form_content = {
+        'form_id' : form_id,
         'contextid': self.context['context_id'],  # TODO : remplacer par hr_context ?
         'cas_server_logout_url': idp_params.get('cas_server_url', '')+'/logout',
         'logout_service_url': app_params.get('logout_service_url', ''),
       }
       
-      form = RequesterForm('caslogout', form_content, action='/client/cas/logout/sendrequest', mode='new_page', request_url='@[cas_server_logout_url]') \
+      form = RequesterForm(form_id, form_content, action='/client/cas/logout/sendrequest', mode='new_page', request_url='@[cas_server_logout_url]') \
+        .hidden('form_id') \
         .hidden('contextid') \
         .start_section('clientfedid_params', title="ClientFedID Parameters") \
           .text('logout_service_url', label='Service URL', clipboard_category='logout_service_url',
@@ -99,6 +102,8 @@ class CASClientLogout(FlowHandler):
           .text('cas_server_logout_url', label='CAS server logout URL', clipboard_category='cas_server_logout_url') \
         .end_section() \
         
+      form.set_title(f"""CAS Logout <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
+      form.set_hr_title("Logout request")
       form.set_request_parameters({
           'service': '@[logout_service_url]',
         })
@@ -118,6 +123,7 @@ class CASClientLogout(FlowHandler):
 
       self.add_html(form.get_html())
       self.add_javascript(form.get_javascript())
+      self.add_javascript("""document.getElementById('homeButton').href = '/?idpid={idp_id}';""".format(idp_id = idp_id))
 
     except AduneoError as error:
       self.add_html('<h4>Error: '+html.escape(str(error))+'</h4>')
@@ -208,6 +214,7 @@ class CASClientLogout(FlowHandler):
         self.context = self.get_session_value(context_id)
         if self.context:
           self.logoff('cas_client_'+self.context['idp_id']+'/'+self.context['app_id'])
+          self.add_javascript("""document.getElementById('homeButton').href = '/?idpid={idp_id}';""".format(idp_id = self.context['idp_id']))
       
     except AduneoError as error:
       if self.is_result_in_table():

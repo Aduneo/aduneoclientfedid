@@ -122,7 +122,7 @@ class WebTest(BaseHandler):
       .start_section('section_general', title="General configuration") \
         .text('name', label='Name', readonly=True) \
         .text('redirect_uri', label='Redirect URI', clipboard_category='redirect_uri', help_button=False) \
-        .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
+        .text('scope', label='Scope', clipboard_category='scope') \
         .closed_list('endpoint_configuration', label='Endpoint configuration', 
           values={'discovery_uri': 'Discovery URI', 'local_configuration': 'Local configuration'},
           default = 'discovery_uri'
@@ -252,7 +252,7 @@ class WebTest(BaseHandler):
       .end_section() \
       .start_section('openid_connect_configuration', title="OpenID Connect Configuration") \
         .text('client_id', label='Client ID', clipboard_category='client_id') \
-        .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
+        .text('scope', label='Scope', clipboard_category='scope') \
         .closed_list('response_type', label='Reponse type', 
           values={'code': 'code'},
           default = 'code'
@@ -261,7 +261,7 @@ class WebTest(BaseHandler):
           values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
           default = 'client_secret_basic'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
       .end_section() \
       .start_section('connection_options', title="Connection options") \
         .check_box('verify_certificates', label='Verify certificates') \
@@ -334,7 +334,7 @@ class WebTest(BaseHandler):
       .end_section() \
       .start_section('openid_connect_configuration', title="OpenID Connect Configuration") \
         .text('client_id', label='Client ID', clipboard_category='client_id') \
-        .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
+        .text('scope', label='Scope', clipboard_category='scope') \
         .closed_list('response_type', label='Reponse type', 
           values={'code': 'code'},
           default = 'code'
@@ -343,7 +343,7 @@ class WebTest(BaseHandler):
           values={'none': 'none', 'client_secret_basic': 'client_secret_basic', 'client_secret_post': 'client_secret_post'},
           default = 'client_secret_basic'
           ) \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'client_secret_basic' or @[token_endpoint_auth_method] = 'client_secret_post'") \
       .end_section() \
       .start_section('connection_options', title="Connection options") \
         .check_box('verify_certificates', label='Verify certificates') \
@@ -464,11 +464,11 @@ class WebTest(BaseHandler):
     self.add_html('<h3>Callback OIDC</h3>')
 
     self.start_result_table()
-    self.add_result_row('Code', 'did78ufj4e', 'code')
+    self.add_result_row('Code', 'did78ufj4e', 'form_id', 'code')
     self.end_result_table()
     self.add_html('<div class="intertable">Fetching token</div>')
     self.start_result_table()
-    self.add_result_row('Operation', 'fetching token', 'code')
+    self.add_result_row('Operation', 'fetching token', 'form_id', 'code')
     self.end_result_table()
   
     menu_id = 'id'+str(uuid.uuid4())
@@ -607,7 +607,7 @@ class WebTest(BaseHandler):
         .text('pkce_code_verifier', label='PKCE Code Verifier', displayed_when="@[oauth_flow] = 'authorization_code_pkce'") \
         .text('pkce_code_challenge', label='PKCE Code Challenge', displayed_when="@[oauth_flow] = 'authorization_code_pkce' and @[pkce_method] = 'S256'") \
         .text('client_id', label='Client ID', clipboard_category='client_id') \
-        .text('scope', label='Scope', clipboard_category='scope', help_button=False) \
+        .text('scope', label='Scope', clipboard_category='scope') \
         .closed_list('response_type', label='Reponse type', 
           values={'code': 'code'},
           default = 'code'
@@ -699,7 +699,7 @@ class WebTest(BaseHandler):
         default = 'basic'
         ) \
       .text('client_id', label='Client ID', clipboard_category='client_id') \
-      .password('client_secret', label='Client secret', clipboard_category='client_secret!') \
+      .password('client_secret', label='Client secret', clipboard_category='client_secret') \
 
     form.set_table('token_clients', token_clients)
     form.set_request_parameters({

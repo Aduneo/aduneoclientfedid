@@ -78,7 +78,7 @@ class OAuth2Refresh(FlowHandler):
 
       # Cas par défaut : on prend les paramètres OAuth2 si ils existent
       if 'token_endpoint' in oauth2_idp_params:
-        self.log_info("Using OAUTH IDP parameters for revocation endpoint")
+        self.log_info("Using OAUTH IDP parameters for token endpoint")
       # Si la clé n'est pas présente, on prend les paramètres OIDC (cas refresh AuthN)
       elif 'token_endpoint' in idp_params.get('oidc', {}):
         oauth2_idp_params = idp_params['oidc']
@@ -125,7 +125,7 @@ class OAuth2Refresh(FlowHandler):
           return
       
       if 'token_endpoint' not in oauth2_idp_params: 
-        raise AduneoError(self.log_error('Theoretically impossible to reach : no token endpoint scheme in either OIDC or OAuth idp_params'))
+        raise AduneoError(self.log_error('No token endpoint scheme in either OIDC or OAuth idp_params'))
 
       # Jetons de rafraîchissement et clients associés
       refresh_tokens = {'__input__': 'Direct Input'}    # clé : RT, valeur : nom d'affichage
@@ -152,7 +152,9 @@ class OAuth2Refresh(FlowHandler):
               client_ids[app_id] = conf_app['client_id']
               token_endpoint_auth_methods[app_id] = {'none': 'none', 'client_secret_basic': 'basic', 'client_secret_post': 'form'}.get(conf_app.get('token_endpoint_auth_methods', 'client_secret_basic'), 'client_secret_basic')
 
+      form_id = 'refresh'
       form_content = {
+        'form_id' : form_id,
         'contextid': self.context['context_id'],
         'token_endpoint': oauth2_idp_params.get('token_endpoint', ''),
         'refresh_tokens': default_refresh_token,
@@ -163,7 +165,8 @@ class OAuth2Refresh(FlowHandler):
         'client_id': client_ids[default_app_id],
         'token_endpoint_auth_method': token_endpoint_auth_methods[default_app_id],
       }
-      form = RequesterForm('refresh', form_content, action='/client/oauth2/refresh/sendrequest', request_url='@[token_endpoint]', mode='api') \
+      form = RequesterForm(form_id, form_content, action='/client/oauth2/refresh/sendrequest', request_url='@[token_endpoint]', mode='api') \
+        .hidden('form_id') \
         .hidden('contextid') \
         .text('token_endpoint', label='Token endpoint', clipboard_category='token_endpoint') \
         .closed_list('refresh_tokens', label='Select refresh token', 
@@ -195,9 +198,10 @@ class OAuth2Refresh(FlowHandler):
           default = 'basic'
           ) \
         .text('client_id', label='Client ID', clipboard_category='client_id', displayed_when="@[client_ids] = '__input__'") \
-        .password('client_secret', label='Client secret', clipboard_category='client_secret!', displayed_when="@[client_ids] = '__input__'") \
+        .password('client_secret', label='Client secret', clipboard_category='client_secret', displayed_when="@[client_ids] = '__input__'") \
         
-      form.set_title('Refresh '+idp_params['name'])
+      form.set_title(f"""Refresh <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
+      form.set_hr_title("Refresh")
       form.set_table('token_clients', token_clients)
       form.set_request_parameters({
         'refresh_token': '@[refresh_token]',
@@ -223,7 +227,7 @@ class OAuth2Refresh(FlowHandler):
         'auth_method': True,
         'verify_certificates': True,
         })
-      form.set_option('/clipboard/remember_secrets', True)
+      form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
       form.set_option('/requester/cancel_button', '/client/flows/cancelrequest?contextid='+urllib.parse.quote(self.context.context_id))
       form.set_option('/requester/include_empty_items', False)
 
@@ -281,11 +285,12 @@ class OAuth2Refresh(FlowHandler):
       
       self.start_result_table()
       self.log_info('Refresh response'+json.dumps(json_response, indent=2))
-      self.add_result_row('Refresh response', json.dumps(json_response, indent=2), 'refresh_response', expanded=False)
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Refresh response', json.dumps(json_response, indent=2), form_id, 'refresh_response', expanded=False)
       
       new_access_token = json_response.get('access_token')
       new_refresh_token = json_response.get('refresh_token')
-      OAuthClientLogin.display_tokens(self, new_access_token, new_refresh_token, idp_params, client_secret)
+      OAuthClientLogin.display_tokens(self, new_access_token, new_refresh_token, idp_params, client_secret, form_id)
 
       if (new_access_token):
         
@@ -310,6 +315,10 @@ class OAuth2Refresh(FlowHandler):
       self.end_result_table()
       
     except AduneoError as error:
+      self.start_result_table()
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Refresh response', str(error), form_id, 'refresh_response', expanded=True)
+      self.end_result_table()
       self.add_html("""<div class="intertable">Erreur lors de l'appel à refresh : {error}""".format(error=html.escape(str(error))))
     except Exception as error:
       self.log_error(('  ' * 1)+traceback.format_exc())

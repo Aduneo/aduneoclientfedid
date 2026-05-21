@@ -103,8 +103,8 @@ function collapseSection(sectionId) {
 function display_middle_menu(a_item) {
   
   var menu = [];
-  for (let menu_item of a_item.dataset.menu.split('\1')) {
-    let menu_items = menu_item.split('\2');
+  for (let menu_item of a_item.dataset.menu.split('\x01')) {
+    let menu_items = menu_item.split('\x02');
     menu[menu_items[0]] = menu_items[1];
   }
 
@@ -165,7 +165,53 @@ function display_middle_menu(a_item) {
   
   
 }
+// Single shared registry — lives outside the function
+const _dropdown_registry = [];
 
-function test() {
-  console.log("BUU");
+document.addEventListener('click', () => {
+  _dropdown_registry.forEach(({ btn, menu }) => {
+    menu.classList.remove('visible');
+    btn.classList.remove('open');
+  });
+  document.querySelectorAll('.sub, .sub2').forEach(s => s.classList.remove('visible'));
+});
+
+function display_dropdown_menu(button_id, menu_id) {
+  const btn = document.getElementById(button_id);
+  const menu = document.getElementById(menu_id);
+
+  // Register this pair for the shared outside-click handler
+  _dropdown_registry.push({ btn, menu });
+
+  // Toggle main menu
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+
+    // Close all other menus first
+    _dropdown_registry.forEach(({ btn: b, menu: m }) => {
+      if (m !== menu) {
+        m.classList.remove('visible');
+        b.classList.remove('open');
+      }
+    });
+
+    const open = menu.classList.toggle('visible');
+    btn.classList.toggle('open', open);
+  });
+
+  // Toggle sub-menus on click
+  menu.querySelectorAll('.menu-item').forEach(item => {
+    const sub = item.querySelector(':scope > .sub, :scope > .sub2');
+    if (!sub) return;
+    item.addEventListener('click', e => {
+      e.stopPropagation();
+      const siblings = item.parentElement.querySelectorAll(':scope > .menu-item > .sub, :scope > .menu-item > .sub2');
+      siblings.forEach(s => {
+        if (s !== sub) s.classList.remove('visible');
+      });
+      sub.classList.toggle('visible');
+    });
+  });
+
+  menu.addEventListener('click', e => e.stopPropagation());
 }

@@ -106,7 +106,7 @@ class FlowHandler(BaseHandler):
           client = idp['oidc_clients'][client_id]
           self.add_html("""
             <div>
-              <span>{name}</span>
+              <span style="color: #004c97; margin-left: 20px">{name}</span>
               <span><a href="/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
             </div>
             """.format(
@@ -125,7 +125,7 @@ class FlowHandler(BaseHandler):
           client = idp['oauth2_clients'][client_id]
           self.add_html("""
             <div>
-              <span>{name}</span>
+              <span style="color: #004c97; margin-left: 20px">{name}</span>
               <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
             </div>
             """.format(
@@ -144,7 +144,7 @@ class FlowHandler(BaseHandler):
           client = idp['saml_clients'][client_id]
           self.add_html("""
             <div>
-              <span>{name}</span>
+              <span style="color: #004c97; margin-left: 20px">{name}</span>
               <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
             </div>
             """.format(
@@ -163,7 +163,7 @@ class FlowHandler(BaseHandler):
           client = idp['cas_clients'][client_id]
           self.add_html("""
             <div>
-              <span>{name}</span>
+              <span style="color: #004c97; margin-left: 20px">{name}</span>
               <span><a href="/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}&newauth=true" class="smallbutton">Login</a></span>
             </div>
             """.format(
@@ -209,7 +209,7 @@ class FlowHandler(BaseHandler):
         client = idp['oidc_clients'][client_id]
         self.add_html("""
           <div>
-            <span>{name}</span>
+            <span style="color: #004c97; margin-left: 20px">{name}</span>
             <span><a href="/client/oidc/logout/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}" class="smallbutton">Logout</a></span>
           </div>
           """.format(
@@ -229,7 +229,7 @@ class FlowHandler(BaseHandler):
         app_params = idp['saml_clients'][app_id]
         self.add_html("""
           <div>
-            <span>{name}</span>
+            <span style="color: #004c97; margin-left: 20px">{name}</span>
             <span><a href="/client/saml/logout/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}" class="smallbutton">Logout</a></span>
           </div>
           """.format(
@@ -249,7 +249,7 @@ class FlowHandler(BaseHandler):
         app_params = idp['cas_clients'][app_id]
         self.add_html("""
           <div>
-            <span>{name}</span>
+            <span style="color: #004c97; margin-left: 20px">{name}</span>
             <span><a href="/client/cas/logout/preparerequest?idpid={idp_id}&appid={app_id}&contextid={context_id}" class="smallbutton">Logout</a></span>
           </div>
           """.format(
@@ -328,7 +328,9 @@ class FlowHandler(BaseHandler):
         'CAS': '/client/cas/login/preparerequest',
         }.get(self.context['flow_type'])
 
+      idp_id = self.context.idp_id
       self.add_html('<div id="'+html.escape(dom_id)+'">')
+      self.add_html('<span><a id="homeButtonFlow" href="/?idpid=' + idp_id + '"><img style="height: 30px; vertical-align: middle"; src="/images/home.png"></a></span>')
       if retry_url:
         self.add_html('<span><a href="'+retry_url+'?contextid='+urllib.parse.quote_plus(context_id)+'&idpid='+urllib.parse.quote_plus(self.context.idp_id)+'&appid='+urllib.parse.quote_plus(self.context.app_id)+'" class="middlebutton">Retry original flow</a></span>')
       self.add_html('<span onClick="fetchContent(\'GET\',\'/client/flows/newauth?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+dom_id+'\')" class="middlebutton">New auth</span>')
@@ -347,3 +349,6 @@ class FlowHandler(BaseHandler):
       if oauth_exchange:
         self.add_html('<span onClick="fetchContent(\'GET\',\'/client/oauth2/samltoat/preparerequest?contextid='+urllib.parse.quote_plus(context_id)+'\', \'\', \''+urllib.parse.quote_plus(dom_id)+'\')" class="middlebutton">Exchange SAML -> OAuth</span>')
       self.add_html('</div>')
+  
+  def password_found_in_config(self, client_type):
+    return bool(self.conf['idps'][self.context.idp_id][client_type][self.context.app_id].get('client_secret!', '') != '')

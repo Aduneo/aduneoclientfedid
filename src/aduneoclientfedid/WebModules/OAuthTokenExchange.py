@@ -67,7 +67,7 @@ class OAuth2TokenExchange(FlowHandler):
 
       # Cas par défaut : on prend les paramètres OAuth2 si ils existent
       if 'token_endpoint' in oauth2_idp_params:
-        self.log_info("Using OAUTH IDP parameters for revocation endpoint")
+        self.log_info("Using OAUTH IDP parameters for token endpoint")
       # Si la clé n'est pas présente, on prend les paramètres OIDC (cas refresh AuthN)
       elif 'token_endpoint' in idp_params.get('oidc', {}):
         oauth2_idp_params = idp_params['oidc']
@@ -114,7 +114,7 @@ class OAuth2TokenExchange(FlowHandler):
           return
       
       if 'token_endpoint' not in oauth2_idp_params: 
-        raise AduneoError(self.log_error('Theoretically impossible to reach : no token endpoint scheme in either OIDC or OAuth idp_params'))
+        self.add_html('<h4>No token endpoint scheme in either OIDC or OAuth idp_params</h4>')
 
       self.log_info(('  ' * 1)+'IdP: '+idp_params['name'])
 
@@ -142,7 +142,9 @@ class OAuth2TokenExchange(FlowHandler):
             default_wrapper = wrapper
           i += 1
 
+      form_id = 'tokenexchange'
       form_content = {
+        'form_id' : form_id,
         'contextid': self.context['context_id'],
         'token_endpoint': oauth2_idp_params.get('token_endpoint', ''),
         'grant_type': 'urn:ietf:params:oauth:grant-type:token-exchange',
@@ -160,7 +162,8 @@ class OAuth2TokenExchange(FlowHandler):
         'actor_token': '',
         'actor_token_type': '',
       }
-      form = RequesterForm('tokenexchange', form_content, action='/client/oauth2/tokenexchange/sendrequest', request_url='@[token_endpoint]', mode='api') \
+      form = RequesterForm(form_id, form_content, action='/client/oauth2/tokenexchange/sendrequest', request_url='@[token_endpoint]', mode='api') \
+        .hidden('form_id') \
         .hidden('contextid') \
         .text('token_endpoint', label='Token endpoint', clipboard_category='token_endpoint') \
         .text('grant_type', label='Grant type', clipboard_category='grant_type') \
@@ -199,7 +202,8 @@ class OAuth2TokenExchange(FlowHandler):
         .text('client_id', label='Client ID', clipboard_category='client_id') \
         .password('client_secret', label='Client secret', clipboard_category='client_secret') \
         
-      form.set_title('Token Exchange '+idp_params['name'])
+      form.set_title(f"""Token Exchange <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
+      form.set_hr_title("Token Exchange")
       form.set_table('token_params', token_params)
       form.set_request_parameters({
         'grant_type': '@[grant_type]',
@@ -232,7 +236,7 @@ class OAuth2TokenExchange(FlowHandler):
         }
         return paramValues;
       """)
-      form.set_option('/clipboard/remember_secrets', True)
+      form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
       form.set_option('/requester/auth_method_options', ['none', 'basic', 'bearer_token'])
       form.set_option('/requester/cancel_button', '/client/flows/cancelrequest?contextid='+urllib.parse.quote(self.context.context_id))
       form.set_option('/requester/include_empty_items', False)
@@ -287,10 +291,11 @@ class OAuth2TokenExchange(FlowHandler):
       
       self.start_result_table()
       self.log_info('Token exchange response'+json.dumps(json_response, indent=2))
-      self.add_result_row('Token exchange response', json.dumps(json_response, indent=2), 'token_exchange_response', expanded=True)
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Token exchange response', json.dumps(json_response, indent=2), form_id, 'token_exchange_response', expanded=True)
       self.end_result_table()
       
-      if response.status_code == 200:
+      if response.status == 200:
 
         token_name = 'Exchange from '+self.post_form.get('token_name', '?')+' - '+time.strftime("%H:%M:%S", time.localtime())
         token = {'name': token_name, 'app_id': self.post_form.get('app_id')}
@@ -309,6 +314,10 @@ class OAuth2TokenExchange(FlowHandler):
           self.context['access_tokens'][str(time.time())] = token
       
     except AduneoError as error:
+      self.start_result_table()
+      form_id = self.post_form.get('form_id')
+      self.add_result_row('Token exchange response', str(error), form_id, 'token_exchange_response', expanded=True)
+      self.end_result_table()
       self.add_html("""<div class="intertable">Erreur lors de l'appel à Token exchange : {error}""".format(error=html.escape(str(error))))
     except Exception as error:
       self.log_error(('  ' * 1)+traceback.format_exc())

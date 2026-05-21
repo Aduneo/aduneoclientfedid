@@ -5,7 +5,8 @@
   background-color: white;
   border: 2px solid black; 
   width: 600px; 
-  height: 400px; 
+  height: auto; 
+  max-height: 600px;
   position: absolute; 
   top: 100px; 
   left: 100px;

@@ -125,7 +125,6 @@ class SAMLClientAdmin(BaseHandler):
       'sp_acs_url': app_params.get('sp_acs_url', ''),
       'sp_slo_url': app_params.get('sp_slo_url', ''),
       'sp_key_configuration': app_params.get('sp_key_configuration', 'clientfedid_keys'),
-      'sp_private_key': app_params.get('sp_private_key', ''),
       'sp_certificate': app_params.get('sp_certificate', SAMLClientAdmin._get_clientfedid_certificate()),
       'nameid_policy': app_params.get('nameid_policy', 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'),
       'authentication_binding': app_params.get('authentication_binding', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'),
@@ -134,7 +133,7 @@ class SAMLClientAdmin(BaseHandler):
       'sign_logout_request': Configuration.is_on(app_params.get('sign_logout_request', 'off')),
       }
     
-    form = CfiForm('samladminsingle', form_content, action='modifyclientsingle', submit_label='Save') \
+    form = CfiForm('samladmin', form_content, action='modifyclientsingle', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
       .text('idp_name', label='IdP name') \
@@ -165,7 +164,7 @@ class SAMLClientAdmin(BaseHandler):
           ) \
         .button('download_sp_cfi_certificate', label='Download ClientFedID certificate', link='/client/saml/admin/downloadcficertificate', displayed_when="@[sp_key_configuration] = 'clientfedid_keys'") \
         .button('generate_sp_keys', label='Generate SP keys', on_click='generateSPKeys(cfiForm)', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
-        .textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
+        .password_textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
         .textarea('sp_certificate', label='SP certificate', rows=10, clipboard_category='sp_certificate', upload_button='Upload SP certificate', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
         .button('download_sp_specific_certificate', label='Download specific certificate', on_click='downloadSpecificCertificate(cfiForm)', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
       .end_section() \
@@ -194,7 +193,7 @@ class SAMLClientAdmin(BaseHandler):
       .end_section() \
       
     form.set_title('SAML SP configuration'+('' if form_content['idp_name'] == '' else ': '+form_content['idp_name']))
-    form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
+    form.add_button('Cancel', f"/?idpid={idp_id}", display='all')
     form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     self.add_javascript_include('/javascript/SAMLClientAdmin.js')
@@ -260,12 +259,16 @@ class SAMLClientAdmin(BaseHandler):
       else:
         saml_params[item] = self.post_form[item].split('\t')
       
-    for item in ['sp_entity_id', 'sp_acs_url', 'sp_slo_url', 'sp_key_configuration', 'sp_private_key', 'sp_certificate', 'nameid_policy',
+    for item in ['sp_entity_id', 'sp_acs_url', 'sp_slo_url', 'sp_key_configuration', 'sp_certificate', 'nameid_policy',
       'authentication_binding', 'logout_binding']:
       if self.post_form.get(item, '') == '':
         app_params.pop(item, None)
       else:
         app_params[item] = self.post_form[item].strip()
+    
+    for secret in ['sp_private_key']:
+      if self.post_form.get(secret, '') != '':
+        app_params[secret+'!'] = self.post_form[secret]
       
     for item in ['sign_auth_request', 'sign_logout_request']:
       if item in self.post_form:
@@ -275,7 +278,7 @@ class SAMLClientAdmin(BaseHandler):
 
     Configuration.write_configuration(self.conf)
     
-    self.send_redirection(f"/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}")
+    self.send_redirection(f"/?idpid={idp_id}")
 
 
   @register_page_url(url='modifymulti', method='GET', template='page_default.html', continuous=True)
@@ -364,12 +367,16 @@ class SAMLClientAdmin(BaseHandler):
 
     app_params['name'] = self.post_form['name'].strip()
     
-    for item in ['sp_entity_id', 'sp_acs_url', 'sp_slo_url', 'sp_key_configuration', 'sp_private_key', 'sp_certificate', 'nameid_policy',
+    for item in ['sp_entity_id', 'sp_acs_url', 'sp_slo_url', 'sp_key_configuration', 'sp_certificate', 'nameid_policy',
       'authentication_binding', 'logout_binding']:
       if self.post_form.get(item, '') == '':
         app_params.pop(item, None)
       else:
         app_params[item] = self.post_form[item].strip()
+    
+    for secret in ['sp_private_key']:
+      if self.post_form.get(secret, '') != '':
+        app_params[secret+'!'] = self.post_form[secret]
       
     for item in ['sign_auth_request', 'sign_logout_request']:
       if item in self.post_form:
@@ -379,7 +386,7 @@ class SAMLClientAdmin(BaseHandler):
         
     Configuration.write_configuration(self.conf)
     
-    self.send_redirection(f"/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}")
+    self.send_redirection(f"/?idpid={idp_id}")
 
 
   @register_url(url='downloadSPMetadata', method='POST')
@@ -504,8 +511,8 @@ class SAMLClientAdmin(BaseHandler):
       app_params['app_id'] = app_id
       app_form = self.get_app_form(app_params)
       app_form.set_title('Remove SAML app '+(' '+app_params['name'] if app_params.get('name') else ''))
-      app_form.add_button('Remove', f'removeappconfirmed?idpid={idp_id}&appid={app_id}', display='all')
-      app_form.add_button('Cancel', f'/client/idp/admin/display?idpid={idp_id}', display='all')
+      app_form.add_button('Remove', f"removeappconfirmed?idpid={idp_id}&appid={app_id}", display='all')
+      app_form.add_button('Cancel', f"/client/idp/admin/display?idpid={idp_id}", display='all')
 
       self.add_html(app_form.get_html(display_only=True))
       self.add_javascript(app_form.get_javascript())
@@ -586,7 +593,7 @@ class SAMLClientAdmin(BaseHandler):
       'sign_logout_request': Configuration.is_on(app_params.get('sign_logout_request', 'off')),
       }
     
-    form = CfiForm('samladminmulti', form_content, action='modifymulti', submit_label='Save') \
+    form = CfiForm('samladmin', form_content, action='modifymulti', submit_label='Save') \
       .hidden('idp_id') \
       .hidden('app_id') \
       .text('name', label='Name') \
@@ -607,7 +614,7 @@ class SAMLClientAdmin(BaseHandler):
           ) \
         .button('download_sp_cfi_certificate', label='Download ClientFedID certificate', link='/client/saml/admin/downloadcficertificate', displayed_when="@[sp_key_configuration] = 'clientfedid_keys'") \
         .button('generate_sp_keys', label='Generate SP keys', on_click='generateSPKeys(cfiForm)', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
-        .textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
+        .password_textarea('sp_private_key', label='SP private key', rows=10, clipboard_category='sp_private_key', upload_button='Upload SP private key', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
         .textarea('sp_certificate', label='SP certificate', rows=10, clipboard_category='sp_certificate', upload_button='Upload SP certificate', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
         .button('download_sp_specific_certificate', label='Download specific certificate', on_click='downloadSpecificCertificate(cfiForm)', displayed_when="@[sp_key_configuration] = 'specific_keys'") \
       .end_section() \
@@ -637,6 +644,7 @@ class SAMLClientAdmin(BaseHandler):
       
     form.set_title('SAML authentication'+('' if form_content['name'] == '' else ': '+form_content['name']))
     form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
+    form.add_button('Cancel', f"/?idpid={app_params['idp_id']}", display='all')
 
     return form
 

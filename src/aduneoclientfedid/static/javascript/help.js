@@ -1,32 +1,13 @@
 /**
  * @license
- * Copyright 2023 Aduneo
+ * Copyright 2026 Aduneo
  * SPDX-License-Identifier: Apache-2.0
  */
 function help(imgElement, itemId) {
-  // on peut déterminer le root de l'identifiant d'aide de deux manières
-  //   - il a été donné explicitement lors de l'intégration du module d'aide (par exemple self.add_content(Help.help_window_definition(page_id='client_oidc')) )
-  //   - sinon on prend l'URL de la page
-  var absHelpItemId = itemId;
-  if (!absHelpItemId.startsWith('/')) {
-    if (typeof helpRootPageId === 'undefined') {
-      absHelpItemId = window.location.pathname.substring(1).replaceAll('/', '_')+'_'+itemId;
-    } else {
-      absHelpItemId = helpRootPageId+'_'+itemId;
-    }
-  }
   var rect = imgElement.getBoundingClientRect();
-  displayHelpPopup(rect.left+50, rect.top, absHelpItemId);
+  displayHelpPopup(window.pageXOffset+rect.left+30, rect.top+30, itemId);
 }
 
-var help_topic = {
-  'content': '',
-  'edit_topics': false,
-  'header': '',
-  'help_id': null,
-  'language': 'en',
-  'topics_defined': false,
-};
 
 function displayHelpPopup(x, y, helpId) {
   
@@ -50,7 +31,7 @@ function displayHelpPopup(x, y, helpId) {
       document.getElementById("helpContent").innerHTML = help_topic.content;
     }
   };
-  xhttp.open("GET", "/help?id="+helpId, true);
+  xhttp.open("GET", "/help/sendHelp?id="+helpId, true);
   xhttp.send();
   
   openDrag('helpWindow', x, window.pageYOffset+y)
@@ -96,19 +77,18 @@ function saveHelp() {
   urlEncodedData = urlEncodedDataPairs.join('&');
 
   var xhr = new XMLHttpRequest();
-  xhr.open('POST', '/help', true);
-  xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
   xhr.onreadystatechange = function() {
-    if (this.readyState == 4) {
-      if (this.status == 200) {
-        closeHelpWindow();
-      } else {
-        document.getElementById('helpSaveButton').style.display = 'inline';
-      }
+    if (this.readyState == 4 && this.status == 200) {
+      help_topic = JSON.parse(xhr.responseText);
+      switchHelpMode('read');
+      document.getElementById("helpHeaderInput").value = help_topic.header;
+      document.getElementById("helpContentInput").value = help_topic.edit_content;
+      document.getElementById("helpHeader").innerHTML = help_topic.header;
+      document.getElementById("helpContent").innerHTML = help_topic.content;
     }
   };
+  xhr.open('POST', '/help/saveHelp', true);
   xhr.send(urlEncodedData);
-  document.getElementById('helpSaveButton').style.display = 'none';
 }
 
 
@@ -121,8 +101,8 @@ function closeHelpWindow() {
 
 function openDrag(elId, x, y) {
   dragWindow = document.getElementById(elId);
-  dragWindow.style.left = x;
-  dragWindow.style.top = y;
+  dragWindow.style.left = x + 'px';
+  dragWindow.style.top = y + 'px';
   dragWindow.style.visibility = 'visible';
 }
 
