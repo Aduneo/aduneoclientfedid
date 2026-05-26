@@ -113,7 +113,8 @@ class OAuthClientAdmin(BaseHandler):
       'authorization_endpoint': oauth2_params.get('authorization_endpoint', ''),
       'token_endpoint': oauth2_params.get('token_endpoint', ''),
       'introspection_endpoint': oauth2_params.get('introspection_endpoint', ''),
-      'introspection_method': oauth2_params.get('introspection_method', 'get'),
+      'introspection_http_method': oauth2_params.get('introspection_http_method', 'post'),
+      'introspection_auth_method': oauth2_params.get('introspection_auth_method', 'basic'),
       'revocation_endpoint': oauth2_params.get('revocation_endpoint', ''),
       'signature_key_configuration': oauth2_params.get('signature_key_configuration', 'jwks_uri'),
       'jwks_uri': oauth2_params.get('jwks_uri', ''),
@@ -150,10 +151,14 @@ class OAuthClientAdmin(BaseHandler):
         .text('authorization_endpoint', label='Authorization endpoint', clipboard_category='authorization_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
         .text('token_endpoint', label='Token endpoint', clipboard_category='token_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
         .text('introspection_endpoint', label='Introspection endpoint', clipboard_category='introspection_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
-        .closed_list('introspection_method', label='Introspect. Request Method',
+        .closed_list('introspection_http_method', label='Introspect. Request Method',
           values = {'get': 'GET', 'post': 'POST'},
-          default = 'get'
-          ) \
+          default = 'post'
+          )\
+        .closed_list('introspection_auth_method', label='Introspect. Authn Method',
+          values = {'none': 'None', 'basic': 'Basic', 'bearer_token': 'Bearer Token'},
+          default = 'basic'
+        )\
         .text('revocation_endpoint', label='Revocation endpoint', clipboard_category='revocation_endpoint', displayed_when="@[endpoint_configuration] = 'local_configuration'") \
       .end_section() \
       .start_section('client_endpoints', title="Client Endpoints") \
@@ -248,7 +253,7 @@ class OAuthClientAdmin(BaseHandler):
     app_params['name'] = self.post_form['app_name'].strip()
     
     for item in ['endpoint_configuration', 'metadata_uri', 'authorization_endpoint', 'token_endpoint', 
-    'revocation_endpoint', 'introspection_endpoint', 'introspection_method', 'signature_key_configuration', 'jwks_uri', 'signature_key',
+    'revocation_endpoint', 'introspection_endpoint', 'introspection_http_method', 'introspection_auth_method', 'signature_key_configuration', 'jwks_uri', 'signature_key',
     'token_endpoint_dns_override', 'introspection_endpoint_dns_override', 'revocation_endpoint_dns_override']:
       if self.post_form.get(item, '') == '':
         oauth2_params.pop(item, None)
@@ -644,7 +649,7 @@ class OAuthClientAdmin(BaseHandler):
         
     Configuration.write_configuration(self.conf)
     
-    self.send_redirection(f"/client/idp/admin/display?idpid={idp_id}")
+    self.send_redirection(f"/?idpid={idp_id}")
 
     
   @register_page_url(url='removeapi', method='GET', template='page_default.html', continuous=True)
@@ -758,11 +763,11 @@ class OAuthClientAdmin(BaseHandler):
       .hidden('idp_id') \
       .hidden('api_id') \
       .text('name', label='Name') \
-      .closed_list('introspection_http_method', label='Introspect. request method',
+      .closed_list('introspection_http_method', label='Introspect. Request Method',
         values = {'inherit_from_idp': 'Inherit from IdP', 'get': 'GET', 'post': 'POST'},
         default = 'inherit_from_idp'
         ) \
-      .closed_list('introspection_auth_method', label='Introspect. authn scheme',
+      .closed_list('introspection_auth_method', label='Introspect. Authn Scheme',
         values = {'inherit_from_idp': 'Inherit from IdP', 'none': 'None', 'basic': 'Basic', 'bearer_token': 'Bearer Token'},
         default = 'inherit_from_idp'
         ) \
@@ -770,7 +775,7 @@ class OAuthClientAdmin(BaseHandler):
       .password('secret', label='Secret', clipboard_category='client_secret')
       
     form.set_title('OAuth 2 API'+('' if form_content['name'] == '' else ': '+form_content['name']))
-    form.add_button('Cancel', f"/client/idp/admin/display?idpid={api_params['idp_id']}", display='modify')
+    form.add_button('Cancel', f"/?idpid={api_params['idp_id']}", display='modify')
     form.set_option('/clipboard/remember_secrets', handler.conf.is_on('/preferences/clipboard/remember_secrets', False))
 
     return form
