@@ -97,6 +97,9 @@ class Home(BaseHandler):
       # clients OAuth 2
       self.oauth2_client_idp_menu(idp, idp_id)
 
+      # introspection API OAuth2
+      self.oauth2_introspection_api_menu(idp, idp_id)
+
       # SP SAML
       self.saml_client_idp_menu(idp, idp_id)
 
@@ -131,7 +134,7 @@ class Home(BaseHandler):
   
   def oidc_client_idp_menu(self, idp, idp_id) :
     if idp.get('oidc_clients'):
-      self.add_html("""<div style="font-size: 14px">OIDC OP (clients)</div>""")
+      self.add_html("""<div style="font-size: 14px"><span style="color: #004c97">OIDC OP (clients)</span></div>""")
 
       for client_id in sorted(idp['oidc_clients'].keys()):
         client = idp['oidc_clients'][client_id]
@@ -150,7 +153,7 @@ class Home(BaseHandler):
   
   def oauth2_client_idp_menu(self, idp, idp_id) :
     if idp.get('oauth2_clients'):
-      self.add_html("""<div style="font-size: 14px">OAuth 2 Clients</div>""")          
+      self.add_html("""<div style="font-size: 14px"><span style="color: #004c97">OAuth 2 Clients</span></div>""")          
       
       for client_id in sorted(idp['oauth2_clients'].keys()):
         client = idp['oauth2_clients'][client_id]
@@ -159,17 +162,45 @@ class Home(BaseHandler):
             <span>{name}</span>
             <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
             <span><a href="/client/oauth2/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
-          </div>
           """.format(
             name = html.escape(client.get('name', 'Client')),
             idp_id = urllib.parse.quote_plus(idp_id),
             app_id = urllib.parse.quote_plus(client_id),
           )
         )
+      
+      if not(idp.get('oauth2_apis')):
+        self.add_html("""
+              <span><a href="/client/oauth2/admin/modifyapi?idpid={idp_id}" class="smallbutton">Add Introspection API</a></span>
+            """.format(
+              idp_id = urllib.parse.quote_plus(idp_id),
+            )
+        )
+      
+      self.add_html("""</div>""")
+
+
+  def oauth2_introspection_api_menu(self, idp, idp_id) :
+    if idp.get('oauth2_apis'):
+      self.add_html("""<div style="font-size: 14px"><span style="color: #004c97">OAuth 2 Introspection API</span></div>""")          
+      
+      for api_id in sorted(idp['oauth2_apis'].keys()):
+        api = idp['oauth2_apis'][api_id]
+        self.add_html("""
+          <div style="font-size: 14px; margin-left: 20px;">
+            <span>{name}</span>
+            <span><a href="/client/oauth2/admin/modifyapi?idpid={idp_id}&apiid={app_id}" class="smallbutton">Config</a></span>
+          </div>
+          """.format(
+            name = html.escape(api.get('name', 'API')),
+            idp_id = urllib.parse.quote_plus(idp_id),
+            app_id = urllib.parse.quote_plus(api_id),
+          )
+        )
   
   def saml_client_idp_menu(self, idp, idp_id) :
     if self.hreq.saml_prerequisite and idp.get('saml_clients'):
-      self.add_html("""<div style="font-size: 14px">SAML SP</div>""")          
+      self.add_html("""<div style="font-size: 14px"><span style="color: #004c97">SAML SP</span></div>""")          
       
       for client_id in sorted(idp['saml_clients'].keys()):
         client = idp['saml_clients'][client_id]
@@ -188,7 +219,7 @@ class Home(BaseHandler):
   
   def cas_client_idp_menu(self, idp, idp_id) :
     if idp.get('cas_clients'):
-      self.add_html("""<div style="font-size: 14px">CAS Clients</div>""")  
+      self.add_html("""<div style="font-size: 14px"><span style="color: #004c97">CAS Clients</span></div>""")  
 
       for client_id in sorted(idp['cas_clients'].keys()):
         client = idp['cas_clients'][client_id]
