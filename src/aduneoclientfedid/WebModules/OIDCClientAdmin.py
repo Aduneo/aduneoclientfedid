@@ -115,6 +115,8 @@ class OIDCClientAdmin(BaseHandler):
       'signature_key': oidc_params.get('signature_key', ''),
       'token_endpoint_dns_override': oidc_params.get('token_endpoint_dns_override', ''),
       'userinfo_endpoint_dns_override': oidc_params.get('userinfo_endpoint_dns_override', ''),
+      'oauth_flow': app_params.get('oauth_flow', 'authorization_code'),
+      'pkce_method': app_params.get('pkce_method', 'S256'),
       'redirect_uri': app_params.get('redirect_uri', ''),
       'post_logout_redirect_uri': app_params.get('post_logout_redirect_uri', ''),
       'client_id': app_params.get('client_id', ''),
@@ -175,6 +177,14 @@ class OIDCClientAdmin(BaseHandler):
           ) \
       .end_section() \
       .start_section('openid_connect_configuration', title="OpenID Connect Configuration") \
+        .closed_list('oauth_flow', label='OAuth Flow', 
+          values={'authorization_code': 'Authorization Code', 'authorization_code_pkce': 'Authorization Code with PKCE'},
+          default = 'authorization_code'
+          ) \
+        .closed_list('pkce_method', label='PKCE Code Challenge Method', displayed_when="@[oauth_flow] = 'authorization_code_pkce'",
+          values={'plain': 'plain', 'S256': 'S256'},
+          default = 'S256'
+          ) \
         .text('client_id', label='Client ID', clipboard_category='client_id') \
         .text('scope', label='Scope', clipboard_category='scope') \
         .closed_list('response_type', label='Reponse type', 
@@ -282,7 +292,7 @@ class OIDCClientAdmin(BaseHandler):
       else:
         oidc_params[item] = self.post_form[item].strip()
       
-    for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'end_session_endpoint_method', 'post_logout_redirect_uri',
+    for item in ['redirect_uri', 'client_id', 'oauth_flow', 'pkce_method', 'scope', 'response_type', 'token_endpoint_auth_method', 'end_session_endpoint_method', 'post_logout_redirect_uri',
     'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values']:
       if self.post_form.get(item, '') == '':
         app_params.pop(item, None)
@@ -392,7 +402,7 @@ class OIDCClientAdmin(BaseHandler):
 
     app_params['name'] = self.post_form['name'].strip()
     
-    for item in ['redirect_uri', 'client_id', 'scope', 'response_type', 'token_endpoint_auth_method', 'end_session_endpoint_method', 'post_logout_redirect_uri',
+    for item in ['redirect_uri', 'client_id', 'oauth_flow', 'pkce_method', 'scope', 'response_type', 'token_endpoint_auth_method', 'end_session_endpoint_method', 'post_logout_redirect_uri',
     'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values']:
       if self.post_form.get(item, '') == '':
         app_params.pop(item, None)
@@ -523,6 +533,8 @@ class OIDCClientAdmin(BaseHandler):
       'idp_id': app_params['idp_id'],
       'app_id': app_params['app_id'],
       'name': app_params.get('name', ''),
+      'oauth_flow': app_params.get('oauth_flow', 'authorization_code'),
+      'pkce_method': app_params.get('pkce_method', 'S256'),
       'redirect_uri': app_params.get('redirect_uri', ''),
       'post_logout_redirect_uri': app_params.get('post_logout_redirect_uri', ''),
       'client_id': app_params.get('client_id', ''),
@@ -557,6 +569,14 @@ class OIDCClientAdmin(BaseHandler):
           ) \
       .end_section() \
       .start_section('openid_connect_configuration', title="OpenID Connect Configuration") \
+        .closed_list('oauth_flow', label='OAuth Flow', 
+          values={'authorization_code': 'Authorization Code', 'authorization_code_pkce': 'Authorization Code with PKCE'},
+          default = 'authorization_code'
+          ) \
+        .closed_list('pkce_method', label='PKCE Code Challenge Method', displayed_when="@[oauth_flow] = 'authorization_code_pkce'",
+          values={'plain': 'plain', 'S256': 'S256'},
+          default = 'S256'
+          ) \
         .text('client_id', label='Client ID', clipboard_category='client_id') \
         .text('scope', label='Scope', clipboard_category='scope') \
         .closed_list('response_type', label='Reponse type', 
