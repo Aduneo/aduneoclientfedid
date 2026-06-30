@@ -46,7 +46,7 @@ class Home(BaseHandler):
     self.dropdown_menu('oauth2', 'Add OAuth2 Client', idps, 'oauth2Button1', 'oauth2Menu1')
     self.dropdown_menu('saml', 'Add SAML Client', idps, 'samlButton1', 'samlMenu1')
     self.dropdown_menu('cas', 'Add CAS Client', idps, 'casButton1', 'casMenu1')
-    self.add_html("""<div aria-hidden="true" style="height: 20px;"></div>""")
+    self.add_html("""<div aria-hidden="true" style="height: 20px;"></div></div>""")
 
     for idp_id in sorted(idps.keys()):
       
@@ -162,6 +162,7 @@ class Home(BaseHandler):
             <span>{name}</span>
             <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
             <span><a href="/client/oauth2/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
+          </div>
           """.format(
             name = html.escape(client.get('name', 'Client')),
             idp_id = urllib.parse.quote_plus(idp_id),
@@ -171,13 +172,15 @@ class Home(BaseHandler):
       
       if not(idp.get('oauth2_apis')):
         self.add_html("""
+            <div style="font-size: 14px;">
               <span><a href="/client/oauth2/admin/modifyapi?idpid={idp_id}" class="smallbutton">Add Introspection API</a></span>
+            </div>
             """.format(
               idp_id = urllib.parse.quote_plus(idp_id),
             )
         )
       
-      self.add_html("""</div>""")
+      #self.add_html("""</div>""")
 
 
   def oauth2_introspection_api_menu(self, idp, idp_id) :
