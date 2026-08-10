@@ -156,7 +156,7 @@ class SAMLClientAdmin(BaseHandler):
           on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/saml/login/acs'); }" 
           ) \
         .text('sp_slo_url', label='SP Single Logout URL', clipboard_category='sp_slo_url',
-          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/saml/login/logout/callback'); }" 
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/saml/logout/callback'); }" 
           ) \
         .closed_list('sp_key_configuration', label='SP key configuration', 
           values = {'clientfedid_keys': 'ClientFedID keys', 'specific_keys': 'Specific keys'},
@@ -606,7 +606,7 @@ class SAMLClientAdmin(BaseHandler):
           on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/saml/login/acs'); }" 
           ) \
         .text('sp_slo_url', label='SP Single Logout URL', clipboard_category='sp_slo_url',
-          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/saml/login/logout/callback'); }" 
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/saml/logout/callback'); }" 
           ) \
         .closed_list('sp_key_configuration', label='SP key configuration', 
           values = {'clientfedid_keys': 'ClientFedID keys', 'specific_keys': 'Specific keys'},
@@ -775,7 +775,7 @@ class SAMLClientAdmin(BaseHandler):
     """
 
     try:
-      crt_file_path = self._check_clientfedid_certificate_exists()
+      crt_file_path = SAMLClientAdmin._check_clientfedid_certificate_exists()
     except:
       self.send_page('Certificate not configured', code=400, clear_buffer=True)
       return
