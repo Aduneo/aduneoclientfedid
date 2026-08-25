@@ -574,8 +574,13 @@
     "content_fr": "🔴**REQUIRED**🔴\n\nL'URI de métadonnées (Authorization Server Metadata, RFC 8414) permet au client de récupérer automatiquement la configuration complète du serveur d'autorisation : endpoints, algorithmes supportés, scopes disponibles…\n\nElle est équivalente à la *Discovery URI* d'OpenID Connect.\n\n- https://www.idp.com/.well-known/oauth-authorization-server\n- https://www.idp.com/.well-known/openid-configuration (souvent compatible)",
     "format_fr": "md"
   },
-  "/oauth2admin/introspection_method": {
-    "header_fr": "Méthode d'introspection",
+  "/oauth2admin/introspection_http_method": {
+    "header_fr": "Méthode HTTP d'introspection",
+    "content_fr": "🟢**OPTIONAL**🟢\n\nDéfinit la méthode HTTP utilisée pour appeler l'endpoint d'introspection (RFC 7662). La spécification préconise :\n\n- *POST* : méthode recommandée, les paramètres sont transmis dans le corps de la requête au format `application/x-www-form-urlencoded`\n- *GET* : certains serveurs d'autorisation acceptent également les requêtes GET avec les paramètres en query string",
+    "format_fr": "md"
+  },
+  "/oauth2admin/introspection_auth_method": {
+    "header_fr": "Méthode d'authentification pour l'introspection",
     "content_fr": "🟢**OPTIONAL**🟢\n\nDéfinit la méthode d'authentification utilisée par le *resource server* pour s'authentifier auprès de l'endpoint d'introspection (RFC 7662) :\n\n- *client_secret_basic* : identifiant et secret encodés en Base64 dans le header `Authorization`\n- *client_secret_post* : identifiant et secret transmis dans le corps de la requête POST\n- *bearer_token* : présentation d'un access token en Bearer token dans le header `Authorization`",
     "format_fr": "md"
   },

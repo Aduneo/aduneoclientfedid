@@ -211,14 +211,21 @@ function generateSPKeys(cfiForm) {
 
 function downloadSpecificCertificate(cfiForm) {
 
-  certificate = cfiForm.getFieldValue('sp_certificate')
-  if (!certificate.startsWith('-----BEGIN CERTIFICATE-----')) {
-    segments = certificate.match(/.{1,64}/g)
-    certificate = '-----BEGIN CERTIFICATE-----\\n'+segments.join('\\n')+'\\n-----END CERTIFICATE-----'
-  }
-  
+  let certificate = cfiForm.getFieldValue('sp_certificate');
+  let NEWLINE = String.fromCharCode(10); // Garantie d'avoir un caractère \n échapé
+
+  // nettoyage au cas où lecertificat reneigné est un PEM
+  let base64 = certificate
+    .replace(/-----BEGIN CERTIFICATE-----/g, '')
+    .replace(/-----END CERTIFICATE-----/g, '')
+    .replace(/\s+/g, '');
+
+  // reconsuction au format PEM
+  let segments = base64.match(/.{1,64}/g) || [];
+  let pem = '-----BEGIN CERTIFICATE-----' + NEWLINE + segments.join(NEWLINE) + NEWLINE + '-----END CERTIFICATE-----' + NEWLINE;
+
   var element = document.createElement('a');
-  element.setAttribute('href', 'data:application/x-pem-file;charset=utf-8,' + encodeURIComponent(certificate));
+  element.setAttribute('href', 'data:application/x-pem-file;charset=utf-8,' + encodeURIComponent(pem));
   element.setAttribute('download', 'aduneo.crt');
 
   element.style.display = 'none';

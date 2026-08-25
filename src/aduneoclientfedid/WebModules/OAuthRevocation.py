@@ -140,7 +140,7 @@ class OAuth2Revocation(FlowHandler):
           default_wrapper = token_wrapper 
         if token_wrapper.get('refresh_token'):
           refresh_token = token_wrapper['refresh_token']
-          token_wrapper = {'name': 'refresh for '+token_wrapper['name'], 'token_type_hint': 'refresh_token'}
+          token_wrapper = {'name': 'refresh token for ' + token_wrapper['name'], 'token_type_hint': 'refresh_token'}
           token_wrappers[refresh_token] = token_wrapper
           display_tokens[refresh_token] = token_wrapper['name']
           if not default_token:
@@ -253,21 +253,26 @@ class OAuth2Revocation(FlowHandler):
       else:
         idp_params['verify_certificates'] = 'off'
 
-      # on récupére le client_secret
+      client_secret=None
+      # on récupére le client_secret si auth basic
       if self.post_form.get('revocation_auth_method') in ['basic']:
+        # Essai depuis le post form
         client_secret = self.post_form.get('client_secret', '')
+        # Essai depuis la récupération de contexte
         try : 
-          app_params = self.context.last_app_params_of('oauth2')
+            app_params = self.context.last_app_params_of('oauth2')
         except :
-          app_params = self.context.last_app_params_of('oidc')
-        if client_secret != '':
+            app_params = self.context.last_app_params_of('oidc')
+        if client_secret :
           app_params['client_secret'] = client_secret
         else:
           client_secret = app_params.get('client_secret', '')
-        if client_secret == '':
-          conf_idp = self.conf['idps'][self.context.idp_id]
-          conf_app = conf_idp['oauth2_clients'][self.context.app_id]
-          client_secret = conf_app.get('client_secret!', '')
+        # Essai depuis la conf
+        if not client_secret :
+          try:
+            client_secret = self.conf['idps'][self.context.idp_id]['oauth2_clients'][self.context.app_id].get('client_secret!', None)
+          except Exception:
+              client_secret = None
     
       response = RequesterForm.send_form(self, self.post_form, default_secret=client_secret)
       

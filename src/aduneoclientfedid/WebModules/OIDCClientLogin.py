@@ -22,6 +22,9 @@ import time
 import traceback
 import urllib.parse
 import uuid
+import random
+import hashlib
+import string
 
 from ..BaseServer import AduneoError
 from ..BaseServer import register_web_module, register_url, register_page_url
@@ -185,6 +188,17 @@ class OIDCClientLogin(FlowHandler):
       # pour récupérer le contexte depuis le state (puisque c'est la seule information exploitable retournée par l'IdP)
       self.set_session_value(state, self.context['context_id'])
 
+      oauth_flow = app_params.get('oauth_flow', 'authorization_code')
+
+      # Paramètres pour PKCE
+      self.log_info(('  ' * 1)+'Code challenge generation in case Authorization code with PKCE flow is used')
+      pkce_code_verifier = ''.join(random.choice(string.ascii_letters+string.digits) for i in range(50))   # La RFC recommande de produire une suite de 32 octets encodés en base64url-encoded
+      self.log_info(('  ' * 2)+'Code verifier: '+pkce_code_verifier)
+      sha = hashlib.sha256()
+      sha.update(pkce_code_verifier.encode('utf-8'))
+      pkce_code_challenge = base64.urlsafe_b64encode(sha.digest()).decode('utf-8').replace('=', '')        
+      self.log_info(('  ' * 2)+'Code challenge: '+pkce_code_challenge)
+
       form_id = 'oidcauth'
       form_content = {
         'form_id' : form_id,
@@ -200,6 +214,10 @@ class OIDCClientLogin(FlowHandler):
         'signature_key': oidc_idp_params.get('signature_key', ''),
         'token_endpoint_dns_override': oidc_idp_params.get('token_endpoint_dns_override', ''),
         'userinfo_endpoint_dns_override': oidc_idp_params.get('userinfo_endpoint_dns_override', ''),
+        'oauth_flow': oauth_flow,
+        'code_challenge_method': app_params.get('code_challenge_method', 'S256'),
+        'code_challenge': pkce_code_challenge,
+        'code_verifier': pkce_code_verifier,
         'client_id': app_params.get('client_id', ''),
         'scope': app_params.get('scope', ''),
         'token_endpoint_auth_method': app_params.get('token_endpoint_auth_method', 'basic'),
@@ -244,6 +262,16 @@ class OIDCClientLogin(FlowHandler):
           .text('signature_key', label='Signature key', displayed_when="@[signature_key_configuration] = 'local_configuration'") \
         .end_section() \
         .start_section('client_params', title="Client Parameters", collapsible=True, collapsible_default=False) \
+          .closed_list('oauth_flow', label='OAuth flow', 
+            values={'authorization_code': 'Authorization Code', 'authorization_code_pkce': 'Authorization Code with PKCE'},
+            default = 'authorization_code',
+            ) \
+          .closed_list('code_challenge_method', label='PKCE code challenge method', displayed_when="@[oauth_flow] = 'authorization_code_pkce'",
+            values={'plain': 'plain', 'S256': 'S256'},
+            default = 'S256'
+            ) \
+          .text('code_challenge', label='PKCE code challenge', displayed_when="@[oauth_flow] = 'authorization_code_pkce' and @[code_challenge_method] = 'S256'") \
+          .text('code_verifier', label='PKCE code verifier', displayed_when="@[oauth_flow] = 'authorization_code_pkce'") \
           .text('client_id', label='Client ID', clipboard_category='client_id') \
           .password('client_secret', label=client_secret_label, clipboard_category='client_secret', displayed_when="@[token_endpoint_auth_method] = 'basic' or @[token_endpoint_auth_method] = 'form'") \
           .text('scope', label='Scope', clipboard_category='scope') \
@@ -288,6 +316,8 @@ class OIDCClientLogin(FlowHandler):
           'response_type': '@[response_type]',
           'state': '@[state]',
           'nonce': '@[nonce]',
+          'code_challenge_method': '@[code_challenge_method]',
+          'code_challenge': '@[code_challenge]',
           'display': '@[display]',
           'prompt': '@[prompt]',
           'max_age': '@[max_age]',
@@ -295,7 +325,8 @@ class OIDCClientLogin(FlowHandler):
           'id_token_hint': '@[id_token_hint]',
           'login_hint': '@[login_hint]',
           'acr_values': '@[acr_values]',
-        })
+        },
+        modifying_fields = ['oauth_flow', 'code_verifier'])
       form.modify_http_parameters({
         'form_method': 'redirect',
         'body_format': 'x-www-form-urlencoded',
@@ -309,12 +340,16 @@ class OIDCClientLogin(FlowHandler):
         'auth_method': False,
         'verify_certificates': True,
         })
+      form.set_data_generator_code("""
+        return generateOAuth2RequestOIDC(paramValues, cfiForm);;
+      """)
       form.set_option('/clipboard/remember_secrets', self.conf.is_on('/preferences/clipboard/remember_secrets', False))
       form.set_option('/requester/include_empty_items', False)
       form.add_button('Cancel', f"/?idpid={idp_id}", display='all')
 
 
       self.add_html(form.get_html())
+      self.add_javascript_include('/javascript/OAuthClientLogin.js')
       self.add_javascript(form.get_javascript())
       self.add_javascript("""document.getElementById('homeButton').href = '/?idpid={idp_id}';""".format(idp_id = idp_id))
 
@@ -375,9 +410,9 @@ class OIDCClientLogin(FlowHandler):
       'token_endpoint_dns_override', 'userinfo_endpoint_dns_override']:
         oidc_idp_params[item] = self.post_form.get(item, '').strip()
 
-      # Mise à jour dansle contexte des paramètres liés au client courant
+      # Mise à jour dans le contexte des paramètres liés au client courant
       app_params = self.context.last_app_params
-      for item in ['redirect_uri', 'client_id', 'scope', 'token_endpoint_auth_method', 'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values',
+      for item in ['redirect_uri', 'oauth_flow', 'code_challenge_method', 'code_verifier', 'client_id', 'scope', 'token_endpoint_auth_method', 'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values',
       'nonce']:
         app_params[item] = self.post_form.get(item, '').strip()
       
@@ -496,6 +531,8 @@ class OIDCClientLogin(FlowHandler):
         'redirect_uri':redirect_uri,
         'client_id':client_id
         }
+      if app_params['oauth_flow'] == 'authorization_code_pkce':
+        data['code_verifier'] = app_params['code_verifier']
       
       auth = None
       if token_endpoint_auth_method == 'basic':
@@ -503,10 +540,13 @@ class OIDCClientLogin(FlowHandler):
       elif token_endpoint_auth_method == 'form':
         data['client_secret'] = client_secret
       else:
-        raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be basic or form')
+        if app_params['oauth_flow'] == 'authorization_code':
+          raise AduneoError('token endpoint authentication method '+token_endpoint_auth_method+' unknown. Should be basic or form')
       self.log_info(f"{'  ' * 1}Authentication scheme: {token_endpoint_auth_method}")
       
       self.add_result_row('Token endpoint', token_endpoint, form_id, 'token_endpoint')
+      self.log_info(('  ' * 1)+'Token request data: '+str(data))
+      self.add_result_row('Token request data', json.dumps(data, indent=2), form_id, 'token_request_data')
       self.end_result_table()
       self.add_html('<div class="intertable">Fetching token...</div>')
       self.log_info("Start fetching token")
