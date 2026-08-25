@@ -359,7 +359,6 @@ class CASClientAdmin(BaseHandler):
       app_form = self.get_app_form(app_params)
       app_form.set_title('Remove CAS client '+(' '+app_params['name'] if app_params.get('name') else ''))
       app_form.add_button('Remove', f"removeappconfirmed?idpid={idp_id}&appid={app_id}", display='all')
-      app_form.add_button('Cancel', f"/client/idp/admin/display?idpid={idp_id}", display='all')
 
       self.add_html(app_form.get_html(display_only=True))
       self.add_javascript(app_form.get_javascript())

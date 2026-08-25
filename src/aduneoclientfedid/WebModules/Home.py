@@ -69,14 +69,14 @@ class Home(BaseHandler):
                 <span><a href="/client/idp/admin/modify?idpid={idp_id}" class="smallbutton">Modify IdP Parameters</a></span>
                 <span onclick="this.querySelector('.confirm').style.display='inline'; this.querySelector('.initial').style.display='none';">
                   <span class="initial">
-                    <span class="smallbutton">
+                    <span class="smallbuttonDangerous">
                     Remove IdP
                     </span>
                   </span>
                   <span class="confirm" style="display:none;">
                     Confirm removal?
-                      <a href="/client/idp/admin/remove?idpid={idp_id}" class="smallButton">Yes</a>
-                      <a href="/" class="smallButton">No</a>
+                      <a href="/client/idp/admin/remove?idpid={idp_id}" class="smallButtonDangerous">Yes</a>
+                      <a href="/" class="smallButtonDangerous">No</a>
                   </span>
                 </span>
               </div>
@@ -141,8 +141,9 @@ class Home(BaseHandler):
         self.add_html("""
           <div style="font-size: 14px; margin-left: 20px;">
             <span>{name}</span>
-            <span><a href="/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+            <span><a href="/client/oidc/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbuttonLogin">Login</a></span>
             <span><a href="/client/oidc/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
+            <span><a href="/client/oidc/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbuttonDangerous">X</a></span>
           </div>
           """.format(
             name = html.escape(client.get('name', 'Client')),
@@ -160,8 +161,9 @@ class Home(BaseHandler):
         self.add_html("""
           <div style="font-size: 14px; margin-left: 20px;">
             <span>{name}</span>
-            <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+            <span><a href="/client/oauth2/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbuttonLogin">Login</a></span>
             <span><a href="/client/oauth2/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
+            <span><a href="/client/oauth2/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbuttonDangerous">X</a></span>
           </div>
           """.format(
             name = html.escape(client.get('name', 'Client')),
@@ -193,6 +195,7 @@ class Home(BaseHandler):
           <div style="font-size: 14px; margin-left: 20px;">
             <span>{name}</span>
             <span><a href="/client/oauth2/admin/modifyapi?idpid={idp_id}&apiid={app_id}" class="smallbutton">Config</a></span>
+            <span><a href="/client/oauth2/admin/removeapi?idpid={idp_id}&appid={app_id}" class="smallbuttonDangerous">X</a></span>
           </div>
           """.format(
             name = html.escape(api.get('name', 'API')),
@@ -210,8 +213,9 @@ class Home(BaseHandler):
         self.add_html("""
           <div style="font-size: 14px; margin-left: 20px;">
             <span>{name}</span>
-            <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+            <span><a href="/client/saml/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbuttonLogin">Login</a></span>
             <span><a href="/client/saml/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
+            <span><a href="/client/saml/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbuttonDangerous">X</a></span>
           </div>
           """.format(
             name = html.escape(client.get('name', 'SP')),
@@ -229,8 +233,9 @@ class Home(BaseHandler):
         self.add_html("""
           <div style="font-size: 14px; margin-left: 20px;">
             <span>{name}</span>
-            <span><a href="/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbutton">Login</a></span>
+            <span><a href="/client/cas/login/preparerequest?idpid={idp_id}&appid={app_id}" class="smallbuttonLogin">Login</a></span>
             <span><a href="/client/cas/admin/modifyclient?idpid={idp_id}&appid={app_id}" class="smallbutton">Config</a></span>
+            <span><a href="/client/cas/admin/removeapp?idpid={idp_id}&appid={app_id}" class="smallbuttonDangerous">X</a></span>
           </div>
           """.format(
             name = html.escape(client.get('name', 'Client')),
