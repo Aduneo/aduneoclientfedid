@@ -203,6 +203,8 @@ class OAuth2Refresh(FlowHandler):
       form.set_title(f"""Refresh <span style="color: #004c97">{html.escape(idp_params['name'])}</span>""")
       form.set_hr_title("Refresh")
       form.set_table('token_clients', token_clients)
+      form.set_table('client_ids', client_ids)
+      form.set_table('token_endpoint_auth_methods', token_endpoint_auth_methods)
       form.set_request_parameters({
         'refresh_token': '@[refresh_token]',
         'grant_type': '@[grant_type]',
@@ -278,7 +280,7 @@ class OAuth2Refresh(FlowHandler):
       # On obtient le secret
       client_secret = None
       if app_id != '__input__':
-        client_secret = conf_apps[self.post_form['client_ids']].get('client_secret!', '')
+        client_secret = conf_apps[self.post_form['client_ids']].get('client_secret!', None)
     
       response = RequesterForm.send_form(self, self.post_form, default_secret=client_secret)
       json_response = response.json()
@@ -306,7 +308,7 @@ class OAuth2Refresh(FlowHandler):
                   token_wrapper['name'] = name + ' (refreshed)'
                   
           app_params = conf_apps[app_id]
-          token_name = 'Refreshed '+app_params['name']+' - '+time.strftime("%H:%M:%S", time.localtime())
+          token_name = 'Refreshed ' + app_params['name'] + ' - ' + time.strftime("%H:%M:%S", time.localtime())
           token = {'name': token_name, 'type': 'access_token', 'app_id': app_id, 'access_token': new_access_token}
           if new_refresh_token:
             token['refresh_token'] = new_refresh_token
