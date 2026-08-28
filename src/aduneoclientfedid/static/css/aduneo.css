@@ -66,7 +66,43 @@ span.smallButton, a.smallButton {
   cursor: pointer;
 }
 
+span.smallButtonDangerous, a.smallButtonDangerous {
+  font-family: Verdana;
+  background-color: #e65117;
+  border: none;
+  color: white;
+  padding: 4px 8px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 12px;
+  margin: 2px 1px;
+  cursor: pointer;
+}
+
+span.smallButtonLogin, a.smallButtonLogin {
+  font-family: Verdana;
+  background-color: #004C97;
+  border: none;
+  color: white;
+  padding: 4px 8px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 12px;
+  margin: 2px 1px;
+  cursor: pointer;
+}
+
 img.smallButton {
+  cursor: pointer;
+}
+
+img.smallButtonDangerous {
+  cursor: pointer;
+}
+
+img.smallButtonLogin {
   cursor: pointer;
 }
 

@@ -48,3 +48,22 @@ function generateOAuth2Request(paramValues, cfiForm) {
   
   return filteredParamValues;
 }
+
+function generateOAuth2RequestOIDC(paramValues, cfiForm) {
+
+  let filteredParamValues = {};
+
+  if (cfiForm.getField('oauth_flow').value == 'authorization_code' || cfiForm.getField('oauth_flow').value == 'authorization_code_pkce') {
+    for (param of ['client_id', 'redirect_uri', 'scope', 'response_type', 'state', 'nonce', 'display', 'prompt', 'max_age', 'ui_locales', 'id_token_hint', 'login_hint', 'acr_values']) { if (param in paramValues) filteredParamValues[param] = paramValues[param]; }
+  }
+
+  if (cfiForm.getField('oauth_flow').value == 'authorization_code_pkce') {
+    for (param of ['code_challenge_method', 'code_challenge']) { if (param in paramValues) filteredParamValues[param] = paramValues[param]; }
+    
+    if (cfiForm.getField('code_challenge_method').value == 'plain') {
+      filteredParamValues['code_challenge'] = cfiForm.getField('code_verifier').value;
+    }
+  }
+  
+  return filteredParamValues;
+}

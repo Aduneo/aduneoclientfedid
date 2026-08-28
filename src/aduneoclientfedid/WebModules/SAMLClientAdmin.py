@@ -156,7 +156,7 @@ class SAMLClientAdmin(BaseHandler):
           on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/saml/login/acs'); }" 
           ) \
         .text('sp_slo_url', label='SP Single Logout URL', clipboard_category='sp_slo_url',
-          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/saml/login/logout/callback'); }" 
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/saml/logout/callback'); }" 
           ) \
         .closed_list('sp_key_configuration', label='SP key configuration', 
           values = {'clientfedid_keys': 'ClientFedID keys', 'specific_keys': 'Specific keys'},
@@ -512,7 +512,6 @@ class SAMLClientAdmin(BaseHandler):
       app_form = self.get_app_form(app_params)
       app_form.set_title('Remove SAML app '+(' '+app_params['name'] if app_params.get('name') else ''))
       app_form.add_button('Remove', f"removeappconfirmed?idpid={idp_id}&appid={app_id}", display='all')
-      app_form.add_button('Cancel', f"/client/idp/admin/display?idpid={idp_id}", display='all')
 
       self.add_html(app_form.get_html(display_only=True))
       self.add_javascript(app_form.get_javascript())
@@ -606,7 +605,7 @@ class SAMLClientAdmin(BaseHandler):
           on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/saml/login/acs'); }" 
           ) \
         .text('sp_slo_url', label='SP Single Logout URL', clipboard_category='sp_slo_url',
-          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/saml/login/logout/callback'); }" 
+          on_load = "if (cfiForm.getThisFieldValue() == '') { cfiForm.setThisFieldValue(window.location.origin + '/client/saml/logout/callback'); }" 
           ) \
         .closed_list('sp_key_configuration', label='SP key configuration', 
           values = {'clientfedid_keys': 'ClientFedID keys', 'specific_keys': 'Specific keys'},
@@ -775,7 +774,7 @@ class SAMLClientAdmin(BaseHandler):
     """
 
     try:
-      crt_file_path = self._check_clientfedid_certificate_exists()
+      crt_file_path = SAMLClientAdmin._check_clientfedid_certificate_exists()
     except:
       self.send_page('Certificate not configured', code=400, clear_buffer=True)
       return
